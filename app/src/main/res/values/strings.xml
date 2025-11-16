@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">alpha 2025</string>
+    <string name="app_logo">app_logo</string>
+    <string name="login">login\n</string>
+    <string name="register_here">register_here\n</string>
+    <string name="password">password</string>
+    <string name="email">email</string>
+    <string name="join_group">присоединиться к группе</string>
+    <string name="create_new_group">Создать новую группу</string>
+    <string name="enter_group_code">Введите код группы</string>
+    <string name="join_or_create_group">Создать группу или присоединиться к своей пачке</string>
+    <string name="dungeons_dragons">Подземелья и драконы</string>
+    <string name="vampire_masquerade">ВТМ</string>
+    <string name="select_game_system">Выберите игровую систему</string>
+</resources>
