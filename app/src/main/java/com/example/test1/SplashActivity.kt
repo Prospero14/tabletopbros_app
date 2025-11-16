@@ -1,4 +1,4 @@
-package com.example.cursor
+package com.example.test1
 
 import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
