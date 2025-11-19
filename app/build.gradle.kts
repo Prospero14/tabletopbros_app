@@ -5,8 +5,9 @@ plugins {
 
 android {
     namespace = "com.example.test1"
-    compileSdk {
-        version = release(36)
+    compileSdk = 36
+    buildFeatures {
+        viewBinding = true
     }
 
     defaultConfig {
@@ -45,5 +46,7 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
+    implementation("androidx.navigation:navigation-fragment-ktx:2.7.7")
+    implementation("androidx.navigation:navigation-ui-ktx:2.7.7")
     androidTestImplementation(libs.androidx.espresso.core)
 }
