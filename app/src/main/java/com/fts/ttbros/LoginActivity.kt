@@ -5,29 +5,42 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textview.MaterialTextView
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import com.fts.ttbros.data.model.UserProfile
 import com.fts.ttbros.data.repository.UserRepository
-import com.fts.ttbros.databinding.ActivityLoginBinding
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 class LoginActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityLoginBinding
+    private lateinit var emailEditText: TextInputEditText
+    private lateinit var passwordEditText: TextInputEditText
+    private lateinit var loginButton: MaterialButton
+    private lateinit var registerTextView: MaterialTextView
+    private lateinit var progressIndicator: CircularProgressIndicator
+    
     private val auth: FirebaseAuth by lazy { Firebase.auth }
     private val userRepository = UserRepository()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityLoginBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        setContentView(R.layout.activity_login)
 
-        binding.loginButton.setOnClickListener { authenticate(isRegistration = false) }
-        binding.registerTextView.setOnClickListener { authenticate(isRegistration = true) }
+        emailEditText = findViewById(R.id.emailEditText)
+        passwordEditText = findViewById(R.id.passwordEditText)
+        loginButton = findViewById(R.id.loginButton)
+        registerTextView = findViewById(R.id.registerTextView)
+        progressIndicator = findViewById(R.id.progressIndicator)
+
+        loginButton.setOnClickListener { authenticate(isRegistration = false) }
+        registerTextView.setOnClickListener { authenticate(isRegistration = true) }
     }
 
     override fun onStart() {
@@ -38,45 +51,46 @@ class LoginActivity : AppCompatActivity() {
                     val profile = userRepository.ensureProfile(firebaseUser)
                     navigateNext(profile)
                 } catch (e: Exception) {
-                    showError(getString(R.string.error_unknown))
+                    showError(e.localizedMessage ?: getString(R.string.error_unknown))
                 }
             }
         }
     }
 
     private fun authenticate(isRegistration: Boolean) {
-        val login = binding.emailEditText.text?.toString()?.trim().orEmpty()
-        val email = if (login.contains("@")) login else "$login@ttbros.app"
-        val password = binding.passwordEditText.text?.toString()?.trim().orEmpty()
+        var login = emailEditText.text?.toString()?.trim().orEmpty()
+        val password = passwordEditText.text?.toString()?.trim().orEmpty()
 
-        if (login.isBlank() || password.length < MIN_PASSWORD_LENGTH) {
-            Snackbar.make(
-                binding.root,
-                getString(R.string.error_credentials),
-                Snackbar.LENGTH_SHORT
-            ).show()
+        if (login.isBlank() || password.isBlank()) {
+            showError("Заполните все поля")
             return
+        }
+
+        // Append dummy domain if login doesn't contain @
+        if (!login.contains("@")) {
+            login = "$login@ttbros.app"
         }
 
         setLoading(true)
         lifecycleScope.launch {
             try {
-                val resultUser = if (isRegistration) {
-                    auth.createUserWithEmailAndPassword(email, password).await().user
+                val authResult = if (isRegistration) {
+                    auth.createUserWithEmailAndPassword(login, password).await()
                 } else {
-                    auth.signInWithEmailAndPassword(email, password).await().user
+                    auth.signInWithEmailAndPassword(login, password).await()
                 }
 
-                if (resultUser == null) {
+                val firebaseUser = authResult.user
+                if (firebaseUser == null) {
                     showError(getString(R.string.error_unknown))
                     return@launch
                 }
 
-                val profile = userRepository.ensureProfile(resultUser)
+                val profile = userRepository.ensureProfile(firebaseUser)
                 navigateNext(profile)
 
-            } catch (error: Exception) {
-                showError(error.localizedMessage ?: getString(R.string.error_unknown))
+            } catch (e: Exception) {
+                showError(e.localizedMessage ?: getString(R.string.error_unknown))
             } finally {
                 setLoading(false)
             }
@@ -85,27 +99,22 @@ class LoginActivity : AppCompatActivity() {
 
     private fun navigateNext(profile: UserProfile) {
         val destination = if (profile.teamId.isNullOrBlank()) {
-            Intent(this, GroupActivity::class.java)
+            GroupActivity::class.java
         } else {
-            Intent(this, MainActivity::class.java)
+            MainActivity::class.java
         }
-        startActivity(destination)
+        startActivity(Intent(this, destination))
         finish()
     }
 
     private fun setLoading(isLoading: Boolean) {
-        binding.progressIndicator.isVisible = isLoading
-        binding.loginButton.isEnabled = !isLoading
-        binding.registerTextView.isEnabled = !isLoading
-        binding.emailEditText.isEnabled = !isLoading
-        binding.passwordEditText.isEnabled = !isLoading
+        progressIndicator.isVisible = isLoading
+        loginButton.isEnabled = !isLoading
+        emailEditText.isEnabled = !isLoading
+        passwordEditText.isEnabled = !isLoading
     }
 
     private fun showError(message: String) {
-        Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).setAnchorView(binding.loginButton).show()
-    }
-
-    companion object {
-        private const val MIN_PASSWORD_LENGTH = 6
+        Snackbar.make(findViewById(android.R.id.content), message, Snackbar.LENGTH_LONG).show()
     }
 }

@@ -5,11 +5,16 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import com.fts.ttbros.GroupActivity
@@ -21,13 +26,16 @@ import com.fts.ttbros.chat.ui.ChatAdapter
 import com.fts.ttbros.data.model.UserProfile
 import com.fts.ttbros.data.model.UserRole
 import com.fts.ttbros.data.repository.UserRepository
-import com.fts.ttbros.databinding.FragmentChatBinding
 import kotlinx.coroutines.launch
 
 class ChatFragment : Fragment() {
 
-    private var _binding: FragmentChatBinding? = null
-    private val binding get() = _binding!!
+    private lateinit var emptyView: TextView
+    private lateinit var messagesRecyclerView: RecyclerView
+    private lateinit var messageInputContainer: LinearLayout
+    private lateinit var messageEditText: TextInputEditText
+    private lateinit var sendButton: MaterialButton
+    
     private val chatRepository = ChatRepository()
     private val userRepository = UserRepository()
     private val auth by lazy { Firebase.auth }
@@ -45,21 +53,27 @@ class ChatFragment : Fragment() {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View {
-        _binding = FragmentChatBinding.inflate(inflater, container, false)
-        return binding.root
+    ): View? {
+        return inflater.inflate(R.layout.fragment_chat, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        
+        emptyView = view.findViewById(R.id.emptyView)
+        messagesRecyclerView = view.findViewById(R.id.messagesRecyclerView)
+        messageInputContainer = view.findViewById(R.id.messageInputContainer)
+        messageEditText = view.findViewById(R.id.messageEditText)
+        sendButton = view.findViewById(R.id.sendButton)
+        
         adapter = ChatAdapter(auth.currentUser?.uid.orEmpty())
         val layoutManager = LinearLayoutManager(requireContext()).apply {
             stackFromEnd = true
         }
-        binding.messagesRecyclerView.layoutManager = layoutManager
-        binding.messagesRecyclerView.adapter = adapter
+        messagesRecyclerView.layoutManager = layoutManager
+        messagesRecyclerView.adapter = adapter
 
-        binding.sendButton.setOnClickListener { sendMessage() }
+        sendButton.setOnClickListener { sendMessage() }
         observeProfile()
     }
 
@@ -67,11 +81,13 @@ class ChatFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             val profile = userRepository.currentProfile()
             if (profile == null || profile.teamId.isNullOrBlank()) {
-                Snackbar.make(binding.root, R.string.error_group_not_found, Snackbar.LENGTH_LONG)
-                    .setAction(R.string.join_group) {
-                        startActivity(Intent(requireContext(), GroupActivity::class.java))
-                    }
-                    .show()
+                view?.let {
+                    Snackbar.make(it, R.string.error_group_not_found, Snackbar.LENGTH_LONG)
+                        .setAction(R.string.join_group) {
+                            startActivity(Intent(requireContext(), GroupActivity::class.java))
+                        }
+                        .show()
+                }
                 disableInput()
                 return@launch
             }
@@ -86,14 +102,14 @@ class ChatFragment : Fragment() {
             ChatType.ANNOUNCEMENTS -> profile.role == UserRole.MASTER
             else -> true
         }
-        binding.sendButton.isEnabled = canSend
-        binding.messageEditText.isEnabled = canSend
+        sendButton.isEnabled = canSend
+        messageEditText.isEnabled = canSend
         if (!canSend && chatType == ChatType.ANNOUNCEMENTS) {
-            binding.messageEditText.hint = getString(R.string.chat_announcements_readonly)
+            messageEditText.hint = getString(R.string.chat_announcements_readonly)
         } else {
-            binding.messageEditText.hint = getString(R.string.chat_hint)
+            messageEditText.hint = getString(R.string.chat_hint)
         }
-        binding.messageInputContainer.isVisible = true
+        messageInputContainer.isVisible = true
     }
 
     private fun subscribeToMessages(profile: UserProfile) {
@@ -105,22 +121,24 @@ class ChatFragment : Fragment() {
             onEvent = { messages ->
                 adapter.submitList(messages) {
                     if (messages.isNotEmpty()) {
-                        binding.messagesRecyclerView.scrollToPosition(messages.lastIndex)
+                        messagesRecyclerView.scrollToPosition(messages.lastIndex)
                     }
                 }
-                binding.emptyView.isVisible = messages.isEmpty()
+                emptyView.isVisible = messages.isEmpty()
             },
             onError = { error ->
-                Snackbar.make(binding.root, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
+                view?.let {
+                    Snackbar.make(it, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
+                }
             }
         )
     }
 
     private fun sendMessage() {
         val profile = userProfile ?: return
-        val text = binding.messageEditText.text?.toString()?.trim().orEmpty()
+        val text = messageEditText.text?.toString()?.trim().orEmpty()
         if (text.isBlank()) return
-        binding.messageEditText.text?.clear()
+        messageEditText.text?.clear()
         val teamId = profile.teamId ?: return
         viewLifecycleOwner.lifecycleScope.launch {
             try {
@@ -134,19 +152,20 @@ class ChatFragment : Fragment() {
                     )
                 )
             } catch (error: Exception) {
-                Snackbar.make(binding.root, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
+                view?.let {
+                    Snackbar.make(it, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
+                }
             }
         }
     }
 
     private fun disableInput() {
-        binding.messageInputContainer.isVisible = false
+        messageInputContainer.isVisible = false
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         listenerRegistration?.remove()
-        _binding = null
     }
 
     companion object {

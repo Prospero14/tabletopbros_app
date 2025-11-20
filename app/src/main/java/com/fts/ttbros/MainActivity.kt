@@ -10,21 +10,25 @@ import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
 import com.fts.ttbros.data.repository.UserRepository
-import com.fts.ttbros.databinding.ActivityMainBinding
+import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivityMainBinding
+    private lateinit var toolbar: MaterialToolbar
+    private lateinit var bottomNavigation: BottomNavigationView
     private lateinit var navController: NavController
     private val userRepository = UserRepository()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMainBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        setContentView(R.layout.activity_main)
 
-        setSupportActionBar(binding.toolbar)
+        toolbar = findViewById(R.id.toolbar)
+        bottomNavigation = findViewById(R.id.bottomNavigation)
+        
+        setSupportActionBar(toolbar)
 
         val navHostFragment = supportFragmentManager
             .findFragmentById(R.id.fragmentContainer) as NavHostFragment
@@ -43,7 +47,7 @@ class MainActivity : AppCompatActivity() {
         )
 
         setupActionBarWithNavController(navController, appBarConfiguration)
-        binding.bottomNavigation.setupWithNavController(navController)
+        bottomNavigation.setupWithNavController(navController)
     }
 
     override fun onStart() {

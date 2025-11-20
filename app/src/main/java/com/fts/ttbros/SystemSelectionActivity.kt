@@ -5,29 +5,36 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.fts.ttbros.data.repository.UserRepository
-import com.fts.ttbros.databinding.ActivitySystemSelectionBinding
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 class SystemSelectionActivity : AppCompatActivity() {
 
-    private lateinit var binding: ActivitySystemSelectionBinding
+    private lateinit var vtmButton: MaterialButton
+    private lateinit var dndButton: MaterialButton
+    private lateinit var progressIndicator: CircularProgressIndicator
+    
     private val auth by lazy { Firebase.auth }
     private val firestore by lazy { Firebase.firestore }
     private val userRepository = UserRepository()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivitySystemSelectionBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        setContentView(R.layout.activity_system_selection)
 
-        binding.vtmButton.setOnClickListener { selectSystem("vtm_5e") }
-        binding.dndButton.setOnClickListener { selectSystem("dnd_5e") }
+        vtmButton = findViewById(R.id.vtmButton)
+        dndButton = findViewById(R.id.dndButton)
+        progressIndicator = findViewById(R.id.progressIndicator)
+
+        vtmButton.setOnClickListener { selectSystem("vtm_5e") }
+        dndButton.setOnClickListener { selectSystem("dnd_5e") }
     }
 
     private fun selectSystem(systemId: String) {
@@ -65,12 +72,12 @@ class SystemSelectionActivity : AppCompatActivity() {
     }
 
     private fun setLoading(isLoading: Boolean) {
-        binding.progressIndicator.isVisible = isLoading
-        binding.vtmButton.isEnabled = !isLoading
-        binding.dndButton.isEnabled = !isLoading
+        progressIndicator.isVisible = isLoading
+        vtmButton.isEnabled = !isLoading
+        dndButton.isEnabled = !isLoading
     }
 
     private fun showError(message: String) {
-        Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
+        Snackbar.make(findViewById(android.R.id.content), message, Snackbar.LENGTH_LONG).show()
     }
 }
