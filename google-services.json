@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "763782485248",
+    "project_id": "tabletopbros-b49c9",
+    "storage_bucket": "tabletopbros-b49c9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:763782485248:android:d26cfd6c34b474dda5cfe5",
+        "android_client_info": {
+          "package_name": "com.fts.ttbros"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB3QO3bmbEONhhHdkZxdCr2IBfqiVsTKL4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
