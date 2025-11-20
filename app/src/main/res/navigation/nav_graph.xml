@@ -49,4 +49,9 @@
         android:name="com.fts.ttbros.documents.DocumentsFragment"
         android:label="Documents" />
 
+    <fragment
+        android:id="@+id/accountFragment"
+        android:name="com.fts.ttbros.account.AccountFragment"
+        android:label="Account" />
+
 </navigation>

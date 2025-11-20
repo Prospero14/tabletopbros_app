@@ -20,4 +20,8 @@
         android:id="@+id/characterFragment"
         android:icon="@drawable/ic_person"
         android:title="Чарник" />
+    <item
+        android:id="@+id/accountFragment"
+        android:icon="@drawable/ic_person"
+        android:title="Аккаунт" />
 </menu>

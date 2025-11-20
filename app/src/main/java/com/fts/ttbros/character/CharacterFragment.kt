@@ -4,23 +4,27 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.android.material.snackbar.Snackbar
 import com.fts.ttbros.R
 import com.fts.ttbros.data.model.UserRole
 import com.fts.ttbros.data.repository.TeamRepository
 import com.fts.ttbros.data.repository.UserRepository
-import com.fts.ttbros.databinding.FragmentCharacterBinding
 import kotlinx.coroutines.launch
 
 class CharacterFragment : Fragment() {
 
-    private var _binding: FragmentCharacterBinding? = null
-    private val binding get() = _binding!!
+    private lateinit var playerView: LinearLayout
+    private lateinit var teamCodeTextView: TextView
+    private lateinit var playersRecyclerView: RecyclerView
+    private lateinit var progressIndicator: CircularProgressIndicator
+    
     private val userRepository = UserRepository()
     private val teamRepository = TeamRepository()
     private val playersAdapter = PlayersAdapter()
@@ -29,14 +33,19 @@ class CharacterFragment : Fragment() {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View {
-        _binding = FragmentCharacterBinding.inflate(inflater, container, false)
-        return binding.root
+    ): View? {
+        return inflater.inflate(R.layout.fragment_character, container, false)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        binding.playersRecyclerView.adapter = playersAdapter
+        
+        playerView = view.findViewById(R.id.playerView)
+        teamCodeTextView = view.findViewById(R.id.teamCodeTextView)
+        playersRecyclerView = view.findViewById(R.id.playersRecyclerView)
+        progressIndicator = view.findViewById(R.id.progressIndicator)
+        
+        playersRecyclerView.adapter = playersAdapter
         loadData()
     }
 
@@ -61,7 +70,9 @@ class CharacterFragment : Fragment() {
                 }
 
             } catch (e: Exception) {
-                Snackbar.make(binding.root, e.localizedMessage ?: "Error loading data", Snackbar.LENGTH_LONG).show()
+                view?.let {
+                    Snackbar.make(it, e.localizedMessage ?: "Error loading data", Snackbar.LENGTH_LONG).show()
+                }
             } finally {
                 setLoading(false)
             }
@@ -69,23 +80,18 @@ class CharacterFragment : Fragment() {
     }
 
     private fun showMasterView() {
-        binding.playerView.isVisible = false
-        binding.playersRecyclerView.isVisible = true
+        playerView.isVisible = false
+        playersRecyclerView.isVisible = true
     }
 
     private fun showPlayerView(code: String?) {
-        binding.playerView.isVisible = true
-        binding.playersRecyclerView.isVisible = false
-        binding.teamCodeTextView.text = getString(R.string.dialog_team_code_message, code ?: "N/A")
+        playerView.isVisible = true
+        playersRecyclerView.isVisible = false
+        teamCodeTextView.text = getString(R.string.dialog_team_code_message, code ?: "N/A")
     }
 
     private fun setLoading(isLoading: Boolean) {
-        binding.progressIndicator.isVisible = isLoading
-    }
-
-    override fun onDestroyView() {
-        super.onDestroyView()
-        _binding = null
+        progressIndicator.isVisible = isLoading
     }
 
     // Simple Adapter for Players
