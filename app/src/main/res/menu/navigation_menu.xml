@@ -22,6 +22,10 @@
             android:id="@+id/notesFragment"
             android:icon="@android:drawable/ic_menu_edit"
             android:title="Notes" />
+        <item
+            android:id="@+id/documentsFragment"
+            android:icon="@android:drawable/ic_menu_agenda"
+            android:title="Documents" />
     </group>
 
     <item
@@ -30,5 +34,11 @@
         android:icon="@android:drawable/ic_menu_share"
         android:title="@string/menu_show_code"
         android:visible="false" />
+
+    <item
+        android:id="@+id/menu_logout"
+        android:checkable="false"
+        android:icon="@android:drawable/ic_lock_power_off"
+        android:title="@string/logout" />
 
 </menu>

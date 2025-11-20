@@ -102,14 +102,14 @@ class ChatFragment : Fragment() {
             ChatType.ANNOUNCEMENTS -> profile.role == UserRole.MASTER
             else -> true
         }
-        sendButton.isEnabled = canSend
-        messageEditText.isEnabled = canSend
+        
         if (!canSend && chatType == ChatType.ANNOUNCEMENTS) {
-            messageEditText.hint = getString(R.string.chat_announcements_readonly)
+            messageInputContainer.isVisible = false
         } else {
-            messageEditText.hint = getString(R.string.chat_hint)
+            messageInputContainer.isVisible = true
+            sendButton.isEnabled = canSend
+            messageEditText.isEnabled = canSend
         }
-        messageInputContainer.isVisible = true
     }
 
     private fun subscribeToMessages(profile: UserProfile) {

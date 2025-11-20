@@ -26,6 +26,8 @@
     <string name="menu_announcements">Объявления</string>
     <string name="menu_master_player">Игрок ↔ Мастер</string>
     <string name="menu_show_code">Код команды</string>
+    <string name="menu">Меню</string>
+    <string name="logout">Выйти из аккаунта</string>
     <string name="chat_placeholder">Сообщений пока нет</string>
     <string name="chat_hint">Напишите сообщение…</string>
     <string name="chat_send">Отправить</string>

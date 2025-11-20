@@ -55,26 +55,41 @@ class MainActivity : AppCompatActivity() {
                 R.id.teamChatFragment,
                 R.id.announcementChatFragment,
                 R.id.masterPlayerChatFragment,
-                R.id.notesFragment
+                R.id.notesFragment,
+                R.id.documentsFragment
             ),
             binding.drawerLayout
         )
+        
+        binding.toolbar.setNavigationIcon(R.drawable.ic_menu)
+        binding.toolbar.setNavigationOnClickListener {
+            binding.drawerLayout.openDrawer(GravityCompat.END)
+        }
 
         setupActionBarWithNavController(navController, appBarConfiguration)
         binding.navigationView.setupWithNavController(navController)
         binding.navigationView.setNavigationItemSelectedListener { item ->
-            if (item.itemId == R.id.menu_show_code) {
-                binding.drawerLayout.closeDrawer(GravityCompat.START)
-                showCodeDialog()
-                true
-            } else {
-                val handled = NavigationUI.onNavDestinationSelected(item, navController)
-                if (handled) {
-                    binding.drawerLayout.closeDrawer(GravityCompat.START)
+            when (item.itemId) {
+                R.id.menu_show_code -> {
+                    binding.drawerLayout.closeDrawer(GravityCompat.END)
+                    showCodeDialog()
+                    true
                 }
-                handled
+                R.id.menu_logout -> {
+                    binding.drawerLayout.closeDrawer(GravityCompat.END)
+                    logout()
+                    true
+                }
+                else -> {
+                    val handled = NavigationUI.onNavDestinationSelected(item, navController)
+                    if (handled) {
+                        binding.drawerLayout.closeDrawer(GravityCompat.END)
+                    }
+                    handled
+                }
             }
         }
+        
         setupGroupPrompt()
     }
 
@@ -132,6 +147,11 @@ class MainActivity : AppCompatActivity() {
     private fun navigateTo(destination: Class<*>) {
         startActivity(Intent(this, destination))
         finish()
+    }
+    
+    private fun logout() {
+        auth.signOut()
+        navigateTo(LoginActivity::class.java)
     }
 
     private fun setupGroupPrompt() {
