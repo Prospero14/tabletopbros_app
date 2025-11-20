@@ -1,17 +1,23 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.google.gms.google.services)
+}
+
+// Исключаем проблемную библиотеку bcprov с Java 21 классами из всех конфигураций
+configurations.all {
+    exclude(group = "org.bouncycastle", module = "bcprov-jdk18on")
 }
 
 android {
-    namespace = "com.example.test1"
+    namespace = "com.fts.ttbros"
     compileSdk = 36
     buildFeatures {
         viewBinding = true
     }
 
     defaultConfig {
-        applicationId = "com.example.test1"
+        applicationId = "com.fts.ttbros"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
@@ -44,9 +50,22 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
+
     implementation("androidx.navigation:navigation-fragment-ktx:2.7.7")
     implementation("androidx.navigation:navigation-ui-ktx:2.7.7")
+
+    // Используем более старую версию Firebase BOM, которая не тянет Java 21 зависимости
+    implementation(platform("com.google.firebase:firebase-bom:31.2.2"))
+    implementation("com.google.firebase:firebase-auth-ktx")
+    implementation("com.google.firebase:firebase-firestore-ktx")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.4")
+
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }

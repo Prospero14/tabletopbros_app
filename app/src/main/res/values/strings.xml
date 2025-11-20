@@ -2,15 +2,32 @@
 <resources>
     <string name="app_name">alpha 2025</string>
     <string name="app_logo">app_logo</string>
-    <string name="login">login\n</string>
-    <string name="register_here">register_here\n</string>
-    <string name="password">password</string>
-    <string name="email">email</string>
-    <string name="join_group">присоединиться к группе</string>
+    <string name="login">Войти</string>
+    <string name="register_here">Зарегистрироваться</string>
+    <string name="password">Пароль</string>
+    <string name="email">Email</string>
+    <string name="join_group">Присоединиться к группе</string>
     <string name="create_new_group">Создать новую группу</string>
     <string name="enter_group_code">Введите код группы</string>
     <string name="join_or_create_group">Создать группу или присоединиться к своей пачке</string>
     <string name="dungeons_dragons">Подземелья и драконы</string>
     <string name="vampire_masquerade">ВТМ</string>
     <string name="select_game_system">Выберите игровую систему</string>
+    <string name="error_credentials">Введите email и пароль (минимум 6 символов)</string>
+    <string name="error_group_code">Введите действительный код группы</string>
+    <string name="error_group_not_found">Команда с таким кодом не найдена</string>
+    <string name="error_unknown">Что-то пошло не так. Попробуйте снова.</string>
+    <string name="success_joined_group">Вы присоединились к группе</string>
+    <string name="dialog_team_code_title">Код команды</string>
+    <string name="dialog_team_code_message">Передайте код участникам: %1$s</string>
+    <string name="action_copy">Скопировать</string>
+    <string name="code_copied">Код скопирован</string>
+    <string name="menu_team_chat">Чат команды</string>
+    <string name="menu_announcements">Объявления</string>
+    <string name="menu_master_player">Игрок ↔ Мастер</string>
+    <string name="menu_show_code">Код команды</string>
+    <string name="chat_placeholder">Сообщений пока нет</string>
+    <string name="chat_hint">Напишите сообщение…</string>
+    <string name="chat_send">Отправить</string>
+    <string name="chat_announcements_readonly">Только мастер может публиковать объявления</string>
 </resources>
