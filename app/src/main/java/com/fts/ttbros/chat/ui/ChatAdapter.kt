@@ -1,8 +1,11 @@
 package com.fts.ttbros.chat.ui
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import android.view.Gravity
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
@@ -10,7 +13,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.fts.ttbros.R
 import com.fts.ttbros.chat.model.ChatMessage
-import com.fts.ttbros.databinding.ItemChatMessageBinding
+import com.google.android.material.card.MaterialCardView
 import java.text.DateFormat
 
 class ChatAdapter(
@@ -18,36 +21,40 @@ class ChatAdapter(
 ) : ListAdapter<ChatMessage, ChatAdapter.MessageViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
-        val binding = ItemChatMessageBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-        return MessageViewHolder(binding)
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_chat_message, parent, false)
+        return MessageViewHolder(view)
     }
 
     override fun onBindViewHolder(holder: MessageViewHolder, position: Int) {
         holder.bind(getItem(position))
     }
 
-    inner class MessageViewHolder(
-        private val binding: ItemChatMessageBinding
-    ) : RecyclerView.ViewHolder(binding.root) {
+    inner class MessageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        
+        private val messageContainer: LinearLayout = itemView.findViewById(R.id.messageContainer)
+        private val senderNameTextView: TextView = itemView.findViewById(R.id.senderNameTextView)
+        private val messageCard: MaterialCardView = itemView.findViewById(R.id.messageCard)
+        private val messageTextView: TextView = itemView.findViewById(R.id.messageTextView)
+        private val timestampTextView: TextView = itemView.findViewById(R.id.timestampTextView)
 
         fun bind(message: ChatMessage) {
             val isMine = message.senderId == currentUserId
-            val context = binding.root.context
-            binding.messageContainer.gravity = if (isMine) Gravity.END else Gravity.START
-            binding.senderNameTextView.isVisible = !isMine
-            binding.senderNameTextView.text = message.senderName
+            val context = itemView.context
+            messageContainer.gravity = if (isMine) Gravity.END else Gravity.START
+            senderNameTextView.isVisible = !isMine
+            senderNameTextView.text = message.senderName
 
             val bubbleColor = if (isMine) {
                 ContextCompat.getColor(context, R.color.purple_200)
             } else {
                 ContextCompat.getColor(context, android.R.color.white)
             }
-            binding.messageCard.setCardBackgroundColor(bubbleColor)
-            binding.messageTextView.text = message.text
+            messageCard.setCardBackgroundColor(bubbleColor)
+            messageTextView.text = message.text
             val formattedTime = message.timestamp?.toDate()?.let {
                 DateFormat.getTimeInstance(DateFormat.SHORT).format(it)
             } ?: ""
-            binding.timestampTextView.text = formattedTime
+            timestampTextView.text = formattedTime
         }
     }
 
@@ -59,4 +66,3 @@ class ChatAdapter(
             oldItem == newItem
     }
 }
-
