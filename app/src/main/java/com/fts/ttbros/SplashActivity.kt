@@ -23,15 +23,17 @@ class SplashActivity : AppCompatActivity() {
             try {
                 val user = auth.currentUser
                 if (user == null) {
-                    navigate<LoginActivity>()
+                    startActivity(Intent(this@SplashActivity, LoginActivity::class.java))
+                    finish()
                     return@launch
                 }
 
                 userRepository.ensureProfile(user)
-                startActivity(Intent(this, MainActivity::class.java))
+                startActivity(Intent(this@SplashActivity, MainActivity::class.java))
                 finish()
             } catch (e: Exception) {
-                navigate<LoginActivity>()
+                startActivity(Intent(this@SplashActivity, LoginActivity::class.java))
+                finish()
             }
         }
     }

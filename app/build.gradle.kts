@@ -13,7 +13,7 @@ android {
     namespace = "com.fts.ttbros"
     compileSdk = 36
     buildFeatures {
-        viewBinding = false
+        viewBinding = true
     }
 
     defaultConfig {
