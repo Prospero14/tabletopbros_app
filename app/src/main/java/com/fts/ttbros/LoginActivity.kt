@@ -34,17 +34,22 @@ class LoginActivity : AppCompatActivity() {
         super.onStart()
         auth.currentUser?.let { firebaseUser ->
             lifecycleScope.launch {
-                val profile = userRepository.ensureProfile(firebaseUser)
-                navigateNext(profile)
+                try {
+                    val profile = userRepository.ensureProfile(firebaseUser)
+                    navigateNext(profile)
+                } catch (e: Exception) {
+                    showError(getString(R.string.error_unknown))
+                }
             }
         }
     }
 
     private fun authenticate(isRegistration: Boolean) {
-        val email = binding.emailEditText.text?.toString()?.trim().orEmpty()
+        val login = binding.emailEditText.text?.toString()?.trim().orEmpty()
+        val email = if (login.contains("@")) login else "$login@ttbros.app"
         val password = binding.passwordEditText.text?.toString()?.trim().orEmpty()
 
-        if (email.isBlank() || password.length < MIN_PASSWORD_LENGTH) {
+        if (login.isBlank() || password.length < MIN_PASSWORD_LENGTH) {
             Snackbar.make(
                 binding.root,
                 getString(R.string.error_credentials),

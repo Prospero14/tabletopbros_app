@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/teamChatFragment"
+        android:icon="@drawable/ic_chat_bubble"
+        android:title="@string/menu_team_chat" />
+    <item
+        android:id="@+id/masterPlayerChatFragment"
+        android:icon="@drawable/ic_person"
+        android:title="@string/menu_master_player" />
+    <item
+        android:id="@+id/notesFragment"
+        android:icon="@drawable/ic_edit"
+        android:title="Записи" />
+    <item
+        android:id="@+id/documentsFragment"
+        android:icon="@drawable/ic_description"
+        android:title="Документы" />
+    <item
+        android:id="@+id/characterFragment"
+        android:icon="@drawable/ic_person"
+        android:title="Чарник" />
+</menu>

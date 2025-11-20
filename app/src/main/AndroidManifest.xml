@@ -41,6 +41,11 @@
             android:name=".MainActivity"
             android:exported="false"
             android:theme="@style/Theme.Test1" />
+
+        <activity
+            android:name=".SystemSelectionActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Test1" />
     </application>
 
 </manifest>

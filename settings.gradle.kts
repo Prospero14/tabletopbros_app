@@ -20,6 +20,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "ttbros"
+rootProject.name = "test1"
 include(":app")
- 
+

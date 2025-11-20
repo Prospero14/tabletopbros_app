@@ -94,11 +94,11 @@ class GroupActivity : AppCompatActivity() {
             .setPositiveButton(R.string.action_copy) { dialog, _ ->
                 copyCodeToClipboard(code)
                 dialog.dismiss()
-                navigateToMain()
+                navigateToSystemSelection()
             }
             .setNegativeButton(android.R.string.cancel) { dialog, _ ->
                 dialog.dismiss()
-                navigateToMain()
+                navigateToSystemSelection()
             }
             .setCancelable(false)
             .show()
@@ -124,6 +124,11 @@ class GroupActivity : AppCompatActivity() {
 
     private fun navigateToMain() {
         startActivity(Intent(this, MainActivity::class.java))
+        finish()
+    }
+
+    private fun navigateToSystemSelection() {
+        startActivity(Intent(this, SystemSelectionActivity::class.java))
         finish()
     }
 }

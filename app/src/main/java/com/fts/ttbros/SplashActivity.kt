@@ -20,17 +20,21 @@ class SplashActivity : AppCompatActivity() {
         setContentView(R.layout.activity_splash)
         lifecycleScope.launch {
             delay(SPLASH_DELAY)
-            val user = auth.currentUser
-            if (user == null) {
-                navigate<LoginActivity>()
-                return@launch
-            }
+            try {
+                val user = auth.currentUser
+                if (user == null) {
+                    navigate<LoginActivity>()
+                    return@launch
+                }
 
-            val profile = userRepository.ensureProfile(user)
-            if (profile.teamId.isNullOrBlank()) {
-                navigate<GroupActivity>()
-            } else {
-                navigate<MainActivity>()
+                val profile = userRepository.ensureProfile(user)
+                if (profile.teamId.isNullOrBlank()) {
+                    navigate<GroupActivity>()
+                } else {
+                    navigate<MainActivity>()
+                }
+            } catch (e: Exception) {
+                navigate<LoginActivity>()
             }
         }
     }
