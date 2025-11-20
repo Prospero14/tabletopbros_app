@@ -27,21 +27,13 @@ class SplashActivity : AppCompatActivity() {
                     return@launch
                 }
 
-                val profile = userRepository.ensureProfile(user)
-                if (profile.teamId.isNullOrBlank()) {
-                    navigate<GroupActivity>()
-                } else {
-                    navigate<MainActivity>()
-                }
+                userRepository.ensureProfile(user)
+                startActivity(Intent(this, MainActivity::class.java))
+                finish()
             } catch (e: Exception) {
                 navigate<LoginActivity>()
             }
         }
-    }
-
-    private inline fun <reified T> navigate() {
-        startActivity(Intent(this, T::class.java))
-        finish()
     }
 
     companion object {

@@ -6,6 +6,7 @@ data class UserProfile(
     val displayName: String = "",
     val teamId: String? = null,
     val teamCode: String? = null,
+    val teamSystem: String? = null,
     val role: UserRole = UserRole.PLAYER
 )
 

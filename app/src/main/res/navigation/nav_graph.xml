@@ -44,14 +44,4 @@
         android:name="com.fts.ttbros.notes.NotesFragment"
         android:label="Notes" />
 
-    <fragment
-        android:id="@+id/documentsFragment"
-        android:name="com.fts.ttbros.documents.DocumentsFragment"
-        android:label="Documents" />
-
-    <fragment
-        android:id="@+id/accountFragment"
-        android:name="com.fts.ttbros.account.AccountFragment"
-        android:label="Account" />
-
 </navigation>

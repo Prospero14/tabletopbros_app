@@ -98,12 +98,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     private fun navigateNext(profile: UserProfile) {
-        val destination = if (profile.teamId.isNullOrBlank()) {
-            GroupActivity::class.java
-        } else {
-            MainActivity::class.java
-        }
-        startActivity(Intent(this, destination))
+        startActivity(Intent(this, MainActivity::class.java))
         finish()
     }
 

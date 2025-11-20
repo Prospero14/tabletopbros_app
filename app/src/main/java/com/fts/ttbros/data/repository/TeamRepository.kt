@@ -16,13 +16,14 @@ class TeamRepository(
 
     private val teamsCollection = firestore.collection(COLLECTION_TEAMS)
 
-    suspend fun createTeam(owner: FirebaseUser): Team {
+    suspend fun createTeam(owner: FirebaseUser, system: String): Team {
         val code = TeamCodeGenerator.generate()
         val docRef = teamsCollection.document()
         val payload = mapOf(
             FIELD_CODE to code,
             FIELD_OWNER_ID to owner.uid,
             FIELD_OWNER_EMAIL to owner.email,
+            FIELD_SYSTEM to system,
             FIELD_CREATED_AT to FieldValue.serverTimestamp()
         )
         docRef.set(payload).await()
@@ -31,7 +32,8 @@ class TeamRepository(
             id = docRef.id,
             code = code,
             ownerId = owner.uid,
-            ownerEmail = owner.email.orEmpty()
+            ownerEmail = owner.email.orEmpty(),
+            system = system
         )
     }
 
@@ -43,6 +45,8 @@ class TeamRepository(
             code = document.getString(FIELD_CODE).orEmpty(),
             ownerId = document.getString(FIELD_OWNER_ID).orEmpty(),
             ownerEmail = document.getString(FIELD_OWNER_EMAIL).orEmpty()
+            ,
+            system = document.getString(FIELD_SYSTEM).orEmpty()
         )
     }
 
@@ -97,6 +101,7 @@ class TeamRepository(
         private const val FIELD_MEMBER_EMAIL = "email"
         private const val FIELD_JOINED_AT = "joinedAt"
         private const val FIELD_ROLE = "role"
+        private const val FIELD_SYSTEM = "system"
     }
 }
 

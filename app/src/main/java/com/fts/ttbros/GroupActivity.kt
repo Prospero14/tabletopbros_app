@@ -41,7 +41,7 @@ class GroupActivity : AppCompatActivity() {
         progressIndicator = findViewById(R.id.progressIndicator)
 
         joinGroupButton.setOnClickListener { joinGroup() }
-        createGroupButton.setOnClickListener { createGroup() }
+        createGroupButton.setOnClickListener { chooseSystemAndCreateTeam() }
     }
 
     private fun joinGroup() {
@@ -66,7 +66,7 @@ class GroupActivity : AppCompatActivity() {
                 }
 
                 teamRepository.addMember(team.id, user, UserRole.PLAYER)
-                userRepository.updateTeamInfo(team.id, team.code, UserRole.PLAYER)
+                userRepository.updateTeamInfo(team.id, team.code, UserRole.PLAYER, team.system)
 
                 Snackbar.make(findViewById(android.R.id.content), getString(R.string.success_joined_group), Snackbar.LENGTH_SHORT).show()
                 navigateToMain()
@@ -78,7 +78,26 @@ class GroupActivity : AppCompatActivity() {
         }
     }
 
-    private fun createGroup() {
+    private fun chooseSystemAndCreateTeam() {
+        val options = arrayOf(
+            getString(R.string.vampire_masquerade),
+            getString(R.string.dungeons_dragons)
+        )
+        val values = arrayOf("vampire", "dnd")
+        var selectedIndex = 0
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.select_game_system)
+            .setSingleChoiceItems(options, selectedIndex) { _, which ->
+                selectedIndex = which
+            }
+            .setPositiveButton(R.string.create_new_group) { _, _ ->
+                createTeamWithSystem(values[selectedIndex])
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun createTeamWithSystem(system: String) {
         val user = auth.currentUser ?: run {
             navigateToLogin()
             return
@@ -86,8 +105,8 @@ class GroupActivity : AppCompatActivity() {
         setLoading(true)
         lifecycleScope.launch {
             try {
-                val team = teamRepository.createTeam(user)
-                userRepository.updateTeamInfo(team.id, team.code, UserRole.MASTER)
+                val team = teamRepository.createTeam(user, system)
+                userRepository.updateTeamInfo(team.id, team.code, UserRole.MASTER, team.system)
                 showCodeDialog(team.code)
             } catch (error: Exception) {
                 Snackbar.make(findViewById(android.R.id.content), error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
@@ -104,11 +123,11 @@ class GroupActivity : AppCompatActivity() {
             .setPositiveButton(R.string.action_copy) { dialog, _ ->
                 copyCodeToClipboard(code)
                 dialog.dismiss()
-                navigateToSystemSelection()
+                navigateToMain()
             }
             .setNegativeButton(android.R.string.cancel) { dialog, _ ->
                 dialog.dismiss()
-                navigateToSystemSelection()
+                navigateToMain()
             }
             .setCancelable(false)
             .show()
@@ -134,11 +153,6 @@ class GroupActivity : AppCompatActivity() {
 
     private fun navigateToMain() {
         startActivity(Intent(this, MainActivity::class.java))
-        finish()
-    }
-
-    private fun navigateToSystemSelection() {
-        startActivity(Intent(this, SystemSelectionActivity::class.java))
         finish()
     }
 }

@@ -45,11 +45,12 @@ class UserRepository(
         return profile
     }
 
-    suspend fun updateTeamInfo(teamId: String, teamCode: String, role: UserRole) {
+    suspend fun updateTeamInfo(teamId: String, teamCode: String, role: UserRole, teamSystem: String? = null) {
         val firebaseUser = auth.currentUser ?: return
         val data = mapOf(
             FIELD_TEAM_ID to teamId,
             FIELD_TEAM_CODE to teamCode,
+            FIELD_TEAM_SYSTEM to teamSystem,
             FIELD_ROLE to role.name
         )
         usersCollection.document(firebaseUser.uid).update(data).await()
@@ -60,6 +61,7 @@ class UserRepository(
         val updates = mapOf(
             FIELD_TEAM_ID to null,
             FIELD_TEAM_CODE to null,
+            FIELD_TEAM_SYSTEM to null,
             FIELD_ROLE to UserRole.PLAYER.name
         )
         usersCollection.document(firebaseUser.uid).update(updates).await()
@@ -75,6 +77,7 @@ class UserRepository(
         val displayName: String = "",
         val teamId: String? = null,
         val teamCode: String? = null,
+        val teamSystem: String? = null,
         val role: String = UserRole.PLAYER.name
     ) {
         fun toDomain(): UserProfile = UserProfile(
@@ -83,6 +86,7 @@ class UserRepository(
             displayName = displayName,
             teamId = teamId,
             teamCode = teamCode,
+            teamSystem = teamSystem,
             role = UserRole.from(role)
         )
 
@@ -93,6 +97,7 @@ class UserRepository(
                 displayName = profile.displayName,
                 teamId = profile.teamId,
                 teamCode = profile.teamCode,
+                teamSystem = profile.teamSystem,
                 role = profile.role.name
             )
         }
@@ -103,6 +108,7 @@ class UserRepository(
         private const val FIELD_TEAM_ID = "teamId"
         private const val FIELD_TEAM_CODE = "teamCode"
         private const val FIELD_ROLE = "role"
+        private const val FIELD_TEAM_SYSTEM = "teamSystem"
     }
 }
 
