@@ -56,7 +56,8 @@ class MainActivity : AppCompatActivity() {
                 R.id.announcementChatFragment,
                 R.id.masterPlayerChatFragment,
                 R.id.notesFragment,
-                R.id.documentsFragment
+                R.id.documentsFragment,
+                R.id.charactersFragment
             ),
             binding.drawerLayout
         )
