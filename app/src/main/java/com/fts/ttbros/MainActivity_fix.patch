@@ -1,0 +1,15 @@
+--- a/app/src/main/java/com/fts/ttbros/MainActivity.kt
++++ b/app/src/main/java/com/fts/ttbros/MainActivity.kt
+@@ -140,7 +140,11 @@ class MainActivity : AppCompatActivity() {
+                     return@launch
+                 }
+                 userProfile = profile
+-                updateHeader(profile)
++                try {
++                    updateHeader(profile)
++                } catch (e: Exception) {
++                    android.util.Log.e("MainActivity", "Error updating header: ${e.message}", e)
++                }
+ 
+                 if (profile.teams.isEmpty()) {
+                     binding.groupPromptPanel.isVisible = true
