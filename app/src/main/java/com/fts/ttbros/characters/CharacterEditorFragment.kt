@@ -76,6 +76,8 @@ class CharacterEditorFragment : Fragment() {
             item[type] = value
             currentList[index] = item
             formData["disciplines"] = currentList
+            android.util.Log.d("CharEditor", "Updated discipline: id=$id, type=$type, value=$value")
+            android.util.Log.d("CharEditor", "Current disciplines: $currentList")
             // No need to re-render for text updates to avoid focus loss
         }
     }
@@ -200,6 +202,9 @@ class CharacterEditorFragment : Fragment() {
         
         lifecycleScope.launch {
             try {
+                android.util.Log.d("CharEditor", "Saving character with formData: $formData")
+                android.util.Log.d("CharEditor", "Disciplines before save: ${formData["disciplines"]}")
+                
                 if (characterId != null) {
                     // Update
                     repository.updateCharacter(characterId!!, mapOf(
