@@ -3,39 +3,40 @@ package com.fts.ttbros.characters.templates
 import com.fts.ttbros.characters.form.FormItem
 import com.fts.ttbros.R
 
-object ViedzminTemplate {
+object DndTemplate {
     fun generate(data: Map<String, Any>, context: android.content.Context): List<FormItem> {
         val items = mutableListOf<FormItem>()
         val r = context.resources
 
         // Header
-        items.add(FormItem.Header(r.getString(R.string.viedzmin_2e)))
+        items.add(FormItem.Header(r.getString(R.string.dungeons_dragons)))
 
         // Basic Info
         items.add(FormItem.Section(r.getString(R.string.section_info)))
         items.add(FormItem.TextField("name", r.getString(R.string.label_name), data["name"] as? String ?: ""))
+        items.add(FormItem.TextField("class", r.getString(R.string.label_class), data["class"] as? String ?: ""))
+        items.add(FormItem.TextField("level", r.getString(R.string.label_level), data["level"] as? String ?: ""))
         items.add(FormItem.TextField("race", r.getString(R.string.label_race), data["race"] as? String ?: ""))
-        items.add(FormItem.TextField("profession", r.getString(R.string.label_profession), data["profession"] as? String ?: ""))
 
-        // Attributes (Generic for now, can be refined)
+        // Attributes
         items.add(FormItem.Section(r.getString(R.string.section_attributes)))
         
-        items.add(FormItem.Header(r.getString(R.string.header_stats)))
-        items.add(createDots("reflexes", r.getString(R.string.attr_reflexes), data))
+        items.add(createDots("strength", r.getString(R.string.attr_strength), data))
         items.add(createDots("dexterity", r.getString(R.string.attr_dexterity), data))
-        items.add(createDots("body", r.getString(R.string.attr_body), data))
+        items.add(createDots("constitution", r.getString(R.string.attr_constitution), data))
         items.add(createDots("intelligence", r.getString(R.string.attr_intelligence), data))
-        items.add(createDots("willpower", r.getString(R.string.attr_willpower), data))
-        items.add(createDots("empathy", r.getString(R.string.attr_empathy), data))
-        items.add(createDots("craft", r.getString(R.string.attr_craft), data))
-        items.add(createDots("luck", r.getString(R.string.attr_luck), data))
+        items.add(createDots("wisdom", r.getString(R.string.attr_wisdom), data))
+        items.add(createDots("charisma", r.getString(R.string.attr_charisma), data))
 
-        // Skills
+        // Skills (Sample set)
         items.add(FormItem.Section(r.getString(R.string.section_skills)))
-        items.add(createDots("swordsmanship", r.getString(R.string.skill_swordsmanship), data))
-        items.add(createDots("archery", r.getString(R.string.skill_archery), data))
-        items.add(createDots("magic", r.getString(R.string.skill_magic), data))
-        items.add(createDots("alchemy", r.getString(R.string.skill_alchemy), data))
+        items.add(createDots("acrobatics", r.getString(R.string.skill_acrobatics), data))
+        items.add(createDots("athletics", r.getString(R.string.skill_athletics), data))
+        items.add(createDots("insight", r.getString(R.string.skill_insight), data))
+        items.add(createDots("investigation", r.getString(R.string.skill_investigation), data))
+        items.add(createDots("perception", r.getString(R.string.skill_perception), data))
+        items.add(createDots("stealth", r.getString(R.string.skill_stealth), data))
+        items.add(createDots("survival", r.getString(R.string.skill_survival), data))
         
         // Other
         items.add(FormItem.Section(r.getString(R.string.section_other_traits)))

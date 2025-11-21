@@ -82,11 +82,19 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 else -> {
-                    val handled = NavigationUI.onNavDestinationSelected(item, navController)
-                    if (handled) {
+                    val currentId = navController.currentDestination?.id
+                    if (currentId == item.itemId) {
+                        // If already on this screen, re-navigate to refresh/reset
+                        navController.navigate(item.itemId)
                         binding.drawerLayout.closeDrawer(GravityCompat.END)
+                        true
+                    } else {
+                        val handled = NavigationUI.onNavDestinationSelected(item, navController)
+                        if (handled) {
+                            binding.drawerLayout.closeDrawer(GravityCompat.END)
+                        }
+                        handled
                     }
-                    handled
                 }
             }
         }

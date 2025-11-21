@@ -127,7 +127,7 @@ class DocumentsFragment : Fragment() {
                     
                     withContext(Dispatchers.Main) {
                         checkDownloads()
-                        Toast.makeText(requireContext(), "Скачано!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(requireContext(), "Скачано в: ${file.absolutePath}", Toast.LENGTH_LONG).show()
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()

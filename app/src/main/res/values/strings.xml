@@ -99,4 +99,31 @@
     <string name="label_flaws">Flaws</string>
     <string name="action_add_discipline">Add Discipline</string>
 
+    <!-- Viedzmin 2e -->
+    <string name="label_race">Race</string>
+    <string name="label_profession">Profession</string>
+    <string name="header_stats">Stats</string>
+    
+    <string name="attr_reflexes">Reflexes</string>
+    <string name="attr_body">Body</string>
+    <string name="attr_willpower">Willpower</string>
+    <string name="attr_empathy">Empathy</string>
+    <string name="attr_craft">Craft</string>
+    <string name="attr_luck">Luck</string>
+    
+    <string name="skill_swordsmanship">Swordsmanship</string>
+    <string name="skill_archery">Archery</string>
+    <string name="skill_magic">Magic</string>
+    <string name="skill_alchemy">Alchemy</string>
+    
+    <string name="label_inventory">Inventory</string>
+
+    <!-- DnD 5e -->
+    <string name="attr_constitution">Constitution</string>
+    <string name="attr_wisdom">Wisdom</string>
+    <string name="skill_acrobatics">Acrobatics</string>
+    <string name="skill_perception">Perception</string>
+    <string name="label_class">Class</string>
+    <string name="label_level">Level</string>
+
 </resources>

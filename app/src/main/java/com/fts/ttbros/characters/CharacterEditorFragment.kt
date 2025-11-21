@@ -13,6 +13,7 @@ import com.fts.ttbros.MainActivity
 import com.fts.ttbros.characters.form.FormAdapter
 import com.fts.ttbros.characters.templates.VtmTemplate
 import com.fts.ttbros.characters.templates.ViedzminTemplate
+import com.fts.ttbros.characters.templates.DndTemplate
 import com.fts.ttbros.data.model.Character
 import com.fts.ttbros.data.repository.CharacterRepository
 import com.fts.ttbros.databinding.FragmentCharacterEditorBinding
@@ -111,16 +112,20 @@ class CharacterEditorFragment : Fragment() {
         }
         
         // Mode Switch
+        val prefs = requireContext().getSharedPreferences("ttbros_prefs", android.content.Context.MODE_PRIVATE)
+        val savedMode = prefs.getBoolean("pref_lock_mode", false)
         val isNew = characterId == null
-        binding.modeSwitch.isChecked = isNew
-        updateMode(isNew)
+        val initialMode = if (isNew) true else savedMode
+        
+        binding.modeSwitch.isChecked = initialMode
+        updateMode(initialMode)
         
         binding.modeSwitch.setOnCheckedChangeListener { _, isChecked ->
             updateMode(isChecked)
+            prefs.edit().putBoolean("pref_lock_mode", isChecked).apply()
         }
         
         // Language Switch
-        // Default is unchecked (RU), checked (ENG)
         binding.langSwitch.isChecked = false 
         updateLanguageLabel(binding.langSwitch.isChecked)
         
@@ -176,8 +181,8 @@ class CharacterEditorFragment : Fragment() {
         val items = when (system) {
             "vtm_5e" -> VtmTemplate.generate(formData, contextWithLocale)
             "viedzmin_2e" -> ViedzminTemplate.generate(formData, contextWithLocale)
-            "dnd_5e" -> emptyList() // TODO: Implement DnD
-            else -> emptyList()
+            "dnd_5e", "dnd" -> DndTemplate.generate(formData, contextWithLocale)
+            else -> VtmTemplate.generate(formData, contextWithLocale)
         }
         adapter.submitList(items)
     }

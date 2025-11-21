@@ -99,4 +99,31 @@
     <string name="label_flaws">Недостатки</string>
     <string name="action_add_discipline">Добавить дисциплину</string>
 
+    <!-- Viedzmin 2e -->
+    <string name="label_race">Раса</string>
+    <string name="label_profession">Профессия</string>
+    <string name="header_stats">Характеристики</string>
+    
+    <string name="attr_reflexes">Рефлексы</string>
+    <string name="attr_body">Телосложение</string>
+    <string name="attr_willpower">Воля</string>
+    <string name="attr_empathy">Эмпатия</string>
+    <string name="attr_craft">Ремесло</string>
+    <string name="attr_luck">Удача</string>
+    
+    <string name="skill_swordsmanship">Фехтование</string>
+    <string name="skill_archery">Стрельба из лука</string>
+    <string name="skill_magic">Магия</string>
+    <string name="skill_alchemy">Алхимия</string>
+    
+    <string name="label_inventory">Инвентарь</string>
+
+    <!-- DnD 5e -->
+    <string name="attr_constitution">Телосложение</string>
+    <string name="attr_wisdom">Мудрость</string>
+    <string name="skill_acrobatics">Акробатика</string>
+    <string name="skill_perception">Восприятие</string>
+    <string name="label_class">Класс</string>
+    <string name="label_level">Уровень</string>
+
 </resources>
