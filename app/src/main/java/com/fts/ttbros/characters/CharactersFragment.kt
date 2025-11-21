@@ -67,11 +67,15 @@ class CharactersFragment : Fragment() {
     }
 
     private fun showSystemSelectionDialog() {
-        val systems = arrayOf("Vampire: The Masquerade 5e", "Dungeons & Dragons 5e")
-        val systemCodes = arrayOf("vtm_5e", "dnd_5e")
+        val systems = arrayOf(
+            getString(R.string.vampire_masquerade),
+            getString(R.string.dungeons_dragons),
+            getString(R.string.viedzmin_2e)
+        )
+        val systemCodes = arrayOf("vtm_5e", "dnd_5e", "viedzmin_2e")
 
         MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Выберите систему")
+            .setTitle(getString(R.string.select_game_system))
             .setItems(systems) { _, which ->
                 val selectedSystem = systemCodes[which]
                 val bundle = Bundle().apply {
