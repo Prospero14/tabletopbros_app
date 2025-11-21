@@ -11,8 +11,9 @@
         android:id="@+id/senderNameTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textAppearance="?attr/textAppearanceBodySmall"
-        android:textColor="@color/black" />
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="@color/black"
+        android:textSize="14sp" />
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/messageCard"
@@ -29,7 +30,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:padding="12dp"
-            android:textAppearance="?attr/textAppearanceBodyMedium" />
+            android:textAppearance="?attr/textAppearanceBodyLarge"
+            android:textSize="18sp" />
 
     </com.google.android.material.card.MaterialCardView>
 
@@ -38,7 +40,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?attr/textAppearanceCaption"
-        android:textColor="@color/black" />
+        android:textColor="@color/black"
+        android:textSize="12sp" />
 
 </LinearLayout>
 

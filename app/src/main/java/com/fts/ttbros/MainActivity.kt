@@ -163,6 +163,9 @@ class MainActivity : AppCompatActivity() {
             }
             joinGroup(code)
         }
+        binding.createGroupButton.setOnClickListener {
+            chooseSystemAndCreateTeam()
+        }
     }
 
     private fun joinGroup(code: String) {
@@ -192,6 +195,52 @@ class MainActivity : AppCompatActivity() {
             } finally {
                 joinInProgress = false
                 binding.joinGroupButton.isEnabled = true
+            }
+        }
+    }
+
+    private fun chooseSystemAndCreateTeam() {
+        val options = arrayOf(
+            getString(R.string.vampire_masquerade),
+            getString(R.string.dungeons_dragons)
+        )
+        val values = arrayOf("vtm_5e", "dnd_5e")
+        var selectedIndex = 0
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.select_game_system)
+            .setSingleChoiceItems(options, selectedIndex) { _, which ->
+                selectedIndex = which
+            }
+            .setPositiveButton(R.string.create_new_group) { _, _ ->
+                createTeamWithSystem(values[selectedIndex])
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun createTeamWithSystem(system: String) {
+        val user = auth.currentUser ?: run {
+            navigateTo(LoginActivity::class.java)
+            return
+        }
+        joinInProgress = true
+        binding.joinGroupButton.isEnabled = false
+        binding.createGroupButton.isEnabled = false
+        lifecycleScope.launch {
+            try {
+                val team = teamRepository.createTeam(user, system)
+                userRepository.updateTeamInfo(team.id, team.code, UserRole.MASTER, team.system)
+                binding.groupPromptPanel.isVisible = false
+                binding.groupCodeEditText.text?.clear()
+                userProfile = userRepository.currentProfile()
+                binding.navigationView.menu.findItem(R.id.menu_show_code)?.isVisible = true
+                showCodeDialog()
+            } catch (error: Exception) {
+                Snackbar.make(binding.root, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
+            } finally {
+                joinInProgress = false
+                binding.joinGroupButton.isEnabled = true
+                binding.createGroupButton.isEnabled = true
             }
         }
     }

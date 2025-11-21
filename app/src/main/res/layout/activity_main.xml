@@ -69,7 +69,14 @@
                 android:id="@+id/joinGroupButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
                 android:text="@string/join_group" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/createGroupButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/create_new_group" />
 
         </LinearLayout>
 
