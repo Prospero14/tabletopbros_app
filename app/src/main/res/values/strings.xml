@@ -33,6 +33,7 @@
     <string name="chat_hint">Type a message…</string>
     <string name="chat_send">Send</string>
     <string name="chat_announcements_readonly">Only master can post announcements</string>
+    <string name="nav_header_desc">Navigation header</string>
 
     <!-- Character Builder -->
     <string name="section_info">Info</string>

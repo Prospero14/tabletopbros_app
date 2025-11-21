@@ -5,6 +5,8 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
 import androidx.core.view.isVisible
@@ -84,7 +86,6 @@ class MainActivity : AppCompatActivity() {
                 else -> {
                     val currentId = navController.currentDestination?.id
                     if (currentId == item.itemId) {
-                        // If already on this screen, re-navigate to refresh/reset
                         navController.navigate(item.itemId)
                         binding.drawerLayout.closeDrawer(GravityCompat.END)
                         true
@@ -100,10 +101,37 @@ class MainActivity : AppCompatActivity() {
         }
         
         setupGroupPrompt()
+        setupHeader()
+    }
+
+    private fun setupHeader() {
+        val headerView = binding.navigationView.getHeaderView(0)
+        val teamContainer = headerView.findViewById<View>(R.id.navHeaderTeamContainer)
+        teamContainer.setOnClickListener {
+            binding.drawerLayout.closeDrawer(GravityCompat.END)
+            showTeamSwitcherDialog()
+        }
+    }
+
+    private fun updateHeader(profile: UserProfile) {
+        val headerView = binding.navigationView.getHeaderView(0)
+        headerView.findViewById<TextView>(R.id.navHeaderUser).text = profile.displayName
+        headerView.findViewById<TextView>(R.id.navHeaderEmail).text = profile.email
+        
+        val currentTeam = profile.teams.find { it.teamId == profile.currentTeamId }
+        val teamName = currentTeam?.teamName?.ifBlank { "Team ${currentTeam.teamCode}" } ?: "No Team Selected"
+        val role = currentTeam?.role?.name ?: "N/A"
+        
+        headerView.findViewById<TextView>(R.id.navHeaderTeamName).text = teamName
+        headerView.findViewById<TextView>(R.id.navHeaderRole).text = role
     }
 
     override fun onStart() {
         super.onStart()
+        refreshProfile()
+    }
+
+    private fun refreshProfile() {
         lifecycleScope.launch {
             try {
                 val profile = userRepository.currentProfile()
@@ -111,15 +139,18 @@ class MainActivity : AppCompatActivity() {
                     navigateTo(LoginActivity::class.java)
                     return@launch
                 }
-                if (profile.teamId.isNullOrBlank()) {
+                userProfile = profile
+                updateHeader(profile)
+
+                if (profile.teams.isEmpty()) {
                     binding.groupPromptPanel.isVisible = true
                     binding.navigationView.menu.findItem(R.id.menu_show_code)?.isVisible = false
-                    return@launch
+                } else {
+                    binding.groupPromptPanel.isVisible = false
+                    val currentTeam = profile.teams.find { it.teamId == profile.currentTeamId }
+                    binding.navigationView.menu.findItem(R.id.menu_show_code)?.isVisible =
+                        currentTeam?.role == UserRole.MASTER
                 }
-                userProfile = profile
-                binding.navigationView.menu.findItem(R.id.menu_show_code)?.isVisible =
-                    profile.role == UserRole.MASTER && !profile.teamCode.isNullOrBlank()
-                binding.groupPromptPanel.isVisible = false
             } catch (error: Exception) {
                 Snackbar.make(binding.root, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
             }
@@ -132,16 +163,90 @@ class MainActivity : AppCompatActivity() {
 
     private fun showCodeDialog() {
         val profile = userProfile
-        if (profile == null || profile.teamCode.isNullOrBlank()) {
+        val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
+        
+        if (currentTeam == null || currentTeam.teamCode.isBlank()) {
             Snackbar.make(binding.root, R.string.error_unknown, Snackbar.LENGTH_SHORT).show()
             return
         }
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.dialog_team_code_title)
-            .setMessage(getString(R.string.dialog_team_code_message, profile.teamCode))
+            .setMessage(getString(R.string.dialog_team_code_message, currentTeam.teamCode))
             .setPositiveButton(R.string.action_copy) { dialog, _ ->
-                copyToClipboard(profile.teamCode)
+                copyToClipboard(currentTeam.teamCode)
                 dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun showTeamSwitcherDialog() {
+        val profile = userProfile ?: return
+        val teams = profile.teams
+        
+        val items = teams.map { 
+            val name = it.teamName.ifBlank { "Team ${it.teamCode}" }
+            "$name (${it.role.name})" 
+        }.toTypedArray() + arrayOf("Join Another Team", "Create New Team")
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Select Team")
+            .setItems(items) { dialog, which ->
+                when {
+                    which < teams.size -> {
+                        val selectedTeam = teams[which]
+                        if (selectedTeam.teamId != profile.currentTeamId) {
+                            switchTeam(selectedTeam.teamId)
+                        }
+                    }
+                    which == teams.size -> showJoinTeamDialog()
+                    which == teams.size + 1 -> chooseSystemAndCreateTeam()
+                }
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    private fun switchTeam(teamId: String) {
+        lifecycleScope.launch {
+            try {
+                userRepository.switchTeam(teamId)
+                refreshProfile()
+                val currentId = navController.currentDestination?.id
+                if (currentId != null) {
+                    navController.navigate(currentId)
+                }
+                Snackbar.make(binding.root, "Switched team", Snackbar.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Snackbar.make(binding.root, "Error switching team: ${e.message}", Snackbar.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun showJoinTeamDialog() {
+        val input = com.google.android.material.textfield.TextInputEditText(this)
+        input.hint = getString(R.string.enter_group_code)
+        
+        val container = android.widget.FrameLayout(this)
+        val params = android.widget.FrameLayout.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT, 
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        params.leftMargin = resources.getDimensionPixelSize(R.dimen.activity_horizontal_margin)
+        params.rightMargin = resources.getDimensionPixelSize(R.dimen.activity_horizontal_margin)
+        input.layoutParams = params
+        container.addView(input)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.join_group)
+            .setView(container)
+            .setPositiveButton(R.string.join_group) { _, _ ->
+                val code = input.text?.toString()?.trim().orEmpty().uppercase()
+                if (code.length >= 4) {
+                    joinGroup(code)
+                } else {
+                    Snackbar.make(binding.root, R.string.error_group_code, Snackbar.LENGTH_SHORT).show()
+                }
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
@@ -185,6 +290,7 @@ class MainActivity : AppCompatActivity() {
         }
         joinInProgress = true
         binding.joinGroupButton.isEnabled = false
+        
         lifecycleScope.launch {
             try {
                 val team = teamRepository.findTeamByCode(code)
@@ -192,12 +298,12 @@ class MainActivity : AppCompatActivity() {
                     Snackbar.make(binding.root, R.string.error_group_not_found, Snackbar.LENGTH_LONG).show()
                     return@launch
                 }
-                teamRepository.addMember(team.id, user, UserRole.PLAYER)
-                userRepository.updateTeamInfo(team.id, team.code, UserRole.PLAYER, team.system)
+                
+                userRepository.addTeam(team.id, team.code, UserRole.PLAYER, team.system, "Team ${team.code}")
+                
                 binding.groupPromptPanel.isVisible = false
                 binding.groupCodeEditText.text?.clear()
-                userProfile = userRepository.currentProfile()
-                binding.navigationView.menu.findItem(R.id.menu_show_code)?.isVisible = false
+                refreshProfile()
                 Snackbar.make(binding.root, R.string.success_joined_group, Snackbar.LENGTH_SHORT).show()
             } catch (error: Exception) {
                 Snackbar.make(binding.root, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
@@ -239,11 +345,11 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val team = teamRepository.createTeam(user, system)
-                userRepository.updateTeamInfo(team.id, team.code, UserRole.MASTER, team.system)
+                userRepository.addTeam(team.id, team.code, UserRole.MASTER, team.system, "Team ${team.code}")
+                
                 binding.groupPromptPanel.isVisible = false
                 binding.groupCodeEditText.text?.clear()
-                userProfile = userRepository.currentProfile()
-                binding.navigationView.menu.findItem(R.id.menu_show_code)?.isVisible = true
+                refreshProfile()
                 showCodeDialog()
             } catch (error: Exception) {
                 Snackbar.make(binding.root, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
