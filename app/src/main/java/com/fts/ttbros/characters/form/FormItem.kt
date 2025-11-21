@@ -24,4 +24,16 @@ sealed class FormItem {
         val label: String,
         val checked: Boolean = false
     ) : FormItem()
+
+    data class Discipline(
+        val id: String,
+        val name: String,
+        val value: Int = 0,
+        val max: Int = 5
+    ) : FormItem()
+
+    data class Button(
+        val id: String,
+        val label: String
+    ) : FormItem()
 }

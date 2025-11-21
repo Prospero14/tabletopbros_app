@@ -9,16 +9,26 @@ import com.fts.ttbros.databinding.ItemFormDotsBinding
 import com.fts.ttbros.databinding.ItemFormHeaderBinding
 import com.fts.ttbros.databinding.ItemFormSectionBinding
 import com.fts.ttbros.databinding.ItemFormTextBinding
+import com.fts.ttbros.databinding.ItemFormDisciplineBinding
+import com.fts.ttbros.databinding.ItemFormButtonBinding
 
 class FormAdapter(
     private val onValueChanged: (key: String, value: Any) -> Unit
 ) : ListAdapter<FormItem, RecyclerView.ViewHolder>(FormDiffCallback()) {
+
+    var readOnly: Boolean = false
+        set(value) {
+            field = value
+            notifyDataSetChanged()
+        }
 
     companion object {
         private const val TYPE_HEADER = 0
         private const val TYPE_SECTION = 1
         private const val TYPE_TEXT = 2
         private const val TYPE_DOTS = 3
+        private const val TYPE_DISCIPLINE = 4
+        private const val TYPE_BUTTON = 5
     }
 
     override fun getItemViewType(position: Int): Int {
@@ -27,6 +37,8 @@ class FormAdapter(
             is FormItem.Section -> TYPE_SECTION
             is FormItem.TextField -> TYPE_TEXT
             is FormItem.DotsField -> TYPE_DOTS
+            is FormItem.Discipline -> TYPE_DISCIPLINE
+            is FormItem.Button -> TYPE_BUTTON
             else -> throw IllegalArgumentException("Unknown item type")
         }
     }
@@ -38,6 +50,8 @@ class FormAdapter(
             TYPE_SECTION -> SectionViewHolder(ItemFormSectionBinding.inflate(inflater, parent, false))
             TYPE_TEXT -> TextViewHolder(ItemFormTextBinding.inflate(inflater, parent, false), onValueChanged)
             TYPE_DOTS -> DotsViewHolder(ItemFormDotsBinding.inflate(inflater, parent, false), onValueChanged)
+            TYPE_DISCIPLINE -> DisciplineViewHolder(ItemFormDisciplineBinding.inflate(inflater, parent, false), onValueChanged)
+            TYPE_BUTTON -> ButtonViewHolder(ItemFormButtonBinding.inflate(inflater, parent, false), onValueChanged)
             else -> throw IllegalArgumentException("Unknown view type")
         }
     }
@@ -46,8 +60,10 @@ class FormAdapter(
         when (holder) {
             is HeaderViewHolder -> holder.bind(getItem(position) as FormItem.Header)
             is SectionViewHolder -> holder.bind(getItem(position) as FormItem.Section)
-            is TextViewHolder -> holder.bind(getItem(position) as FormItem.TextField)
-            is DotsViewHolder -> holder.bind(getItem(position) as FormItem.DotsField)
+            is TextViewHolder -> holder.bind(getItem(position) as FormItem.TextField, readOnly)
+            is DotsViewHolder -> holder.bind(getItem(position) as FormItem.DotsField, readOnly)
+            is DisciplineViewHolder -> holder.bind(getItem(position) as FormItem.Discipline, readOnly)
+            is ButtonViewHolder -> holder.bind(getItem(position) as FormItem.Button, readOnly)
         }
     }
 
@@ -68,12 +84,10 @@ class FormAdapter(
         private val onValueChanged: (String, Any) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
         
-        fun bind(item: FormItem.TextField) {
+        fun bind(item: FormItem.TextField, readOnly: Boolean) {
             binding.textInputLayout.hint = item.label
             binding.textInputEditText.setText(item.value)
-            
-            // Remove existing watcher to avoid loops/duplicates if recycled
-            // Ideally use a custom TextWatcher that checks for tag/position
+            binding.textInputLayout.isEnabled = !readOnly
             
             binding.textInputEditText.setOnFocusChangeListener { _, hasFocus ->
                 if (!hasFocus) {
@@ -88,24 +102,28 @@ class FormAdapter(
         private val onValueChanged: (String, Any) -> Unit
     ) : RecyclerView.ViewHolder(binding.root) {
         
-        fun bind(item: FormItem.DotsField) {
+        fun bind(item: FormItem.DotsField, readOnly: Boolean) {
             binding.labelTextView.text = item.label
-            
-            // Simple implementation: 5 RadioButtons or Checkboxes acting as dots
-            // For now, let's assume we have a custom view or just 5 ImageViews in the layout
-            // This part requires the layout XML to be defined first to know IDs
+            binding.root.alpha = if (readOnly) 0.7f else 1.0f
             
             updateDots(item.value)
             
-            binding.dot1.setOnClickListener { updateValue(1, item) }
-            binding.dot2.setOnClickListener { updateValue(2, item) }
-            binding.dot3.setOnClickListener { updateValue(3, item) }
-            binding.dot4.setOnClickListener { updateValue(4, item) }
-            binding.dot5.setOnClickListener { updateValue(5, item) }
+            if (readOnly) {
+                binding.dot1.setOnClickListener(null)
+                binding.dot2.setOnClickListener(null)
+                binding.dot3.setOnClickListener(null)
+                binding.dot4.setOnClickListener(null)
+                binding.dot5.setOnClickListener(null)
+            } else {
+                binding.dot1.setOnClickListener { updateValue(1, item) }
+                binding.dot2.setOnClickListener { updateValue(2, item) }
+                binding.dot3.setOnClickListener { updateValue(3, item) }
+                binding.dot4.setOnClickListener { updateValue(4, item) }
+                binding.dot5.setOnClickListener { updateValue(5, item) }
+            }
         }
         
         private fun updateValue(value: Int, item: FormItem.DotsField) {
-            // Toggle off if clicking same value? Usually in VTM you can't have 0 dots in attributes, but maybe in skills
             val newValue = if (value == item.value) 0 else value
             updateDots(newValue)
             onValueChanged(item.key, newValue)
@@ -120,9 +138,73 @@ class FormAdapter(
         }
     }
 
+    class DisciplineViewHolder(
+        private val binding: ItemFormDisciplineBinding,
+        private val onValueChanged: (String, Any) -> Unit
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        fun bind(item: FormItem.Discipline, readOnly: Boolean) {
+            binding.nameEditText.setText(item.name)
+            binding.nameInputLayout.isEnabled = !readOnly
+            binding.root.alpha = if (readOnly) 0.7f else 1.0f
+
+            binding.nameEditText.setOnFocusChangeListener { _, hasFocus ->
+                if (!hasFocus) {
+                    onValueChanged("discipline_name_${item.id}", binding.nameEditText.text.toString())
+                }
+            }
+
+            updateDots(item.value)
+            
+            if (readOnly) {
+                binding.dot1.setOnClickListener(null)
+                binding.dot2.setOnClickListener(null)
+                binding.dot3.setOnClickListener(null)
+                binding.dot4.setOnClickListener(null)
+                binding.dot5.setOnClickListener(null)
+            } else {
+                binding.dot1.setOnClickListener { updateValue(1, item) }
+                binding.dot2.setOnClickListener { updateValue(2, item) }
+                binding.dot3.setOnClickListener { updateValue(3, item) }
+                binding.dot4.setOnClickListener { updateValue(4, item) }
+                binding.dot5.setOnClickListener { updateValue(5, item) }
+            }
+        }
+
+        private fun updateValue(value: Int, item: FormItem.Discipline) {
+            val newValue = if (value == item.value) 0 else value
+            updateDots(newValue)
+            onValueChanged("discipline_value_${item.id}", newValue)
+        }
+
+        private fun updateDots(value: Int) {
+            binding.dot1.isSelected = value >= 1
+            binding.dot2.isSelected = value >= 2
+            binding.dot3.isSelected = value >= 3
+            binding.dot4.isSelected = value >= 4
+            binding.dot5.isSelected = value >= 5
+        }
+    }
+
+    class ButtonViewHolder(
+        private val binding: ItemFormButtonBinding,
+        private val onValueChanged: (String, Any) -> Unit
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        fun bind(item: FormItem.Button, readOnly: Boolean) {
+            binding.button.text = item.label
+            binding.button.isEnabled = !readOnly
+            binding.button.visibility = if (readOnly) android.view.View.GONE else android.view.View.VISIBLE
+            
+            binding.button.setOnClickListener {
+                onValueChanged(item.id, "")
+            }
+        }
+    }
+
     class FormDiffCallback : DiffUtil.ItemCallback<FormItem>() {
         override fun areItemsTheSame(oldItem: FormItem, newItem: FormItem): Boolean {
-            return oldItem == newItem // Simplified for data classes
+            return oldItem == newItem
         }
 
         override fun areContentsTheSame(oldItem: FormItem, newItem: FormItem): Boolean {

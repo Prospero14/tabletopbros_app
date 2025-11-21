@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">alpha 2025</string>
+    <string name="app_logo">app_logo</string>
+    <string name="login">Войти</string>
+    <string name="register_here">Зарегистрироваться</string>
+    <string name="password">Пароль</string>
+    <string name="email">Email</string>
+    <string name="join_group">Присоединиться к группе</string>
+    <string name="create_new_group">Создать новую группу</string>
+    <string name="enter_group_code">Введите код группы</string>
+    <string name="join_or_create_group">Создать группу или присоединиться к своей пачке</string>
+    <string name="dungeons_dragons">Подземелья и драконы</string>
+    <string name="vampire_masquerade">ВТМ</string>
+    <string name="select_game_system">Выберите игровую систему</string>
+    <string name="error_credentials">Введите email и пароль (минимум 6 символов)</string>
+    <string name="error_group_code">Введите действительный код группы</string>
+    <string name="error_group_not_found">Команда с таким кодом не найдена</string>
+    <string name="error_unknown">Что-то пошло не так. Попробуйте снова.</string>
+    <string name="success_joined_group">Вы присоединились к группе</string>
+    <string name="dialog_team_code_title">Код команды</string>
+    <string name="dialog_team_code_message">Передайте код участникам: %1$s</string>
+    <string name="action_copy">Скопировать</string>
+    <string name="code_copied">Код скопирован</string>
+    <string name="menu_team_chat">Чат команды</string>
+    <string name="menu_announcements">Объявления</string>
+    <string name="menu_master_player">Игрок ↔ Мастер</string>
+    <string name="menu_show_code">Код команды</string>
+    <string name="menu">Меню</string>
+    <string name="logout">Выйти из аккаунта</string>
+    <string name="chat_placeholder">Сообщений пока нет</string>
+    <string name="chat_hint">Напишите сообщение…</string>
+    <string name="chat_send">Отправить</string>
+    <string name="chat_announcements_readonly">Только мастер может публиковать объявления</string>
+
+    <!-- Character Builder -->
+    <string name="section_info">Информация</string>
+    <string name="section_attributes">Атрибуты</string>
+    <string name="section_skills">Навыки</string>
+    <string name="section_disciplines">Дисциплины</string>
+    <string name="section_other_traits">Другие черты</string>
+
+    <string name="header_physical">Физические</string>
+    <string name="header_social">Социальные</string>
+    <string name="header_mental">Ментальные</string>
+
+    <string name="label_name">Имя</string>
+    <string name="label_concept">Концепция</string>
+    <string name="label_chronicle">Хроника</string>
+    <string name="label_ambition">Амбиция</string>
+    <string name="label_desire">Желание</string>
+    <string name="label_predator">Хищник</string>
+    <string name="label_clan">Клан</string>
+    <string name="label_generation">Поколение</string>
+    <string name="label_sire">Сир</string>
+
+    <string name="attr_strength">Сила</string>
+    <string name="attr_dexterity">Ловкость</string>
+    <string name="attr_stamina">Выносливость</string>
+    <string name="attr_charisma">Харизма</string>
+    <string name="attr_manipulation">Манипулирование</string>
+    <string name="attr_composure">Самообладание</string>
+    <string name="attr_intelligence">Интеллект</string>
+    <string name="attr_wits">Смекалка</string>
+    <string name="attr_resolve">Решительность</string>
+
+    <string name="skill_athletics">Атлетика</string>
+    <string name="skill_brawl">Драка</string>
+    <string name="skill_craft">Ремесло</string>
+    <string name="skill_drive">Вождение</string>
+    <string name="skill_firearms">Стрельба</string>
+    <string name="skill_larceny">Воровство</string>
+    <string name="skill_melee">Холодное оружие</string>
+    <string name="skill_stealth">Скрытность</string>
+    <string name="skill_survival">Выживание</string>
+
+    <string name="skill_animal_ken">Животноводство</string>
+    <string name="skill_etiquette">Этикет</string>
+    <string name="skill_insight">Проницательность</string>
+    <string name="skill_intimidation">Запугивание</string>
+    <string name="skill_leadership">Лидерство</string>
+    <string name="skill_performance">Исполнение</string>
+    <string name="skill_persuasion">Убеждение</string>
+    <string name="skill_streetwise">Уличное чутьё</string>
+    <string name="skill_subterfuge">Хитрость</string>
+
+    <string name="skill_academics">Академические знания</string>
+    <string name="skill_awareness">Бдительность</string>
+    <string name="skill_finance">Финансы</string>
+    <string name="skill_investigation">Расследование</string>
+    <string name="skill_medicine">Медицина</string>
+    <string name="skill_occult">Оккультизм</string>
+    <string name="skill_politics">Политика</string>
+    <string name="skill_science">Наука</string>
+    <string name="skill_technology">Технологии</string>
+
+    <string name="label_advantages">Преимущества</string>
+    <string name="label_flaws">Недостатки</string>
+    <string name="action_add_discipline">Добавить дисциплину</string>
+
+</resources>

@@ -245,4 +245,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+    fun openDrawer() {
+        binding.drawerLayout.openDrawer(GravityCompat.END)
+    }
 }
