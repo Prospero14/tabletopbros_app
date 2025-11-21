@@ -11,6 +11,7 @@
     <string name="enter_group_code">Enter Group Code</string>
     <string name="join_or_create_group">Create a group or join your party</string>
     <string name="dungeons_dragons">Dungeons &amp; Dragons</string>
+    <string name="viedzmin_2e">Viedzmin 2e</string>
     <string name="vampire_masquerade">VTM</string>
     <string name="select_game_system">Select Game System</string>
     <string name="error_credentials">Enter email and password (min 6 chars)</string>

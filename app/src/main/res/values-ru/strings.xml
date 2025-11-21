@@ -11,6 +11,7 @@
     <string name="enter_group_code">Введите код группы</string>
     <string name="join_or_create_group">Создать группу или присоединиться к своей пачке</string>
     <string name="dungeons_dragons">Подземелья и драконы</string>
+    <string name="viedzmin_2e">Ведьмак 2e</string>
     <string name="vampire_masquerade">ВТМ</string>
     <string name="select_game_system">Выберите игровую систему</string>
     <string name="error_credentials">Введите email и пароль (минимум 6 символов)</string>

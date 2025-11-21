@@ -12,6 +12,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.fts.ttbros.MainActivity
 import com.fts.ttbros.characters.form.FormAdapter
 import com.fts.ttbros.characters.templates.VtmTemplate
+import com.fts.ttbros.characters.templates.ViedzminTemplate
 import com.fts.ttbros.data.model.Character
 import com.fts.ttbros.data.repository.CharacterRepository
 import com.fts.ttbros.databinding.FragmentCharacterEditorBinding
@@ -174,6 +175,7 @@ class CharacterEditorFragment : Fragment() {
         val contextWithLocale = getLocalizedContext(requireContext(), currentLocale)
         val items = when (system) {
             "vtm_5e" -> VtmTemplate.generate(formData, contextWithLocale)
+            "viedzmin_2e" -> ViedzminTemplate.generate(formData, contextWithLocale)
             "dnd_5e" -> emptyList() // TODO: Implement DnD
             else -> emptyList()
         }
