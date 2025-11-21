@@ -5,7 +5,7 @@
         <item
             android:id="@+id/characterFragment"
             android:icon="@android:drawable/ic_menu_myplaces"
-            android:title="@string/app_name" />
+            android:title="@string/menu_character" />
         <item
             android:id="@+id/teamChatFragment"
             android:icon="@android:drawable/ic_menu_send"
