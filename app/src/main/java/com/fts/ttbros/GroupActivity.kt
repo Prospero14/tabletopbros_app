@@ -81,9 +81,10 @@ class GroupActivity : AppCompatActivity() {
     private fun chooseSystemAndCreateTeam() {
         val options = arrayOf(
             getString(R.string.vampire_masquerade),
-            getString(R.string.dungeons_dragons)
+            getString(R.string.dungeons_dragons),
+            getString(R.string.viedzmin_2e)
         )
-        val values = arrayOf("vampire", "dnd")
+        val values = arrayOf("vtm_5e", "dnd_5e", "viedzmin_2e")
         var selectedIndex = 0
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.select_game_system)

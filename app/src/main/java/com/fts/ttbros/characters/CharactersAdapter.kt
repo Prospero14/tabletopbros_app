@@ -40,9 +40,11 @@ class CharactersAdapter(
 
         fun bind(character: Character) {
             binding.characterNameTextView.text = character.name.ifBlank { "Unnamed Character" }
+            val context = binding.root.context
             binding.systemTextView.text = when(character.system) {
-                "vtm_5e" -> "Vampire: The Masquerade 5e"
-                "dnd_5e" -> "Dungeons & Dragons 5e"
+                "vtm_5e" -> context.getString(com.fts.ttbros.R.string.vampire_masquerade)
+                "dnd_5e" -> context.getString(com.fts.ttbros.R.string.dungeons_dragons)
+                "viedzmin_2e" -> context.getString(com.fts.ttbros.R.string.viedzmin_2e)
                 else -> character.system
             }
             binding.clanTextView.text = character.clan.ifBlank { "No Clan/Class" }
