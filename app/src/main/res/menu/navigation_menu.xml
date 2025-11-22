@@ -25,11 +25,11 @@
         <item
             android:id="@+id/notesFragment"
             android:icon="@android:drawable/ic_menu_edit"
-            android:title="Notes" />
+            android:title="Заметки" />
         <item
             android:id="@+id/documentsFragment"
             android:icon="@android:drawable/ic_menu_agenda"
-            android:title="Documents" />
+            android:title="Документы" />
     </group>
 
     <item
