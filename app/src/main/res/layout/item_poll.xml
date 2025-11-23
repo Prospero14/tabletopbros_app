@@ -5,8 +5,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_margin="8dp"
-    app:cardElevation="6dp"
-    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp"
+    app:cardCornerRadius="8dp"
     app:strokeWidth="0dp"
     app:cardBackgroundColor="@android:color/white">
 
@@ -14,10 +14,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp"
-        android:background="?attr/selectableItemBackground">
+        android:padding="12dp">
 
-        <!-- Header with icon and question -->
+        <!-- Header with question -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -26,68 +25,35 @@
             android:layout_marginBottom="8dp">
 
             <ImageView
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:src="@android:drawable/ic_menu_agenda"
+                android:id="@+id/pollPinnedIcon"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@android:drawable/ic_menu_sort_by_size"
                 android:tint="@color/purple_500"
-                android:layout_marginEnd="8dp"
-                android:contentDescription="Poll icon" />
+                android:visibility="gone"
+                android:layout_marginEnd="4dp"
+                android:contentDescription="@string/pinned_poll" />
 
-            <LinearLayout
+            <TextView
+                android:id="@+id/pollQuestionTextView"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:orientation="vertical">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <ImageView
-                        android:id="@+id/pollPinnedIcon"
-                        android:layout_width="16dp"
-                        android:layout_height="16dp"
-                        android:src="@android:drawable/ic_menu_sort_by_size"
-                        android:tint="@color/purple_500"
-                        android:visibility="gone"
-                        android:layout_marginEnd="4dp"
-                        android:contentDescription="@string/pinned_poll" />
-
-                    <TextView
-                        android:id="@+id/pollQuestionTextView"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Poll Question"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="@android:color/black"
-                        android:lineSpacingMultiplier="1.2" />
-
-                </LinearLayout>
-
-                <TextView
-                    android:id="@+id/pollCreatorTextView"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="Created by"
-                    android:textSize="12sp"
-                    android:textColor="@color/text_secondary" />
-
-            </LinearLayout>
+                android:text="Poll Question"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@android:color/black" />
 
         </LinearLayout>
 
-        <!-- Divider -->
-        <View
+        <TextView
+            android:id="@+id/pollCreatorTextView"
             android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="@color/text_secondary"
-            android:alpha="0.2"
-            android:layout_marginVertical="8dp" />
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="Created by"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary" />
 
         <!-- Options -->
         <androidx.recyclerview.widget.RecyclerView

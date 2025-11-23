@@ -38,6 +38,7 @@ class PollAdapter(
         private val pollOptionsRecyclerView: RecyclerView = itemView.findViewById(R.id.pollOptionsRecyclerView)
         private val pollPinnedIcon: ImageView = itemView.findViewById(R.id.pollPinnedIcon)
         private val pollCard: MaterialCardView = itemView.findViewById(R.id.pollCard)
+        private var currentOptionAdapter: PollOptionAdapter? = null
 
         fun bind(poll: Poll) {
             pollQuestionTextView.text = poll.question
@@ -58,6 +59,7 @@ class PollAdapter(
                 true
             }
 
+            // Recreate adapter to ensure it has the latest poll data
             val optionAdapter = PollOptionAdapter(
                 poll = poll,
                 currentUserId = currentUserId,
@@ -69,6 +71,7 @@ class PollAdapter(
             pollOptionsRecyclerView.layoutManager = LinearLayoutManager(itemView.context)
             pollOptionsRecyclerView.adapter = optionAdapter
             optionAdapter.submitList(poll.options)
+            currentOptionAdapter = optionAdapter
         }
     }
 

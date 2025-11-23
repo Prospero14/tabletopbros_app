@@ -332,16 +332,37 @@ class ChatFragment : Fragment() {
             creatorTextView.text = getString(R.string.created_by, poll.createdByName)
             pinnedIcon.isVisible = poll.isPinned
             
-            val optionAdapter = com.fts.ttbros.chat.ui.PollOptionAdapter(
-                poll = poll,
+            var currentPoll = poll
+            var optionAdapter = com.fts.ttbros.chat.ui.PollOptionAdapter(
+                poll = currentPoll,
                 currentUserId = profile.uid,
                 onVote = { optionId ->
-                    android.util.Log.d("ChatFragment", "Vote clicked in dialog for poll: ${poll.id}, option: $optionId")
-                    handleVote(poll.id, optionId)
-                    // We don't dismiss dialog immediately so user can see result update if real-time
-                    // But since this is a dialog, maybe we should dismiss or refresh? 
-                    // Real-time updates won't happen in this dialog unless we observe the poll.
-                    // For simplicity, let's dismiss after vote or just let them close it.
+                    android.util.Log.d("ChatFragment", "Vote clicked in dialog for poll: ${currentPoll.id}, option: $optionId")
+                    // Optimistically update poll in dialog immediately
+                    val updatedVotes = currentPoll.votes.toMutableMap().apply {
+                        put(profile.uid, optionId)
+                    }
+                    val updatedVoterNames = if (!currentPoll.isAnonymous) {
+                        currentPoll.voterNames.toMutableMap().apply {
+                            put(profile.uid, profile.displayName.ifBlank { profile.email })
+                        }
+                    } else {
+                        currentPoll.voterNames
+                    }
+                    currentPoll = currentPoll.copy(
+                        votes = updatedVotes,
+                        voterNames = updatedVoterNames
+                    )
+                    // Recreate adapter with updated poll to show vote immediately
+                    optionAdapter = com.fts.ttbros.chat.ui.PollOptionAdapter(
+                        poll = currentPoll,
+                        currentUserId = profile.uid,
+                        onVote = { /* Already voted */ }
+                    )
+                    optionsRecyclerView.adapter = optionAdapter
+                    optionAdapter.submitList(currentPoll.options)
+                    // Also update in main list
+                    handleVote(currentPoll.id, optionId)
                 }
             )
             

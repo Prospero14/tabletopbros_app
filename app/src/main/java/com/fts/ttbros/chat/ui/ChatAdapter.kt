@@ -111,18 +111,21 @@ class ChatAdapter(
                 messageTextView.setTextColor(ContextCompat.getColor(context, R.color.teal_700))
                 messageTextView.setTypeface(null, android.graphics.Typeface.BOLD)
             } else if (message.type == "poll") {
-                // Handle poll
-                val actionText = if (!message.attachmentId.isNullOrBlank()) "\n(Tap to Vote)" else "\n(Error: No ID)"
+                // Handle poll - visually distinguish from regular messages
+                val actionText = if (!message.attachmentId.isNullOrBlank()) "\n📊 Tap to Vote" else "\n(Error: No ID)"
                 messageTextView.text = "${message.text}$actionText"
                 messageTextView.setOnClickListener {
                     if (!message.attachmentId.isNullOrBlank()) {
                         onPollClick?.invoke(message.attachmentId)
                     }
                 }
-                // Reset color to default
-                val defaultTextColor = ContextCompat.getColor(context, if (isMine) R.color.white else R.color.black)
-                messageTextView.setTextColor(defaultTextColor)
-                messageTextView.typeface = android.graphics.Typeface.DEFAULT
+                // Highlight poll messages with purple accent
+                val pollTextColor = ContextCompat.getColor(context, R.color.purple_500)
+                messageTextView.setTextColor(pollTextColor)
+                messageTextView.setTypeface(null, android.graphics.Typeface.BOLD)
+                // Add subtle border to message card for polls
+                messageCard.strokeWidth = 2
+                messageCard.strokeColor = ContextCompat.getColor(context, R.color.purple_500)
             } else {
                 // Handle text
                 messageTextView.text = message.text
@@ -130,6 +133,8 @@ class ChatAdapter(
                 val defaultTextColor = ContextCompat.getColor(context, if (isMine) R.color.white else R.color.black)
                 messageTextView.setTextColor(defaultTextColor)
                 messageTextView.typeface = android.graphics.Typeface.DEFAULT
+                // Reset card stroke for non-poll messages
+                messageCard.strokeWidth = 0
             }
             
             messageTextView.isVisible = message.text.isNotBlank()
