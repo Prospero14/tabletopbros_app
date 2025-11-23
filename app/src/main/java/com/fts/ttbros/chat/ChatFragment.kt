@@ -334,11 +334,13 @@ class ChatFragment : Fragment() {
             val optionsRecyclerView = dialogView.findViewById<RecyclerView>(R.id.pollOptionsRecyclerView)
             val pinnedIcon = dialogView.findViewById<android.view.View>(R.id.pollPinnedIcon)
             
-            questionTextView.text = poll.question
-            creatorTextView.text = getString(R.string.created_by, poll.createdByName)
-            pinnedIcon.isVisible = poll.isPinned
+            // poll is guaranteed to be non-null here (checked above)
+            val nonNullPoll = poll!!
+            questionTextView.text = nonNullPoll.question
+            creatorTextView.text = getString(R.string.created_by, nonNullPoll.createdByName)
+            pinnedIcon.isVisible = nonNullPoll.isPinned
             
-            var currentPoll = poll
+            var currentPoll: Poll = nonNullPoll
             var isUpdating = false
             
             fun updateAdapter() {
@@ -346,14 +348,14 @@ class ChatFragment : Fragment() {
                 isUpdating = true
                 try {
                     // Create local copy to avoid smart cast issues in closure
-                    val pollCopy = currentPoll
+                    val pollCopy: Poll = currentPoll
                     val newAdapter = com.fts.ttbros.chat.ui.PollOptionAdapter(
                         poll = pollCopy,
                         currentUserId = profile.uid,
                         onVote = { optionId ->
                             if (!isAdded) return@PollOptionAdapter
                             // Use local copy inside closure to avoid smart cast issues
-                            val pollToUpdate = currentPoll
+                            val pollToUpdate: Poll = currentPoll
                             android.util.Log.d("ChatFragment", "Vote clicked in dialog for poll: ${pollToUpdate.id}, option: $optionId")
                             // Optimistically update poll in dialog immediately
                             val updatedVotes = pollToUpdate.votes.toMutableMap().apply {
