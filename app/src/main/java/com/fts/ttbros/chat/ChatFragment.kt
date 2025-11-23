@@ -229,50 +229,61 @@ class ChatFragment : Fragment() {
     }
     
     private fun showCreatePollDialog() {
-        if (!isAdded) return
-        val profile = userProfile ?: return
-        val teamId = profile.teamId ?: return
+        if (!isAdded) {
+            android.util.Log.w("ChatFragment", "Fragment not added, cannot show poll dialog")
+            return
+        }
+        val profile = userProfile ?: run {
+            android.util.Log.w("ChatFragment", "User profile is null, cannot show poll dialog")
+            return
+        }
+        val teamId = profile.teamId ?: run {
+            android.util.Log.w("ChatFragment", "Team ID is null, cannot show poll dialog")
+            return
+        }
         
+        android.util.Log.d("ChatFragment", "Showing create poll dialog")
         try {
             CreatePollDialog(requireContext()) { question, options, isAnonymous ->
-            viewLifecycleOwner.lifecycleScope.launch {
-                try {
-                    val poll = com.fts.ttbros.data.model.Poll(
-                        teamId = teamId,
-                        chatType = chatType.key,
-                        question = question,
-                        options = options,
-                        isAnonymous = isAnonymous,
-                        createdBy = profile.uid,
-                        createdByName = profile.displayName.ifBlank { profile.email }
-                    )
-                    val pollId = pollRepository.createPoll(poll)
-                    android.util.Log.d("ChatFragment", "Poll created with ID: $pollId, chatType: ${chatType.key}, teamId: $teamId")
-                    
-                    // Send poll message to chat
-                    chatRepository.sendMessage(
-                        teamId,
-                        chatType,
-                        ChatMessage(
-                            senderId = profile.uid,
-                            senderName = profile.displayName.ifBlank { profile.email },
-                            text = question,
-                            type = "poll",
-                            attachmentId = pollId
+                android.util.Log.d("ChatFragment", "Poll dialog callback called: question='$question', options=${options.size}, isAnonymous=$isAnonymous")
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        val poll = com.fts.ttbros.data.model.Poll(
+                            teamId = teamId,
+                            chatType = chatType.key,
+                            question = question,
+                            options = options,
+                            isAnonymous = isAnonymous,
+                            createdBy = profile.uid,
+                            createdByName = profile.displayName.ifBlank { profile.email }
                         )
-                    )
+                        val pollId = pollRepository.createPoll(poll)
+                        android.util.Log.d("ChatFragment", "Poll created with ID: $pollId, chatType: ${chatType.key}, teamId: $teamId")
+                        
+                        // Send poll message to chat
+                        chatRepository.sendMessage(
+                            teamId,
+                            chatType,
+                            ChatMessage(
+                                senderId = profile.uid,
+                                senderName = profile.displayName.ifBlank { profile.email },
+                                text = question,
+                                type = "poll",
+                                attachmentId = pollId
+                            )
+                        )
 
-                    view?.let {
-                        Snackbar.make(it, getString(R.string.poll_created), Snackbar.LENGTH_SHORT).show()
-                    }
-                } catch (e: Exception) {
-                    android.util.Log.e("ChatFragment", "Error creating poll: ${e.message}", e)
-                    view?.let {
-                        Snackbar.make(it, "Error creating poll: ${e.message}", Snackbar.LENGTH_LONG).show()
+                        view?.let {
+                            Snackbar.make(it, getString(R.string.poll_created), Snackbar.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("ChatFragment", "Error creating poll: ${e.message}", e)
+                        view?.let {
+                            Snackbar.make(it, "Error creating poll: ${e.message}", Snackbar.LENGTH_LONG).show()
+                        }
                     }
                 }
-            }
-        }
+            }.show()
         } catch (e: Exception) {
             android.util.Log.e("ChatFragment", "Error showing create poll dialog: ${e.message}", e)
         }

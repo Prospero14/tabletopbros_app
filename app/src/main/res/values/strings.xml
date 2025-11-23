@@ -192,6 +192,8 @@
     <string name="you_voted">You voted</string>
     <string name="max_options_reached">Maximum 6 options allowed</string>
     <string name="poll_votes_count">%1$d / %2$d</string>
+    <string name="poll_question_required">Please enter a question</string>
+    <string name="poll_min_options_required">Please enter at least 2 options</string>
     <string name="created_by">Created by %s</string>
     <string name="pinned_message">Pinned message</string>
     <string name="pinned_poll">Pinned poll</string>

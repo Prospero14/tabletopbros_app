@@ -54,8 +54,21 @@ class CreatePollDialog(
                     .filter { it.isNotBlank() }
                     .map { PollOption(id = UUID.randomUUID().toString(), text = it) }
                 
-                if (question.isNotBlank() && options.size >= 2) {
-                    onPollCreated(question, options, isAnonymous)
+                android.util.Log.d("CreatePollDialog", "Question: '$question', Options count: ${options.size}, isAnonymous: $isAnonymous")
+                
+                when {
+                    question.isBlank() -> {
+                        android.util.Log.w("CreatePollDialog", "Question is blank")
+                        android.widget.Toast.makeText(context, context.getString(R.string.poll_question_required), android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    options.size < 2 -> {
+                        android.util.Log.w("CreatePollDialog", "Not enough options: ${options.size}")
+                        android.widget.Toast.makeText(context, context.getString(R.string.poll_min_options_required), android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    else -> {
+                        android.util.Log.d("CreatePollDialog", "Calling onPollCreated callback")
+                        onPollCreated(question, options, isAnonymous)
+                    }
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
