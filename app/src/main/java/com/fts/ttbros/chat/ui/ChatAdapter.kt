@@ -62,9 +62,9 @@ class ChatAdapter(
             senderNameTextView.text = message.senderName
 
             val bubbleColor = if (isMine) {
-                ContextCompat.getColor(context, R.color.purple_200)
+                ContextCompat.getColor(context, R.color.chat_bubble_own)
             } else {
-                ContextCompat.getColor(context, android.R.color.white)
+                ContextCompat.getColor(context, R.color.chat_bubble_other)
             }
             messageCard.setCardBackgroundColor(bubbleColor)
             
