@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <TextView
+        android:id="@+id/labelTextView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="Attribute"
+        android:textAppearance="?attr/textAppearanceBody1" />
+
+    <ImageView
+        android:id="@+id/dot1"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@drawable/selector_dot"
+        android:padding="4dp" />
+
+    <ImageView
+        android:id="@+id/dot2"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@drawable/selector_dot"
+        android:padding="4dp" />
+
+    <ImageView
+        android:id="@+id/dot3"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@drawable/selector_dot"
+        android:padding="4dp" />
+
+    <ImageView
+        android:id="@+id/dot4"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@drawable/selector_dot"
+        android:padding="4dp" />
+
+    <ImageView
+        android:id="@+id/dot5"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@drawable/selector_dot"
+        android:padding="4dp" />
+
+</LinearLayout>

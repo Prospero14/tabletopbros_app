@@ -1,15 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">alpha 2025</string>
+    <string name="app_name">TableTopBros</string>
+    <string name="menu_character">Команды</string>
     <string name="app_logo">app_logo</string>
-    <string name="login">login\n</string>
-    <string name="register_here">register_here\n</string>
-    <string name="password">password</string>
-    <string name="email">email</string>
-    <string name="join_group">присоединиться к группе</string>
-    <string name="create_new_group">Создать новую группу</string>
-    <string name="enter_group_code">Введите код группы</string>
-    <string name="join_or_create_group">Создать группу или присоединиться к своей пачке</string>
-    <string name="dungeons_dragons">Подземелья и драконы</string>
-    <string name="vampire_masquerade">ВТМ</string>
-    <string name="select_game_system">Выберите игровую систему</string>
+    <string name="login">Login</string>
+    <string name="register_here">Register</string>
+    <string name="password">Password</string>
+    <string name="email">Email</string>
+    <string name="join_group">Join Group</string>
+    <string name="create_new_group">Create New Group</string>
+    <string name="enter_group_code">Enter Group Code</string>
+    <string name="join_or_create_group">Create a group or join your party</string>
+    <string name="dungeons_dragons">Dungeons &amp; Dragons</string>
+    <string name="viedzmin_2e">Viedzmin 2e</string>
+    <string name="vampire_masquerade">VTM</string>
+    <string name="select_game_system">Select Game System</string>
+    <string name="error_credentials">Enter email and password (min 6 chars)</string>
+    <string name="error_group_code">Enter a valid group code</string>
+    <string name="error_group_not_found">Team with this code not found</string>
+    <string name="error_unknown">Something went wrong. Try again.</string>
+    <string name="success_joined_group">You joined the group</string>
+    <string name="dialog_team_code_title">Team Code</string>
+    <string name="dialog_team_code_message">Share code with members: %1$s</string>
+    <string name="action_copy">Copy</string>
+    <string name="code_copied">Code copied</string>
+    <string name="menu_team_chat">Team Chat</string>
+    <string name="menu_announcements">Announcements</string>
+    <string name="menu_master_player">Player ↔ Master</string>
+    <string name="menu_show_code">Team Code</string>
+    <string name="menu">Menu</string>
+    <string name="logout">Logout</string>
+    <string name="chat_placeholder">No messages yet</string>
+    <string name="chat_hint">Type a message…</string>
+    <string name="chat_send">Send</string>
+    <string name="chat_announcements_readonly">Only master can post announcements</string>
+    <string name="nav_header_desc">Navigation header</string>
+
+    <!-- Character Builder -->
+    <string name="section_info">Info</string>
+    <string name="section_attributes">Attributes</string>
+    <string name="section_skills">Skills</string>
+    <string name="section_disciplines">Disciplines</string>
+    <string name="section_other_traits">Other Traits</string>
+
+    <string name="header_physical">Physical</string>
+    <string name="header_social">Social</string>
+    <string name="header_mental">Mental</string>
+
+    <string name="label_name">Name</string>
+    <string name="label_concept">Concept</string>
+    <string name="label_chronicle">Chronicle</string>
+    <string name="label_ambition">Ambition</string>
+    <string name="label_desire">Desire</string>
+    <string name="label_predator">Predator</string>
+    <string name="label_clan">Clan</string>
+    <string name="label_generation">Generation</string>
+    <string name="label_sire">Sire</string>
+
+    <string name="attr_strength">Strength</string>
+    <string name="attr_dexterity">Dexterity</string>
+    <string name="attr_stamina">Stamina</string>
+    <string name="attr_charisma">Charisma</string>
+    <string name="attr_manipulation">Manipulation</string>
+    <string name="attr_composure">Composure</string>
+    <string name="attr_intelligence">Intelligence</string>
+    <string name="attr_wits">Wits</string>
+    <string name="attr_resolve">Resolve</string>
+
+    <string name="skill_athletics">Athletics</string>
+    <string name="skill_brawl">Brawl</string>
+    <string name="skill_craft">Craft</string>
+    <string name="skill_drive">Drive</string>
+    <string name="skill_firearms">Firearms</string>
+    <string name="skill_larceny">Larceny</string>
+    <string name="skill_melee">Melee</string>
+    <string name="skill_stealth">Stealth</string>
+    <string name="skill_survival">Survival</string>
+
+    <string name="skill_animal_ken">Animal Ken</string>
+    <string name="skill_etiquette">Etiquette</string>
+    <string name="skill_insight">Insight</string>
+    <string name="skill_intimidation">Intimidation</string>
+    <string name="skill_leadership">Leadership</string>
+    <string name="skill_performance">Performance</string>
+    <string name="skill_persuasion">Persuasion</string>
+    <string name="skill_streetwise">Streetwise</string>
+    <string name="skill_subterfuge">Subterfuge</string>
+
+    <string name="skill_academics">Academics</string>
+    <string name="skill_awareness">Awareness</string>
+    <string name="skill_finance">Finance</string>
+    <string name="skill_investigation">Investigation</string>
+    <string name="skill_medicine">Medicine</string>
+    <string name="skill_occult">Occult</string>
+    <string name="skill_politics">Politics</string>
+    <string name="skill_science">Science</string>
+    <string name="skill_technology">Technology</string>
+
+    <string name="label_advantages">Advantages</string>
+    <string name="label_flaws">Flaws</string>
+    <string name="action_add_discipline">Add Discipline</string>
+
+    <!-- Viedzmin 2e -->
+    <string name="label_race">Race</string>
+    <string name="label_profession">Profession</string>
+    <string name="header_stats">Stats</string>
+    
+    <string name="attr_reflexes">Reflexes</string>
+    <string name="attr_body">Body</string>
+    <string name="attr_willpower">Willpower</string>
+    <string name="attr_empathy">Empathy</string>
+    <string name="attr_craft">Craft</string>
+    <string name="attr_luck">Luck</string>
+    
+    <string name="skill_swordsmanship">Swordsmanship</string>
+    <string name="skill_archery">Archery</string>
+    <string name="skill_magic">Magic</string>
+    <string name="label_stamina">Stamina</string>
+    <string name="label_resolve">Resolve</string>
+    <string name="skill_alchemy">Alchemy</string>
+    
+    <string name="label_inventory">Inventory</string>
+
+    <!-- DnD 5e -->
+    <string name="attr_constitution">Constitution</string>
+    <string name="attr_wisdom">Wisdom</string>
+    <string name="skill_acrobatics">Acrobatics</string>
+    <string name="skill_perception">Perception</string>
+    <string name="label_class">Class</string>
+    <string name="label_level">Level</string>
+    <string name="label_background">Background</string>
+    <string name="label_alignment">Alignment</string>
+    <string name="label_xp">Experience Points</string>
+    <string name="label_ac">Armor Class</string>
+    <string name="label_initiative">Initiative</string>
+    <string name="label_speed">Speed</string>
+    <string name="label_hp_max">Hit Points Max</string>
+    <string name="label_hp_current">Current Hit Points</string>
+    <string name="label_hit_dice">Hit Dice</string>
+    <string name="label_proficiencies">Proficiencies &amp; Languages</string>
+    <string name="label_features">Features &amp; Traits</string>
+    <string name="label_attacks">Attacks &amp; Spellcasting</string>
+    <string name="label_equipment">Equipment</string>
+    
+    <string name="skill_animal_handling">Animal Handling</string>
+    <string name="skill_arcana">Arcana</string>
+    <string name="skill_deception">Deception</string>
+    <string name="skill_history">History</string>
+    <string name="skill_nature">Nature</string>
+    <string name="skill_religion">Religion</string>
+    <string name="skill_sleight_of_hand">Sleight of Hand</string>
+
+    <string name="label_gender">Gender</string>
+    <string name="label_age">Age</string>
+    <string name="label_hp">Health Points</string>
+    <string name="label_run">Run</string>
+    <string name="label_leap">Leap</string>
+    <string name="label_defining_skill">Defining Skill</string>
+    
+    <string name="skill_deduction">Deduction</string>
+    <string name="skill_monster_lore">Monster Lore</string>
+    <string name="skill_social_etiquette">Social Etiquette</string>
+    <string name="skill_brawling">Brawling</string>
+    <string name="skill_dodge_escape">Dodge/Escape</string>
+    <string name="skill_crafting">Crafting</string>
+    <string name="skill_first_aid">First Aid</string>
+
 </resources>

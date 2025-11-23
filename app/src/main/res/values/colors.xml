@@ -1,5 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <!-- Tabletop Bros Brand Colors - Soft Purple and Orange -->
+    
+    <!-- Primary Colors (Soft Purple) -->
+    <!-- Primary Colors (Deep Purple) -->
+    <color name="primary">#673AB7</color>
+    <color name="primary_dark">#512DA8</color>
+    <color name="primary_light">#9575CD</color>
+    
+    <!-- Secondary Colors (Juicy Orange) -->
+    <color name="secondary">#FF6D00</color>
+    <color name="secondary_dark">#E65100</color>
+    <color name="secondary_light">#FF9E40</color>
+    
+    <!-- Accent Color (Warm Orange) -->
+    <color name="accent">#FF9A5C</color>
+    <color name="accent_light">#FFB88C</color>
+    
+    <!-- Background Colors -->
+    <color name="background">#FAFAFA</color>
+    <color name="background_dark">#121212</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_dark">#1E1E1E</color>
+    
+    <!-- Text Colors -->
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="text_on_primary">#FFFFFF</color>
+    <color name="text_on_secondary">#FFFFFF</color>
+    
+    <!-- Error Color -->
+    <color name="error">#D32F2F</color>
+    <color name="error_dark">#C62828</color>
+    
+    <!-- Utility Colors -->
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+    <color name="transparent">#00000000</color>
+    
+    <!-- Divider & Border -->
+    <color name="divider">#E0E0E0</color>
+    <color name="border">#BDBDBD</color>
+    
+    <!-- Status Colors -->
+    <color name="success">#388E3C</color>
+    <color name="warning">#F57C00</color>
+    <color name="info">#1976D2</color>
+    
+    <!-- Legacy colors for compatibility -->
+    <color name="purple_200">#B39DDB</color>
+    <color name="purple_500">#673AB7</color>
+    <color name="purple_700">#512DA8</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
 </resources>

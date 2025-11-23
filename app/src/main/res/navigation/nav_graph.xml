@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/teamsFragment">
+
+    <fragment
+        android:id="@+id/teamsFragment"
+        android:name="com.fts.ttbros.character.TeamsFragment"
+        android:label="@string/app_name" />
+
+    <fragment
+        android:id="@+id/teamChatFragment"
+        android:name="com.fts.ttbros.chat.ChatFragment"
+        android:label="@string/menu_team_chat">
+        <argument
+            android:name="chatType"
+            app:argType="string"
+            android:defaultValue="team" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/announcementChatFragment"
+        android:name="com.fts.ttbros.chat.ChatFragment"
+        android:label="@string/menu_announcements">
+        <argument
+            android:name="chatType"
+            app:argType="string"
+            android:defaultValue="announcements" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/masterPlayerChatFragment"
+        android:name="com.fts.ttbros.chat.ChatFragment"
+        android:label="@string/menu_master_player">
+        <argument
+            android:name="chatType"
+            app:argType="string"
+            android:defaultValue="master_player" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/notesFragment"
+        android:name="com.fts.ttbros.notes.NotesFragment"
+        android:label="Заметки" />
+
+    <fragment
+        android:id="@+id/documentsFragment"
+        android:name="com.fts.ttbros.documents.DocumentsFragment"
+        android:label="Документы">
+        <action
+            android:id="@+id/action_documentsFragment_to_pdfViewerFragment"
+            app:destination="@id/pdfViewerFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/pdfViewerFragment"
+        android:name="com.fts.ttbros.documents.PdfViewerFragment"
+        android:label="PDF Viewer">
+        <argument
+            android:name="filePath"
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/charactersFragment"
+        android:name="com.fts.ttbros.characters.CharactersFragment"
+        android:label="Персонажи">
+        <action
+            android:id="@+id/action_charactersFragment_to_characterEditorFragment"
+            app:destination="@id/characterEditorFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/characterEditorFragment"
+        android:name="com.fts.ttbros.characters.CharacterEditorFragment"
+        android:label="Редактор персонажа">
+        <argument
+            android:name="characterId"
+            app:argType="string"
+            app:nullable="true" />
+        <argument
+            android:name="system"
+            app:argType="string"
+            app:nullable="true" />
+    </fragment>
+
+</navigation>
