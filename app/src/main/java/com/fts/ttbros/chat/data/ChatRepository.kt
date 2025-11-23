@@ -35,6 +35,8 @@ class ChatRepository(
                         senderName = doc.getString(FIELD_SENDER_NAME).orEmpty(),
                         text = doc.getString(FIELD_TEXT).orEmpty(),
                         imageUrl = doc.getString(FIELD_IMAGE_URL),
+                        type = doc.getString(FIELD_TYPE) ?: "text",
+                        attachmentId = doc.getString(FIELD_ATTACHMENT_ID),
                         timestamp = doc.getTimestamp(FIELD_TIMESTAMP) ?: Timestamp.now(),
                         isPinned = doc.getBoolean(FIELD_IS_PINNED) ?: false,
                         pinnedBy = doc.getString(FIELD_PINNED_BY),
@@ -53,10 +55,14 @@ class ChatRepository(
             FIELD_SENDER_ID to message.senderId,
             FIELD_SENDER_NAME to message.senderName,
             FIELD_TEXT to message.text,
+            FIELD_TYPE to message.type,
             FIELD_TIMESTAMP to FieldValue.serverTimestamp()
         )
         message.imageUrl?.let {
             data[FIELD_IMAGE_URL] = it
+        }
+        message.attachmentId?.let {
+            data[FIELD_ATTACHMENT_ID] = it
         }
         messagesCollection(teamId, chatType).add(data).await()
     }
@@ -96,6 +102,8 @@ class ChatRepository(
         private const val FIELD_SENDER_NAME = "senderName"
         private const val FIELD_TEXT = "text"
         private const val FIELD_IMAGE_URL = "imageUrl"
+        private const val FIELD_TYPE = "type"
+        private const val FIELD_ATTACHMENT_ID = "attachmentId"
         private const val FIELD_TIMESTAMP = "timestamp"
         private const val FIELD_IS_PINNED = "isPinned"
         private const val FIELD_PINNED_BY = "pinnedBy"
