@@ -262,13 +262,13 @@ class ChatFragment : Fragment() {
                         )
                     )
 
-                    if (isAdded && view != null) {
-                        Snackbar.make(view, getString(R.string.poll_created), Snackbar.LENGTH_SHORT).show()
+                    view?.let {
+                        Snackbar.make(it, getString(R.string.poll_created), Snackbar.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
                     android.util.Log.e("ChatFragment", "Error creating poll: ${e.message}", e)
-                    if (isAdded && view != null) {
-                        Snackbar.make(view, "Error creating poll: ${e.message}", Snackbar.LENGTH_LONG).show()
+                    view?.let {
+                        Snackbar.make(it, "Error creating poll: ${e.message}", Snackbar.LENGTH_LONG).show()
                     }
                 }
             }
@@ -293,16 +293,16 @@ class ChatFragment : Fragment() {
                     poll = pollRepository.getPoll(pollId)
                 } catch (e: Exception) {
                     android.util.Log.e("ChatFragment", "Error loading poll: ${e.message}", e)
-                    if (isAdded && view != null) {
-                        Snackbar.make(view, "Error loading poll: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                    view?.let {
+                        Snackbar.make(it, "Error loading poll: ${e.message}", Snackbar.LENGTH_SHORT).show()
                     }
                     return@launch
                 }
             }
             
             if (poll == null) {
-                if (isAdded && view != null) {
-                    Snackbar.make(view, "Poll not found", Snackbar.LENGTH_SHORT).show()
+                view?.let {
+                    Snackbar.make(it, "Poll not found", Snackbar.LENGTH_SHORT).show()
                 }
                 return@launch
             }
@@ -354,8 +354,8 @@ class ChatFragment : Fragment() {
                 // Get poll to check if anonymous
                 val polls = pollsAdapter.currentList
                 val poll = polls.find { it.id == pollId } ?: run {
-                    if (isAdded && view != null) {
-                        Snackbar.make(view, "Poll not found", Snackbar.LENGTH_SHORT).show()
+                    view?.let {
+                        Snackbar.make(it, "Poll not found", Snackbar.LENGTH_SHORT).show()
                     }
                     return@launch
                 }
@@ -367,13 +367,13 @@ class ChatFragment : Fragment() {
                     optionId = optionId,
                     isAnonymous = poll.isAnonymous
                 )
-                if (isAdded && view != null) {
-                    Snackbar.make(view, getString(R.string.vote_recorded), Snackbar.LENGTH_SHORT).show()
+                view?.let {
+                    Snackbar.make(it, getString(R.string.vote_recorded), Snackbar.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 android.util.Log.e("ChatFragment", "Error voting: ${e.message}", e)
-                if (isAdded && view != null) {
-                    Snackbar.make(view, "Error voting: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                view?.let {
+                    Snackbar.make(it, "Error voting: ${e.message}", Snackbar.LENGTH_SHORT).show()
                 }
             }
         }
