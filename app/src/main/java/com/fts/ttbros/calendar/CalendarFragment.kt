@@ -17,16 +17,17 @@ import com.fts.ttbros.notifications.EventNotificationScheduler
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.progressindicator.CircularProgressIndicator
 import com.google.android.material.snackbar.Snackbar
-import com.prolificinteractive.materialcalendarview.MaterialCalendarView
-import kotlinx.coroutines.launch
+import android.widget.CalendarView
 import android.widget.TextView
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.Calendar
 
 class CalendarFragment : Fragment() {
 
-    private lateinit var calendarView: MaterialCalendarView
+    private lateinit var calendarView: CalendarView
     private lateinit var eventsRecyclerView: RecyclerView
     private lateinit var noEventsTextView: TextView
     private lateinit var createEventFab: FloatingActionButton
@@ -37,6 +38,8 @@ class CalendarFragment : Fragment() {
     private val eventsAdapter = EventsAdapter { event ->
         // Handle event click if needed
     }
+
+    private var selectedDate: Long = System.currentTimeMillis()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -60,6 +63,15 @@ class CalendarFragment : Fragment() {
 
         createEventFab.setOnClickListener {
             showCreateEventDialog()
+        }
+        
+        calendarView.setOnDateChangeListener { _, year, month, dayOfMonth ->
+            val calendar = Calendar.getInstance()
+            calendar.set(year, month, dayOfMonth)
+            selectedDate = calendar.timeInMillis
+            // Filter events by date if we want, or just scroll to it?
+            // For now, let's just keep loading all events or maybe filter?
+            // The original implementation loaded all events. Let's stick to that for now.
         }
 
         loadEvents()

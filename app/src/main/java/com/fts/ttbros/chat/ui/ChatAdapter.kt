@@ -61,9 +61,23 @@ class ChatAdapter(
         fun bind(message: ChatMessage) {
             val isMine = message.senderId == currentUserId
             val context = itemView.context
+            
+            // Layout gravity
             messageContainer.gravity = if (isMine) Gravity.END else Gravity.START
+            
+            // Sender Name Visibility
+            // Show sender name if it's not mine. 
+            // User asked for "sender name ... and time".
+            // We'll show name for others. Time for everyone.
             senderNameTextView.isVisible = !isMine
             senderNameTextView.text = message.senderName
+
+            // Timestamp
+            val formattedTime = message.timestamp?.toDate()?.let {
+                DateFormat.getTimeInstance(DateFormat.SHORT).format(it)
+            } ?: ""
+            timestampTextView.text = formattedTime
+            timestampTextView.isVisible = true // Always show time as requested
 
             val bubbleColor = if (isMine) {
                 ContextCompat.getColor(context, R.color.chat_bubble_own)
@@ -113,11 +127,6 @@ class ChatAdapter(
             
             messageTextView.isVisible = message.text.isNotBlank()
             
-            val formattedTime = message.timestamp?.toDate()?.let {
-                DateFormat.getTimeInstance(DateFormat.SHORT).format(it)
-            } ?: ""
-            timestampTextView.text = formattedTime
-
             // Show pinned indicator
             pinnedIcon.isVisible = message.isPinned
 

@@ -74,16 +74,11 @@ dependencies {
 
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
-        implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
-        implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.4")
-        
-        implementation("com.github.bumptech.glide:glide:4.16.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.4")
     
-    // Calendar view
-    implementation("com.github.prolificinteractive:material-calendarview:2.0.1") {
-        exclude(group = "com.android.support")
-    }
-    
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+
     // WorkManager for scheduled notifications
     implementation("androidx.work:work-runtime-ktx:2.9.0")
     

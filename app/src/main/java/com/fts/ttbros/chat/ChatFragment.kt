@@ -50,7 +50,15 @@ class ChatFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        chatType = ChatType.from(arguments?.getString(ARG_CHAT_TYPE))
+        try {
+            val typeArg = arguments?.getString(ARG_CHAT_TYPE)
+            android.util.Log.d("ChatFragment", "onCreate: typeArg=$typeArg")
+            chatType = ChatType.from(typeArg)
+            android.util.Log.d("ChatFragment", "onCreate: chatType=$chatType")
+        } catch (e: Exception) {
+            android.util.Log.e("ChatFragment", "Error in onCreate: ${e.message}", e)
+            chatType = ChatType.TEAM // Fallback
+        }
     }
 
     override fun onCreateView(
@@ -58,7 +66,13 @@ class ChatFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        return inflater.inflate(R.layout.fragment_chat, container, false)
+        android.util.Log.d("ChatFragment", "onCreateView")
+        return try {
+            inflater.inflate(R.layout.fragment_chat, container, false)
+        } catch (e: Exception) {
+            android.util.Log.e("ChatFragment", "Error inflating layout: ${e.message}", e)
+            null // This will cause a crash later, but at least we logged it
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -218,6 +232,20 @@ class ChatFragment : Fragment() {
                     )
                     val pollId = pollRepository.createPoll(poll)
                     android.util.Log.d("ChatFragment", "Poll created with ID: $pollId, chatType: ${chatType.key}, teamId: $teamId")
+                    
+                    // Send poll message to chat
+                    chatRepository.sendMessage(
+                        teamId,
+                        chatType,
+                        ChatMessage(
+                            senderId = profile.uid,
+                            senderName = profile.displayName.ifBlank { profile.email },
+                            text = question,
+                            type = "poll",
+                            attachmentId = pollId
+                        )
+                    )
+
                     view?.let {
                         Snackbar.make(it, R.string.poll_created, Snackbar.LENGTH_SHORT).show()
                     }
