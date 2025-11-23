@@ -131,21 +131,33 @@ class ChatFragment : Fragment() {
 
     private fun observeProfile() {
         viewLifecycleOwner.lifecycleScope.launch {
-            val profile = userRepository.currentProfile()
-            if (profile == null || profile.teamId.isNullOrBlank()) {
-                view?.let {
-                    Snackbar.make(it, R.string.error_group_not_found, Snackbar.LENGTH_LONG)
-                        .setAction(R.string.join_group) {
-                            startActivity(Intent(requireContext(), GroupActivity::class.java))
+            try {
+                val profile = userRepository.currentProfile()
+                if (profile == null || profile.teamId.isNullOrBlank()) {
+                    if (isAdded && view != null) {
+                        view?.let {
+                            Snackbar.make(it, getString(R.string.error_group_not_found), Snackbar.LENGTH_LONG)
+                                .setAction(getString(R.string.join_group)) {
+                                    try {
+                                        startActivity(Intent(requireContext(), GroupActivity::class.java))
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("ChatFragment", "Error starting GroupActivity: ${e.message}", e)
+                                    }
+                                }
+                                .show()
                         }
-                        .show()
+                    }
+                    disableInput()
+                    return@launch
                 }
-                disableInput()
-                return@launch
+                userProfile = profile
+                if (isAdded) {
+                    updateInputAvailability(profile)
+                    subscribeToMessages(profile)
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ChatFragment", "Error observing profile: ${e.message}", e)
             }
-            userProfile = profile
-            updateInputAvailability(profile)
-            subscribeToMessages(profile)
         }
     }
 
@@ -194,12 +206,14 @@ class ChatFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 pollRepository.getChatPolls(teamId, chatType.key).collect { polls ->
+                    if (!isAdded || view == null) return@collect
                     android.util.Log.d("ChatFragment", "Loaded ${polls.size} polls for chatType: ${chatType.key}, teamId: $teamId")
                     pollsAdapter.submitList(polls)
                     // Show/hide polls RecyclerView based on whether there are polls
                     view?.findViewById<RecyclerView>(R.id.pollsRecyclerView)?.isVisible = polls.isNotEmpty()
                 }
             } catch (e: Exception) {
+                if (!isAdded || view == null) return@launch
                 android.util.Log.e("ChatFragment", "Error loading polls: ${e.message}", e)
                 val errorMessage = if (e.message?.contains("index") == true || e.message?.contains("Index") == true) {
                     "Ошибка: требуется создать индекс в Firestore для опросов"
@@ -215,10 +229,12 @@ class ChatFragment : Fragment() {
     }
     
     private fun showCreatePollDialog() {
+        if (!isAdded) return
         val profile = userProfile ?: return
         val teamId = profile.teamId ?: return
         
-        CreatePollDialog(requireContext()) { question, options, isAnonymous ->
+        try {
+            CreatePollDialog(requireContext()) { question, options, isAnonymous ->
             viewLifecycleOwner.lifecycleScope.launch {
                 try {
                     val poll = com.fts.ttbros.data.model.Poll(
@@ -246,22 +262,28 @@ class ChatFragment : Fragment() {
                         )
                     )
 
-                    view?.let {
-                        Snackbar.make(it, R.string.poll_created, Snackbar.LENGTH_SHORT).show()
+                    if (isAdded && view != null) {
+                        Snackbar.make(view, getString(R.string.poll_created), Snackbar.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
-                    view?.let {
-                        Snackbar.make(it, "Error creating poll: ${e.message}", Snackbar.LENGTH_LONG).show()
+                    android.util.Log.e("ChatFragment", "Error creating poll: ${e.message}", e)
+                    if (isAdded && view != null) {
+                        Snackbar.make(view, "Error creating poll: ${e.message}", Snackbar.LENGTH_LONG).show()
                     }
                 }
             }
-        }.show()
+        }
+        } catch (e: Exception) {
+            android.util.Log.e("ChatFragment", "Error showing create poll dialog: ${e.message}", e)
+        }
     }
 
     private fun showPollDetailsDialog(pollId: String) {
+        if (!isAdded) return
         val profile = userProfile ?: return
         
         viewLifecycleOwner.lifecycleScope.launch {
+            if (!isAdded || view == null) return@launch
             // Try to find in current list first
             var poll = pollsAdapter.currentList.find { it.id == pollId }
             
@@ -270,20 +292,22 @@ class ChatFragment : Fragment() {
                 try {
                     poll = pollRepository.getPoll(pollId)
                 } catch (e: Exception) {
-                    view?.let {
-                        Snackbar.make(it, "Error loading poll: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                    android.util.Log.e("ChatFragment", "Error loading poll: ${e.message}", e)
+                    if (isAdded && view != null) {
+                        Snackbar.make(view, "Error loading poll: ${e.message}", Snackbar.LENGTH_SHORT).show()
                     }
                     return@launch
                 }
             }
             
             if (poll == null) {
-                view?.let {
-                    Snackbar.make(it, "Poll not found", Snackbar.LENGTH_SHORT).show()
+                if (isAdded && view != null) {
+                    Snackbar.make(view, "Poll not found", Snackbar.LENGTH_SHORT).show()
                 }
                 return@launch
             }
 
+            if (!isAdded) return@launch
             val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.item_poll, null)
             
             // Setup view
@@ -320,12 +344,21 @@ class ChatFragment : Fragment() {
     }
     
     private fun handleVote(pollId: String, optionId: String) {
+        if (!isAdded) return
         val profile = userProfile ?: return
+        val view = view ?: return
+        
         viewLifecycleOwner.lifecycleScope.launch {
+            if (!isAdded || view == null) return@launch
             try {
                 // Get poll to check if anonymous
                 val polls = pollsAdapter.currentList
-                val poll = polls.find { it.id == pollId } ?: return@launch
+                val poll = polls.find { it.id == pollId } ?: run {
+                    if (isAdded && view != null) {
+                        Snackbar.make(view, "Poll not found", Snackbar.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
                 
                 pollRepository.vote(
                     pollId = pollId,
@@ -334,12 +367,13 @@ class ChatFragment : Fragment() {
                     optionId = optionId,
                     isAnonymous = poll.isAnonymous
                 )
-                view?.let {
-                    Snackbar.make(it, R.string.vote_recorded, Snackbar.LENGTH_SHORT).show()
+                if (isAdded && view != null) {
+                    Snackbar.make(view, getString(R.string.vote_recorded), Snackbar.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                view?.let {
-                    Snackbar.make(it, "Error voting: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                android.util.Log.e("ChatFragment", "Error voting: ${e.message}", e)
+                if (isAdded && view != null) {
+                    Snackbar.make(view, "Error voting: ${e.message}", Snackbar.LENGTH_SHORT).show()
                 }
             }
         }
@@ -465,3 +499,4 @@ class ChatFragment : Fragment() {
         private const val ARG_CHAT_TYPE = "chatType"
     }
 }
+
