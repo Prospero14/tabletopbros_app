@@ -74,4 +74,29 @@ class CharacterRepository(
             .delete()
             .await()
     }
+
+    suspend fun copyCharacter(sourceUserId: String, sourceCharacterId: String): String {
+        val currentUserId = auth.currentUser?.uid ?: throw IllegalStateException("User not logged in")
+        
+        // Get source character
+        val sourceDoc = usersCollection.document(sourceUserId)
+            .collection("characters")
+            .document(sourceCharacterId)
+            .get()
+            .await()
+            
+        val sourceData = sourceDoc.data ?: throw IllegalStateException("Character not found")
+        
+        // Create new character for current user
+        val newDocRef = usersCollection.document(currentUserId).collection("characters").document()
+        
+        val newData = sourceData.toMutableMap()
+        newData["id"] = newDocRef.id
+        newData["userId"] = currentUserId
+        newData["createdAt"] = FieldValue.serverTimestamp()
+        newData["updatedAt"] = FieldValue.serverTimestamp()
+        
+        newDocRef.set(newData).await()
+        return newDocRef.id
+    }
 }

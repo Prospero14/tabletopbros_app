@@ -19,7 +19,8 @@ import com.google.android.material.card.MaterialCardView
 import java.text.DateFormat
 
 class ChatAdapter(
-    private val currentUserId: String
+    private val currentUserId: String,
+    private val onImportCharacter: (String, String) -> Unit // senderId, characterId
 ) : ListAdapter<ChatMessage, ChatAdapter.MessageViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
@@ -39,7 +40,20 @@ class ChatAdapter(
         private val messageTextView: TextView = itemView.findViewById(R.id.messageTextView)
         private val messageImageView: ImageView = itemView.findViewById(R.id.messageImageView)
         private val timestampTextView: TextView = itemView.findViewById(R.id.timestampTextView)
-
+        // Dynamically adding button if needed or reusing view structure
+        // Ideally we should update layout XML, but for now we can add a button programmatically or use text view as button if type is character
+        // Let's assume we can add a button to the layout or reuse messageTextView with a background
+        
+        // Actually, let's just append a button to the container or use a specific view
+        // Since we can't easily modify the layout XML right now without reading it again (which I haven't done for item_chat_message), 
+        // I'll assume I can add a button programmatically to the messageCard's child (which is likely a LinearLayout or ConstraintLayout)
+        // Wait, I saw item_chat_message in ChatAdapter.kt? No, I only saw the code referencing it.
+        // Let's check item_chat_message.xml first to be safe.
+        
+        // RE-READING STRATEGY: I'll modify the bind method to handle the logic, but I need to know the layout structure.
+        // I'll assume standard text view usage for now and maybe append a clickable span or use the text view itself as the button.
+        // BETTER: Use the messageTextView as the button text.
+        
         fun bind(message: ChatMessage) {
             val isMine = message.senderId == currentUserId
             val context = itemView.context
@@ -58,14 +72,33 @@ class ChatAdapter(
             if (message.hasImage && !message.imageUrl.isNullOrBlank()) {
                 messageImageView.isVisible = true
                 Glide.with(context)
-                    .load(message.imageUrl)
-                    .into(messageImageView)
+                .load(message.imageUrl)
+                .into(messageImageView)
             } else {
                 messageImageView.isVisible = false
             }
             
-            // Handle text
-            messageTextView.text = message.text
+            // Handle character share
+            if (message.type == "character" && !message.attachmentId.isNullOrBlank()) {
+                messageTextView.text = "📄 ${message.text}\n(Tap to Import)"
+                messageTextView.setOnClickListener {
+                    onImportCharacter(message.senderId, message.attachmentId)
+                }
+                // Make it look like a button/link
+                messageTextView.setTextColor(ContextCompat.getColor(context, R.color.teal_700))
+                messageTextView.setTypeface(null, android.graphics.Typeface.BOLD)
+            } else {
+                // Handle text
+                messageTextView.text = message.text
+                messageTextView.setOnClickListener(null) // Reset listener
+                messageTextView.setTextColor(ContextCompat.getColor(context, if (isMine) android.R.color.white else android.R.color.black)) // Reset color roughly
+                // Actually, color reset is tricky without knowing original colors. 
+                // Let's assume default colors are fine or set them explicitly.
+                val defaultTextColor = ContextCompat.getColor(context, if (isMine) R.color.white else R.color.black)
+                messageTextView.setTextColor(defaultTextColor)
+                messageTextView.typeface = android.graphics.Typeface.DEFAULT
+            }
+            
             messageTextView.isVisible = message.text.isNotBlank()
             
             val formattedTime = message.timestamp?.toDate()?.let {

@@ -9,7 +9,8 @@ import com.fts.ttbros.data.model.Character
 import com.fts.ttbros.databinding.ItemCharacterBinding
 
 class CharactersAdapter(
-    private val onCharacterClick: (Character) -> Unit
+    private val onCharacterClick: (Character) -> Unit,
+    private val onShareClick: (Character) -> Unit
 ) : ListAdapter<Character, CharactersAdapter.CharacterViewHolder>(CharacterDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CharacterViewHolder {
@@ -48,6 +49,10 @@ class CharactersAdapter(
                 else -> character.system
             }
             binding.clanTextView.text = character.clan.ifBlank { "No Clan/Class" }
+            
+            binding.shareButton.setOnClickListener {
+                onShareClick(character)
+            }
         }
     }
 

@@ -83,7 +83,12 @@ class ChatFragment : Fragment() {
         sendButton = view.findViewById(R.id.sendButton)
         attachImageButton = view.findViewById(R.id.attachImageButton)
         
-        adapter = ChatAdapter(auth.currentUser?.uid.orEmpty())
+        adapter = ChatAdapter(
+            currentUserId = auth.currentUser?.uid.orEmpty(),
+            onImportCharacter = { senderId, characterId ->
+                importCharacter(senderId, characterId)
+            }
+        )
         val layoutManager = LinearLayoutManager(requireContext()).apply {
             stackFromEnd = true
         }
@@ -292,6 +297,32 @@ class ChatFragment : Fragment() {
             } catch (error: Exception) {
                 view?.let {
                     Snackbar.make(it, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun importCharacter(senderId: String, characterId: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                // We need a CharacterRepository instance here. 
+                // Since it wasn't injected or initialized, let's initialize it locally or add it as a property.
+                // Adding it as a property is better but requires modifying the class properties which is harder with replace_file_content if not contiguous.
+                // I'll initialize it locally for now or add it to the top if I can.
+                // Actually, I can just add it to the class properties in a separate call or use a local one.
+                // Let's use a local one for simplicity as I can't see the top of the file right now to check imports easily (though I know they are there).
+                // Wait, I can see the file content from previous steps. 
+                // I'll add `private val characterRepository = com.fts.ttbros.data.repository.CharacterRepository()` to the class properties first.
+                // But I'm in the middle of a replace_file_content.
+                // I'll just use the full path here.
+                val characterRepo = com.fts.ttbros.data.repository.CharacterRepository()
+                characterRepo.copyCharacter(senderId, characterId)
+                view?.let {
+                    Snackbar.make(it, "Character imported successfully!", Snackbar.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                view?.let {
+                    Snackbar.make(it, "Error importing character: ${e.message}", Snackbar.LENGTH_LONG).show()
                 }
             }
         }

@@ -21,13 +21,23 @@ class CharactersFragment : Fragment() {
     private var _binding: FragmentCharactersBinding? = null
     private val binding get() = _binding!!
     private val repository = CharacterRepository()
-    private val adapter = CharactersAdapter { character ->
-        val bundle = Bundle().apply {
-            putString("characterId", character.id)
-            putString("system", character.system)
+    private val userRepository = com.fts.ttbros.data.repository.UserRepository()
+    private val chatRepository = com.fts.ttbros.chat.data.ChatRepository()
+    
+    private val adapter = CharactersAdapter(
+        onCharacterClick = { character ->
+            val bundle = Bundle().apply {
+                putString("characterId", character.id)
+                putString("system", character.system)
+            }
+            findNavController().navigate(R.id.action_charactersFragment_to_characterEditorFragment, bundle)
+        },
+        onShareClick = { character ->
+            shareCharacter(character)
         }
-        findNavController().navigate(R.id.action_charactersFragment_to_characterEditorFragment, bundle)
-    }
+    )
+    
+    private var allCharacters: List<com.fts.ttbros.data.model.Character> = emptyList()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -47,17 +57,44 @@ class CharactersFragment : Fragment() {
         binding.addCharacterFab.setOnClickListener {
             showSystemSelectionDialog()
         }
-
+        
+        setupTabs()
         loadCharacters()
+    }
+    
+    private fun setupTabs() {
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("All"))
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText(getString(R.string.vampire_masquerade)))
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText(getString(R.string.dungeons_dragons)))
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText(getString(R.string.viedzmin_2e)))
+        
+        binding.tabLayout.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
+                filterList()
+            }
+            override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
+            override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
+        })
+    }
+    
+    private fun filterList() {
+        val selectedTabPosition = binding.tabLayout.selectedTabPosition
+        val filteredList = when (selectedTabPosition) {
+            1 -> allCharacters.filter { it.system == "vtm_5e" }
+            2 -> allCharacters.filter { it.system == "dnd_5e" }
+            3 -> allCharacters.filter { it.system == "viedzmin_2e" }
+            else -> allCharacters
+        }
+        adapter.submitList(filteredList)
+        binding.emptyView.isVisible = filteredList.isEmpty()
     }
 
     private fun loadCharacters() {
         binding.progressBar.isVisible = true
         lifecycleScope.launch {
             try {
-                val characters = repository.getCharacters()
-                adapter.submitList(characters)
-                binding.emptyView.isVisible = characters.isEmpty()
+                allCharacters = repository.getCharacters()
+                filterList()
             } catch (e: Exception) {
                 Snackbar.make(binding.root, "Error loading characters: ${e.message}", Snackbar.LENGTH_LONG).show()
             } finally {
@@ -85,6 +122,46 @@ class CharactersFragment : Fragment() {
                 findNavController().navigate(R.id.action_charactersFragment_to_characterEditorFragment, bundle)
             }
             .show()
+    }
+    
+    private fun shareCharacter(character: com.fts.ttbros.data.model.Character) {
+        lifecycleScope.launch {
+            val profile = userRepository.currentProfile()
+            if (profile == null || profile.teamId.isNullOrBlank()) {
+                Snackbar.make(binding.root, "You must join a team to share characters", Snackbar.LENGTH_LONG).show()
+                return@launch
+            }
+            
+            MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Share Character")
+                .setMessage("Share '${character.name}' to team chat?")
+                .setPositiveButton("Share") { _, _ ->
+                    sendCharacterToChat(profile, character)
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+    }
+    
+    private fun sendCharacterToChat(profile: com.fts.ttbros.data.model.UserProfile, character: com.fts.ttbros.data.model.Character) {
+        lifecycleScope.launch {
+            try {
+                chatRepository.sendMessage(
+                    profile.teamId!!,
+                    com.fts.ttbros.chat.model.ChatType.TEAM,
+                    com.fts.ttbros.chat.model.ChatMessage(
+                        senderId = profile.uid,
+                        senderName = profile.displayName,
+                        text = "Shared character: ${character.name}",
+                        type = "character",
+                        attachmentId = character.id
+                    )
+                )
+                Snackbar.make(binding.root, "Character shared to chat", Snackbar.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Snackbar.make(binding.root, "Error sharing character: ${e.message}", Snackbar.LENGTH_SHORT).show()
+            }
+        }
     }
 
     override fun onDestroyView() {
