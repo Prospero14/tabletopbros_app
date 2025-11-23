@@ -173,8 +173,10 @@ class MainActivity : AppCompatActivity() {
                     val headerView = binding.navigationView.getHeaderView(0)
                     val avatarView = headerView.findViewById<ImageView>(R.id.navHeaderAvatar)
                     
-                    // Make circular
-                    val roundedBitmap = RoundedBitmapDrawableFactory.create(resources, bitmap)
+                    // Make circular and center crop
+                    val dimension = Math.min(bitmap.width, bitmap.height)
+                    val thumbnail = android.media.ThumbnailUtils.extractThumbnail(bitmap, dimension, dimension)
+                    val roundedBitmap = RoundedBitmapDrawableFactory.create(resources, thumbnail)
                     roundedBitmap.isCircular = true
                     avatarView.setImageDrawable(roundedBitmap)
                     
@@ -192,11 +194,16 @@ class MainActivity : AppCompatActivity() {
         // Email is hidden as requested
         
         val currentTeam = profile.teams.find { it.teamId == profile.currentTeamId }
-        val teamName = currentTeam?.teamName?.ifBlank { "Team ${currentTeam.teamCode}" } ?: "No Team Selected"
-        val role = currentTeam?.role?.name ?: "N/A"
+        val teamName = if (currentTeam != null) {
+             currentTeam.teamName.ifBlank { "Team ${currentTeam.teamCode}" }
+        } else {
+             "No Team Selected"
+        }
+        val role = currentTeam?.role?.name ?: ""
         
         headerView.findViewById<TextView>(R.id.navHeaderTeamName).text = teamName
         headerView.findViewById<TextView>(R.id.navHeaderRole).text = role
+        headerView.findViewById<TextView>(R.id.navHeaderRole).isVisible = role.isNotEmpty()
     }
 
     override fun onStart() {

@@ -28,9 +28,24 @@ class NotesFragment : Fragment() {
     private lateinit var emptyView: TextView
     private lateinit var addNoteFab: FloatingActionButton
     
-    private val notesAdapter = NotesAdapter()
+    private val notesAdapter = NotesAdapter { note, position ->
+        showAddNoteDialog(note, position)
+    }
     private val notes = mutableListOf<Note>()
     private var currentPhotoPath: String? = null
+
+    private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        if (isGranted) {
+            // Permission granted, proceed with camera
+            launchCamera()
+        } else {
+            com.google.android.material.snackbar.Snackbar.make(
+                requireView(),
+                "Camera permission required",
+                com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
+            ).show()
+        }
+    }
 
     private val takePictureLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -60,30 +75,46 @@ class NotesFragment : Fragment() {
         
         notesRecyclerView.adapter = notesAdapter
         addNoteFab.setOnClickListener {
-            showAddNoteDialog()
+            showAddNoteDialog(null, -1)
         }
         
         updateEmptyView()
     }
 
-    private fun showAddNoteDialog() {
+    private fun showAddNoteDialog(existingNote: Note?, position: Int) {
         val dialogView = layoutInflater.inflate(R.layout.dialog_add_note, null)
         val noteEditText = dialogView.findViewById<EditText>(R.id.noteEditText)
         val photoButton = dialogView.findViewById<com.google.android.material.button.MaterialButton>(R.id.photoButton)
         val photoPreview = dialogView.findViewById<ImageView>(R.id.photoPreview)
+
+        if (existingNote != null) {
+            noteEditText.setText(existingNote.text)
+            currentPhotoPath = existingNote.photoPath
+            if (currentPhotoPath != null && File(currentPhotoPath).exists()) {
+                val bitmap = BitmapFactory.decodeFile(currentPhotoPath)
+                photoPreview.setImageBitmap(bitmap)
+                photoPreview.isVisible = true
+            }
+        } else {
+            currentPhotoPath = null
+        }
 
         photoButton.setOnClickListener {
             takePhoto(photoPreview)
         }
 
         MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Новая заметка")
+            .setTitle(if (existingNote != null) "Редактировать заметку" else "Новая заметка")
             .setView(dialogView)
             .setPositiveButton("Сохранить") { _, _ ->
                 val text = noteEditText.text.toString()
                 if (text.isNotBlank()) {
                     val note = Note(text, currentPhotoPath)
-                    notes.add(note)
+                    if (existingNote != null && position != -1) {
+                        notes[position] = note
+                    } else {
+                        notes.add(note)
+                    }
                     notesAdapter.submitList(notes.toList())
                     currentPhotoPath = null
                     updateEmptyView()
@@ -94,6 +125,26 @@ class NotesFragment : Fragment() {
     }
 
     private fun takePhoto(preview: ImageView) {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+            return
+        }
+        launchCamera()
+        
+        // Show preview after taking photo with delay
+        preview.postDelayed({
+            currentPhotoPath?.let { path ->
+                val file = File(path)
+                if (file.exists()) {
+                    val bitmap = BitmapFactory.decodeFile(file.absolutePath)
+                    preview.setImageBitmap(bitmap)
+                    preview.isVisible = true
+                }
+            }
+        }, 1000)
+    }
+
+    private fun launchCamera() {
         try {
             val photoFile = File(requireContext().cacheDir, "note_${System.currentTimeMillis()}.jpg")
             currentPhotoPath = photoFile.absolutePath
@@ -110,18 +161,6 @@ class NotesFragment : Fragment() {
             }
 
             takePictureLauncher.launch(intent)
-            
-            // Show preview after taking photo with delay
-            preview.postDelayed({
-                currentPhotoPath?.let { path ->
-                    val file = File(path)
-                    if (file.exists()) {
-                        val bitmap = BitmapFactory.decodeFile(file.absolutePath)
-                        preview.setImageBitmap(bitmap)
-                        preview.isVisible = true
-                    }
-                }
-            }, 500)
         } catch (e: Exception) {
             android.util.Log.e("NotesFragment", "Error taking photo", e)
             com.google.android.material.snackbar.Snackbar.make(
@@ -138,7 +177,7 @@ class NotesFragment : Fragment() {
 
     data class Note(val text: String, val photoPath: String?)
 
-    class NotesAdapter : RecyclerView.Adapter<NotesAdapter.NoteViewHolder>() {
+    class NotesAdapter(private val onNoteClick: (Note, Int) -> Unit) : RecyclerView.Adapter<NotesAdapter.NoteViewHolder>() {
         private var notes: List<Note> = emptyList()
 
         fun submitList(newNotes: List<Note>) {
@@ -153,6 +192,9 @@ class NotesFragment : Fragment() {
 
         override fun onBindViewHolder(holder: NoteViewHolder, position: Int) {
             holder.bind(notes[position])
+            holder.itemView.setOnClickListener {
+                onNoteClick(notes[position], position)
+            }
         }
 
         override fun getItemCount() = notes.size

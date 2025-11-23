@@ -151,20 +151,16 @@ class FormAdapter(
             // Remove old listener to avoid duplicates
             binding.nameEditText.onFocusChangeListener = null
             
-            binding.nameEditText.setOnFocusChangeListener { _, hasFocus ->
-                if (!hasFocus) {
-                    val text = binding.nameEditText.text?.toString() ?: ""
-                    onValueChanged("discipline_name_${item.id}", text)
+            // Use doAfterTextChanged for immediate updates
+            binding.nameEditText.addTextChangedListener(object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                override fun afterTextChanged(s: android.text.Editable?) {
+                    if (binding.nameEditText.hasFocus()) {
+                        onValueChanged("discipline_name_${item.id}", s?.toString() ?: "")
+                    }
                 }
-            }
-            
-            // Also save on text change when not focused (for immediate updates)
-            binding.nameEditText.setOnEditorActionListener { _, _, _ ->
-                val text = binding.nameEditText.text?.toString() ?: ""
-                onValueChanged("discipline_name_${item.id}", text)
-                binding.nameEditText.clearFocus()
-                true
-            }
+            })
 
             updateDots(item.value)
             

@@ -8,10 +8,10 @@
     <color name="primary_dark">#512DA8</color>
     <color name="primary_light">#9575CD</color>
     
-    <!-- Secondary Colors (Soft Orange) -->
-    <color name="secondary">#FFB88C</color>
-    <color name="secondary_dark">#FF9A5C</color>
-    <color name="secondary_light">#FFD4B8</color>
+    <!-- Secondary Colors (Juicy Orange) -->
+    <color name="secondary">#FF6D00</color>
+    <color name="secondary_dark">#E65100</color>
+    <color name="secondary_light">#FF9E40</color>
     
     <!-- Accent Color (Warm Orange) -->
     <color name="accent">#FF9A5C</color>
