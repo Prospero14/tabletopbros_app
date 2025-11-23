@@ -35,7 +35,10 @@ class NotesFragment : Fragment() {
     private val takePictureLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             currentPhotoPath?.let { path ->
-                // Photo was taken, path is stored
+                val photoFile = File(path)
+                if (photoFile.exists()) {
+                    // Photo was taken successfully
+                }
             }
         }
     }
@@ -91,28 +94,41 @@ class NotesFragment : Fragment() {
     }
 
     private fun takePhoto(preview: ImageView) {
-        val photoFile = File(requireContext().cacheDir, "note_${System.currentTimeMillis()}.jpg")
-        currentPhotoPath = photoFile.absolutePath
-        
-        val photoUri = FileProvider.getUriForFile(
-            requireContext(),
-            "${requireContext().packageName}.fileprovider",
-            photoFile
-        )
+        try {
+            val photoFile = File(requireContext().cacheDir, "note_${System.currentTimeMillis()}.jpg")
+            currentPhotoPath = photoFile.absolutePath
+            
+            val photoUri = FileProvider.getUriForFile(
+                requireContext(),
+                "${requireContext().packageName}.fileprovider",
+                photoFile
+            )
 
-        val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
-            putExtra(MediaStore.EXTRA_OUTPUT, photoUri)
-        }
-
-        takePictureLauncher.launch(intent)
-        
-        // Show preview after taking photo
-        preview.post {
-            if (photoFile.exists()) {
-                val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
-                preview.setImageBitmap(bitmap)
-                preview.isVisible = true
+            val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                putExtra(MediaStore.EXTRA_OUTPUT, photoUri)
+                addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             }
+
+            takePictureLauncher.launch(intent)
+            
+            // Show preview after taking photo with delay
+            preview.postDelayed({
+                currentPhotoPath?.let { path ->
+                    val file = File(path)
+                    if (file.exists()) {
+                        val bitmap = BitmapFactory.decodeFile(file.absolutePath)
+                        preview.setImageBitmap(bitmap)
+                        preview.isVisible = true
+                    }
+                }
+            }, 500)
+        } catch (e: Exception) {
+            android.util.Log.e("NotesFragment", "Error taking photo", e)
+            com.google.android.material.snackbar.Snackbar.make(
+                requireView(),
+                "Ошибка при создании фото: ${e.message}",
+                com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
+            ).show()
         }
     }
 

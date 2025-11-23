@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Tabletop Bros Brand Colors - Based on Icon -->
+    <!-- Tabletop Bros Brand Colors - Soft Purple and Orange -->
     
-    <!-- Primary Colors (Orange-Red from dice/logo) -->
-    <color name="primary">#E64A19</color>
-    <color name="primary_dark">#BF360C</color>
-    <color name="primary_light">#FF7043</color>
+    <!-- Primary Colors (Soft Purple) -->
+    <color name="primary">#9C88FF</color>
+    <color name="primary_dark">#7B6FD6</color>
+    <color name="primary_light">#B8A9FF</color>
     
-    <!-- Secondary Colors (Complementary Blue-Teal) -->
-    <color name="secondary">#00897B</color>
-    <color name="secondary_dark">#00695C</color>
-    <color name="secondary_light">#4DB6AC</color>
+    <!-- Secondary Colors (Soft Orange) -->
+    <color name="secondary">#FFB88C</color>
+    <color name="secondary_dark">#FF9A5C</color>
+    <color name="secondary_light">#FFD4B8</color>
     
     <!-- Accent Color (Warm Orange) -->
-    <color name="accent">#FF6F00</color>
-    <color name="accent_light">#FFA726</color>
+    <color name="accent">#FF9A5C</color>
+    <color name="accent_light">#FFB88C</color>
     
     <!-- Background Colors -->
     <color name="background">#FAFAFA</color>

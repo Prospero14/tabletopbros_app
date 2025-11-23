@@ -4,6 +4,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.Gravity
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.ContextCompat
@@ -11,6 +12,7 @@ import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.fts.ttbros.R
 import com.fts.ttbros.chat.model.ChatMessage
 import com.google.android.material.card.MaterialCardView
@@ -35,6 +37,7 @@ class ChatAdapter(
         private val senderNameTextView: TextView = itemView.findViewById(R.id.senderNameTextView)
         private val messageCard: MaterialCardView = itemView.findViewById(R.id.messageCard)
         private val messageTextView: TextView = itemView.findViewById(R.id.messageTextView)
+        private val messageImageView: ImageView = itemView.findViewById(R.id.messageImageView)
         private val timestampTextView: TextView = itemView.findViewById(R.id.timestampTextView)
 
         fun bind(message: ChatMessage) {
@@ -50,7 +53,21 @@ class ChatAdapter(
                 ContextCompat.getColor(context, android.R.color.white)
             }
             messageCard.setCardBackgroundColor(bubbleColor)
+            
+            // Handle image
+            if (message.hasImage && !message.imageUrl.isNullOrBlank()) {
+                messageImageView.isVisible = true
+                Glide.with(context)
+                    .load(message.imageUrl)
+                    .into(messageImageView)
+            } else {
+                messageImageView.isVisible = false
+            }
+            
+            // Handle text
             messageTextView.text = message.text
+            messageTextView.isVisible = message.text.isNotBlank()
+            
             val formattedTime = message.timestamp?.toDate()?.let {
                 DateFormat.getTimeInstance(DateFormat.SHORT).format(it)
             } ?: ""

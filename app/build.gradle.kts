@@ -56,15 +56,18 @@ dependencies {
     implementation("androidx.navigation:navigation-ui-ktx:2.7.7")
 
     // Используем более старую версию Firebase BOM, которая не тянет Java 21 зависимости
-    implementation(platform("com.google.firebase:firebase-bom:31.2.2"))
-    implementation("com.google.firebase:firebase-auth-ktx")
-    implementation("com.google.firebase:firebase-firestore-ktx")
-    implementation("com.google.firebase:firebase-database-ktx")
+        implementation(platform("com.google.firebase:firebase-bom:31.2.2"))
+        implementation("com.google.firebase:firebase-auth-ktx")
+        implementation("com.google.firebase:firebase-firestore-ktx")
+        implementation("com.google.firebase:firebase-database-ktx")
+        implementation("com.google.firebase:firebase-storage-ktx")
 
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.4")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+        implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
+        implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.4")
+        
+        implementation("com.github.bumptech.glide:glide:4.16.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

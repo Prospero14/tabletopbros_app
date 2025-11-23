@@ -7,9 +7,13 @@ data class ChatMessage(
     val senderId: String = "",
     val senderName: String = "",
     val text: String = "",
+    val imageUrl: String? = null,
     val timestamp: Timestamp? = null
 ) {
     val formattedTime: String
         get() = timestamp?.toDate()?.toString().orEmpty()
+    
+    val hasImage: Boolean
+        get() = !imageUrl.isNullOrBlank()
 }
 

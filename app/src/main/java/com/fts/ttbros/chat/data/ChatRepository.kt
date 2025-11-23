@@ -34,6 +34,7 @@ class ChatRepository(
                         senderId = doc.getString(FIELD_SENDER_ID).orEmpty(),
                         senderName = doc.getString(FIELD_SENDER_NAME).orEmpty(),
                         text = doc.getString(FIELD_TEXT).orEmpty(),
+                        imageUrl = doc.getString(FIELD_IMAGE_URL),
                         timestamp = doc.getTimestamp(FIELD_TIMESTAMP) ?: Timestamp.now()
                     )
                 }.orEmpty()
@@ -42,14 +43,16 @@ class ChatRepository(
     }
 
     suspend fun sendMessage(teamId: String, chatType: ChatType, message: ChatMessage) {
-        messagesCollection(teamId, chatType).add(
-            mapOf(
-                FIELD_SENDER_ID to message.senderId,
-                FIELD_SENDER_NAME to message.senderName,
-                FIELD_TEXT to message.text,
-                FIELD_TIMESTAMP to FieldValue.serverTimestamp()
-            )
-        ).await()
+        val data = mutableMapOf<String, Any>(
+            FIELD_SENDER_ID to message.senderId,
+            FIELD_SENDER_NAME to message.senderName,
+            FIELD_TEXT to message.text,
+            FIELD_TIMESTAMP to FieldValue.serverTimestamp()
+        )
+        message.imageUrl?.let {
+            data[FIELD_IMAGE_URL] = it
+        }
+        messagesCollection(teamId, chatType).add(data).await()
     }
 
     private fun messagesCollection(teamId: String, chatType: ChatType) =
@@ -66,6 +69,7 @@ class ChatRepository(
         private const val FIELD_SENDER_ID = "senderId"
         private const val FIELD_SENDER_NAME = "senderName"
         private const val FIELD_TEXT = "text"
+        private const val FIELD_IMAGE_URL = "imageUrl"
         private const val FIELD_TIMESTAMP = "timestamp"
     }
 }

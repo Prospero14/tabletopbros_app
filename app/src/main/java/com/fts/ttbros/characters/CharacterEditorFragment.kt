@@ -63,22 +63,33 @@ class CharacterEditorFragment : Fragment() {
     }
 
     private fun updateDiscipline(key: String, value: Any) {
-        val currentList = (formData["disciplines"] as? List<*>)?.filterIsInstance<Map<String, Any>>()?.toMutableList() ?: return
+        val currentList = (formData["disciplines"] as? List<*>)?.filterIsInstance<Map<String, Any>>()?.toMutableList() ?: mutableListOf()
         
+        // Handle both formats: "discipline_name_${id}" and "discipline_value_${id}"
         val parts = key.split("_")
         if (parts.size < 3) return
+        
         val type = parts[1] // "name" or "value"
         val id = parts.drop(2).joinToString("_") // Rejoin in case ID has underscores
         
         val index = currentList.indexOfFirst { it["id"] == id }
         if (index != -1) {
             val item = currentList[index].toMutableMap()
-            item[type] = value
+            // Convert value to appropriate type
+            when (type) {
+                "name" -> item["name"] = value.toString()
+                "value" -> item["value"] = when (value) {
+                    is Number -> value.toInt()
+                    is String -> value.toIntOrNull() ?: 0
+                    else -> 0
+                }
+            }
             currentList[index] = item
             formData["disciplines"] = currentList
             android.util.Log.d("CharEditor", "Updated discipline: id=$id, type=$type, value=$value")
             android.util.Log.d("CharEditor", "Current disciplines: $currentList")
-            // No need to re-render for text updates to avoid focus loss
+        } else {
+            android.util.Log.w("CharEditor", "Discipline with id=$id not found in list")
         }
     }
 
@@ -103,7 +114,7 @@ class CharacterEditorFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         
         binding.toolbar.setNavigationOnClickListener {
-            (requireActivity() as MainActivity).openDrawer()
+            findNavController().navigateUp()
         }
 
         binding.formRecyclerView.layoutManager = LinearLayoutManager(requireContext())
@@ -200,6 +211,20 @@ class CharacterEditorFragment : Fragment() {
         val clan = formData["clan"] as? String ?: ""
         val concept = formData["concept"] as? String ?: ""
         
+        // Ensure disciplines are properly formatted before saving
+        val disciplines = (formData["disciplines"] as? List<*>)?.filterIsInstance<Map<String, Any>>()?.map { disc ->
+            mapOf(
+                "id" to (disc["id"] as? String ?: java.util.UUID.randomUUID().toString()),
+                "name" to (disc["name"] as? String ?: ""),
+                "value" to (when (val v = disc["value"]) {
+                    is Number -> v.toInt()
+                    is String -> v.toIntOrNull() ?: 0
+                    else -> 0
+                })
+            )
+        } ?: emptyList()
+        formData["disciplines"] = disciplines
+        
         lifecycleScope.launch {
             try {
                 android.util.Log.d("CharEditor", "Saving character with formData: $formData")
@@ -223,10 +248,11 @@ class CharacterEditorFragment : Fragment() {
                         concept = concept,
                         data = formData
                     )
-                    repository.createCharacter(newChar)
+                    val createdId = repository.createCharacter(newChar)
+                    characterId = createdId
                     showMessage("Character created")
                 }
-                findNavController().navigateUp()
+                // Don't navigate away - let user stay on editor
             } catch (e: Exception) {
                 showError("Error saving: ${e.message}")
             }

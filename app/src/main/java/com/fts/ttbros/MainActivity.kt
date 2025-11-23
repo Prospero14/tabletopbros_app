@@ -4,10 +4,17 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.view.View
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.drawable.RoundedBitmapDrawable
+import androidx.core.graphics.drawable.RoundedBitmapDrawableFactory
 import androidx.core.view.GravityCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
@@ -111,12 +118,69 @@ class MainActivity : AppCompatActivity() {
             binding.drawerLayout.closeDrawer(GravityCompat.END)
             showTeamSwitcherDialog()
         }
+        
+        val avatarView = headerView.findViewById<ImageView>(R.id.navHeaderAvatar)
+        avatarView.setOnClickListener {
+            binding.drawerLayout.closeDrawer(GravityCompat.END)
+            showAvatarMenu()
+        }
+    }
+    
+    private fun showAvatarMenu() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Аватар")
+            .setItems(arrayOf("Загрузить из галереи", "Удалить")) { _, which ->
+                when (which) {
+                    0 -> pickImageFromGallery()
+                    1 -> removeAvatar()
+                }
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+    
+    private fun pickImageFromGallery() {
+        val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
+        startActivityForResult(intent, REQUEST_CODE_PICK_IMAGE)
+    }
+    
+    private fun removeAvatar() {
+        val headerView = binding.navigationView.getHeaderView(0)
+        val avatarView = headerView.findViewById<ImageView>(R.id.navHeaderAvatar)
+        avatarView.setImageResource(android.R.drawable.sym_def_app_icon)
+        // TODO: Remove from storage if saved
+    }
+    
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_CODE_PICK_IMAGE && resultCode == RESULT_OK && data != null) {
+            val imageUri: Uri? = data.data
+            imageUri?.let {
+                try {
+                    val inputStream = contentResolver.openInputStream(it)
+                    val bitmap = BitmapFactory.decodeStream(inputStream)
+                    inputStream?.close()
+                    
+                    val headerView = binding.navigationView.getHeaderView(0)
+                    val avatarView = headerView.findViewById<ImageView>(R.id.navHeaderAvatar)
+                    
+                    // Make circular
+                    val roundedBitmap = RoundedBitmapDrawableFactory.create(resources, bitmap)
+                    roundedBitmap.isCircular = true
+                    avatarView.setImageDrawable(roundedBitmap)
+                    
+                    // TODO: Save to Firebase Storage
+                } catch (e: Exception) {
+                    Snackbar.make(binding.root, "Ошибка загрузки изображения", Snackbar.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
 
     private fun updateHeader(profile: UserProfile) {
         val headerView = binding.navigationView.getHeaderView(0)
         headerView.findViewById<TextView>(R.id.navHeaderUser).text = profile.displayName
-        headerView.findViewById<TextView>(R.id.navHeaderEmail).text = profile.email
+        // Email is hidden as requested
         
         val currentTeam = profile.teams.find { it.teamId == profile.currentTeamId }
         val teamName = currentTeam?.teamName?.ifBlank { "Team ${currentTeam.teamCode}" } ?: "No Team Selected"
@@ -322,19 +386,46 @@ class MainActivity : AppCompatActivity() {
         )
         val values = arrayOf("vtm_5e", "dnd_5e", "viedzmin_2e")
         var selectedIndex = 0
+        
+        // First dialog: select system
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.select_game_system)
             .setSingleChoiceItems(options, selectedIndex) { _, which ->
                 selectedIndex = which
             }
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                showTeamNameDialog(values[selectedIndex])
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+    
+    private fun showTeamNameDialog(system: String) {
+        val input = com.google.android.material.textfield.TextInputEditText(this)
+        input.hint = "Название команды"
+        
+        val container = android.widget.FrameLayout(this)
+        val params = android.widget.FrameLayout.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT, 
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        )
+        params.leftMargin = resources.getDimensionPixelSize(R.dimen.activity_horizontal_margin)
+        params.rightMargin = resources.getDimensionPixelSize(R.dimen.activity_horizontal_margin)
+        input.layoutParams = params
+        container.addView(input)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Название команды")
+            .setView(container)
             .setPositiveButton(R.string.create_new_group) { _, _ ->
-                createTeamWithSystem(values[selectedIndex])
+                val teamName = input.text?.toString()?.trim().orEmpty()
+                createTeamWithSystem(system, teamName)
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
-    private fun createTeamWithSystem(system: String) {
+    private fun createTeamWithSystem(system: String, teamName: String) {
         val user = auth.currentUser ?: run {
             navigateTo(LoginActivity::class.java)
             return
@@ -345,12 +436,15 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val team = teamRepository.createTeam(user, system)
-                userRepository.addTeam(team.id, team.code, UserRole.MASTER, team.system, "Team ${team.code}")
+                val finalTeamName = teamName.ifBlank { "Team ${team.code}" }
+                userRepository.addTeam(team.id, team.code, UserRole.MASTER, team.system, finalTeamName)
                 
                 binding.groupPromptPanel.isVisible = false
                 binding.groupCodeEditText.text?.clear()
                 refreshProfile()
-                showCodeDialog()
+                
+                // Show team switcher dialog instead of code dialog
+                showTeamSwitcherDialog()
             } catch (error: Exception) {
                 Snackbar.make(binding.root, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
             } finally {
@@ -363,5 +457,9 @@ class MainActivity : AppCompatActivity() {
 
     fun openDrawer() {
         binding.drawerLayout.openDrawer(GravityCompat.END)
+    }
+    
+    companion object {
+        private const val REQUEST_CODE_PICK_IMAGE = 1001
     }
 }

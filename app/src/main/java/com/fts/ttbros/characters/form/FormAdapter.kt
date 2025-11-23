@@ -148,10 +148,22 @@ class FormAdapter(
             binding.nameInputLayout.isEnabled = !readOnly
             binding.root.alpha = if (readOnly) 0.7f else 1.0f
 
+            // Remove old listener to avoid duplicates
+            binding.nameEditText.onFocusChangeListener = null
+            
             binding.nameEditText.setOnFocusChangeListener { _, hasFocus ->
                 if (!hasFocus) {
-                    onValueChanged("discipline_name_${item.id}", binding.nameEditText.text.toString())
+                    val text = binding.nameEditText.text?.toString() ?: ""
+                    onValueChanged("discipline_name_${item.id}", text)
                 }
+            }
+            
+            // Also save on text change when not focused (for immediate updates)
+            binding.nameEditText.setOnEditorActionListener { _, _, _ ->
+                val text = binding.nameEditText.text?.toString() ?: ""
+                onValueChanged("discipline_name_${item.id}", text)
+                binding.nameEditText.clearFocus()
+                true
             }
 
             updateDots(item.value)
