@@ -55,7 +55,11 @@
         android:label="Документы">
         <action
             android:id="@+id/action_documentsFragment_to_pdfViewerFragment"
-            app:destination="@id/pdfViewerFragment" />
+            app:destination="@id/pdfViewerFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
 
     <fragment
@@ -73,7 +77,11 @@
         android:label="Персонажи">
         <action
             android:id="@+id/action_charactersFragment_to_characterEditorFragment"
-            app:destination="@id/characterEditorFragment" />
+            app:destination="@id/characterEditorFragment"
+            app:enterAnim="@anim/slide_in_right"
+            app:exitAnim="@anim/slide_out_left"
+            app:popEnterAnim="@anim/slide_in_left"
+            app:popExitAnim="@anim/slide_out_right" />
     </fragment>
 
     <fragment

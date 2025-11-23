@@ -38,6 +38,8 @@ class PollOptionAdapter(
         private val optionCheckBox: com.google.android.material.checkbox.MaterialCheckBox = 
             itemView.findViewById(R.id.optionCheckBox)
         private val optionContainer: LinearLayout = itemView.findViewById(R.id.optionContainer)
+        private val cardView: com.google.android.material.card.MaterialCardView = 
+            itemView as com.google.android.material.card.MaterialCardView
 
         fun bind(option: PollOption) {
             optionTextTextView.text = option.text
@@ -51,14 +53,42 @@ class PollOptionAdapter(
                 0
             }
 
-            optionProgressBar.progress = percentage
-            optionVoteCountTextView.text = itemView.context.getString(
+            // Animate progress bar smoothly
+            android.animation.ObjectAnimator.ofInt(optionProgressBar, "progress", optionProgressBar.progress, percentage)
+                .setDuration(300)
+                .start()
+            
+            // Show percentage and vote count
+            val percentageText = if (totalVotes > 0) {
+                "$percentage%"
+            } else {
+                "0%"
+            }
+            optionVoteCountTextView.text = "$percentageText • ${itemView.context.getString(
                 R.string.poll_votes_count, votesForOption, totalVotes
-            )
+            )}"
 
             // Check if current user voted for this option
             val userVote = poll.votes[currentUserId]
-            optionCheckBox.isChecked = userVote == option.id
+            val isSelected = userVote == option.id
+            optionCheckBox.isChecked = isSelected
+
+            // Visual feedback for selected option
+            if (isSelected) {
+                // Highlight selected option
+                cardView.strokeColor = itemView.context.getColor(R.color.purple_500)
+                cardView.strokeWidth = 2
+                cardView.cardElevation = 4f
+                optionTextTextView.setTextColor(itemView.context.getColor(R.color.purple_500))
+                optionTextTextView.setTypeface(null, android.graphics.Typeface.BOLD)
+            } else {
+                // Normal state
+                cardView.strokeColor = itemView.context.getColor(android.R.color.transparent)
+                cardView.strokeWidth = 0
+                cardView.cardElevation = 2f
+                optionTextTextView.setTextColor(itemView.context.getColor(android.R.color.black))
+                optionTextTextView.setTypeface(null, android.graphics.Typeface.NORMAL)
+            }
 
             // Show voters for non-anonymous polls
             if (!poll.isAnonymous && votesForOption > 0) {
@@ -69,9 +99,9 @@ class PollOptionAdapter(
                 
                 if (voters.isNotEmpty()) {
                     val votersText = if (voters.size == votesForOption) {
-                        voters.joinToString(", ")
+                        "👤 ${voters.joinToString(", ")}"
                     } else {
-                        "${voters.joinToString(", ")} +${votesForOption - voters.size}"
+                        "👤 ${voters.joinToString(", ")} +${votesForOption - voters.size}"
                     }
                     optionVotersTextView.text = votersText
                     optionVotersTextView.isVisible = true
@@ -86,6 +116,19 @@ class PollOptionAdapter(
             optionContainer.setOnClickListener {
                 android.util.Log.d("PollOptionAdapter", "Option clicked: ${option.id}, userVote: $userVote")
                 if (userVote != option.id) {
+                    // Add visual feedback
+                    itemView.animate()
+                        .scaleX(0.95f)
+                        .scaleY(0.95f)
+                        .setDuration(100)
+                        .withEndAction {
+                            itemView.animate()
+                                .scaleX(1f)
+                                .scaleY(1f)
+                                .setDuration(100)
+                                .start()
+                        }
+                        .start()
                     onVote(option.id)
                 } else {
                     android.util.Log.d("PollOptionAdapter", "User already voted for this option")

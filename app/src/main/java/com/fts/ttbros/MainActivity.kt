@@ -17,6 +17,7 @@ import androidx.core.view.GravityCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
+import androidx.navigation.NavOptions
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.NavigationUI
@@ -93,15 +94,25 @@ class MainActivity : AppCompatActivity() {
                     // Always pop to root of characters tab to show list
                     try {
                         if (navController.currentDestination?.id != R.id.charactersFragment) {
-                            navController.popBackStack(R.id.charactersFragment, false)
-                            if (navController.currentDestination?.id != R.id.charactersFragment) {
-                                navController.navigate(R.id.charactersFragment)
-                            }
+                            val navOptions = NavOptions.Builder()
+                                .setEnterAnim(R.anim.slide_in_right)
+                                .setExitAnim(R.anim.slide_out_left)
+                                .setPopEnterAnim(R.anim.slide_in_left)
+                                .setPopExitAnim(R.anim.slide_out_right)
+                                .setPopUpTo(R.id.charactersFragment, false)
+                                .build()
+                            navController.navigate(R.id.charactersFragment, null, navOptions)
                         }
                     } catch (e: Exception) {
-                        // If navigation fails, try simple navigate
+                        // If navigation fails, try simple navigate with animations
                         try {
-                            navController.navigate(R.id.charactersFragment)
+                            val navOptions = androidx.navigation.NavOptions.Builder()
+                                .setEnterAnim(R.anim.slide_in_right)
+                                .setExitAnim(R.anim.slide_out_left)
+                                .setPopEnterAnim(R.anim.slide_in_left)
+                                .setPopExitAnim(R.anim.slide_out_right)
+                                .build()
+                            navController.navigate(R.id.charactersFragment, null, navOptions)
                         } catch (e2: Exception) {
                             android.util.Log.e("MainActivity", "Navigation error: ${e2.message}", e2)
                         }
@@ -110,9 +121,24 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 else -> {
-                    NavigationUI.onNavDestinationSelected(item, navController)
-                    binding.drawerLayout.closeDrawer(GravityCompat.END)
-                    true
+                    // Add smooth animations for menu transitions
+                    val navOptions = NavOptions.Builder()
+                        .setEnterAnim(R.anim.slide_in_right)
+                        .setExitAnim(R.anim.slide_out_left)
+                        .setPopEnterAnim(R.anim.slide_in_left)
+                        .setPopExitAnim(R.anim.slide_out_right)
+                        .build()
+                    
+                    try {
+                        navController.navigate(item.itemId, null, navOptions)
+                        binding.drawerLayout.closeDrawer(GravityCompat.END)
+                        true
+                    } catch (e: Exception) {
+                        android.util.Log.e("MainActivity", "Navigation error: ${e.message}", e)
+                        NavigationUI.onNavDestinationSelected(item, navController)
+                        binding.drawerLayout.closeDrawer(GravityCompat.END)
+                        true
+                    }
                 }
             }
         }

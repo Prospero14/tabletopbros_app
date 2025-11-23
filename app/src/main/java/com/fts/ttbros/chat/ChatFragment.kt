@@ -360,6 +360,35 @@ class ChatFragment : Fragment() {
         val profile = userProfile ?: return
         val view = view ?: return
         
+        // Optimistically update UI immediately
+        val currentPolls = pollsAdapter.currentList.toMutableList()
+        val pollIndex = currentPolls.indexOfFirst { it.id == pollId }
+        var originalPoll: Poll? = null
+        
+        if (pollIndex != -1) {
+            originalPoll = currentPolls[pollIndex]
+            // Create updated poll with new vote
+            val updatedVotes = originalPoll.votes.toMutableMap().apply {
+                put(profile.uid, optionId)
+            }
+            val updatedVoterNames = if (!originalPoll.isAnonymous) {
+                originalPoll.voterNames.toMutableMap().apply {
+                    put(profile.uid, profile.displayName.ifBlank { profile.email })
+                }
+            } else {
+                originalPoll.voterNames
+            }
+            
+            val updatedPoll = originalPoll.copy(
+                votes = updatedVotes,
+                voterNames = updatedVoterNames
+            )
+            
+            currentPolls[pollIndex] = updatedPoll
+            pollsAdapter.submitList(currentPolls)
+            android.util.Log.d("ChatFragment", "Optimistically updated poll UI - vote immediately visible")
+        }
+        
         viewLifecycleOwner.lifecycleScope.launch {
             if (!isAdded || view == null) return@launch
             try {
@@ -374,6 +403,12 @@ class ChatFragment : Fragment() {
                 
                 if (poll == null) {
                     android.util.Log.e("ChatFragment", "Poll not found: $pollId")
+                    // Revert optimistic update
+                    if (pollIndex != -1 && originalPoll != null) {
+                        val revertedPolls = pollsAdapter.currentList.toMutableList()
+                        revertedPolls[pollIndex] = originalPoll
+                        pollsAdapter.submitList(revertedPolls)
+                    }
                     view?.let {
                         Snackbar.make(it, "Poll not found", Snackbar.LENGTH_SHORT).show()
                     }
@@ -389,11 +424,19 @@ class ChatFragment : Fragment() {
                     optionId = optionId,
                     isAnonymous = poll.isAnonymous
                 )
+                // UI already updated optimistically, just show confirmation
                 view?.let {
                     Snackbar.make(it, getString(R.string.vote_recorded), Snackbar.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 android.util.Log.e("ChatFragment", "Error voting: ${e.message}", e)
+                // Revert optimistic update on error
+                if (pollIndex != -1 && originalPoll != null) {
+                    val revertedPolls = pollsAdapter.currentList.toMutableList()
+                    revertedPolls[pollIndex] = originalPoll
+                    pollsAdapter.submitList(revertedPolls)
+                    android.util.Log.d("ChatFragment", "Reverted optimistic update due to error")
+                }
                 view?.let {
                     Snackbar.make(it, "Error voting: ${e.message}", Snackbar.LENGTH_SHORT).show()
                 }
