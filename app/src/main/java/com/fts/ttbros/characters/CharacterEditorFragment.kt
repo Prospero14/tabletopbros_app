@@ -116,6 +116,7 @@ class CharacterEditorFragment : Fragment() {
         
         // Set navigation icon - toolbar will show default back arrow automatically
         // Navigation icon is handled by Navigation component
+        binding.toolbar.setNavigationIcon(R.drawable.ic_arrow_back)
         binding.toolbar.setNavigationOnClickListener {
             findNavController().popBackStack()
         }

@@ -87,6 +87,13 @@ class MainActivity : AppCompatActivity() {
                     logout()
                     true
                 }
+                R.id.charactersFragment -> {
+                    // Always pop to root of characters tab to show list
+                    navController.popBackStack(R.id.charactersFragment, true)
+                    navController.navigate(R.id.charactersFragment)
+                    binding.drawerLayout.closeDrawer(GravityCompat.END)
+                    true
+                }
                 else -> {
                     val currentId = navController.currentDestination?.id
                     if (currentId == item.itemId) {
@@ -141,6 +148,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
+            .setBackground(androidx.core.content.ContextCompat.getDrawable(this, R.drawable.bg_cloud_dialog))
             .show()
     }
     
@@ -255,6 +263,7 @@ class MainActivity : AppCompatActivity() {
                 dialog.dismiss()
             }
             .setNegativeButton(android.R.string.cancel, null)
+            .setBackground(androidx.core.content.ContextCompat.getDrawable(this, R.drawable.bg_cloud_dialog))
             .show()
     }
 
@@ -276,6 +285,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 dialog.dismiss()
             }
+            .setBackground(androidx.core.content.ContextCompat.getDrawable(this, R.drawable.bg_cloud_dialog))
             .show()
     }
 
