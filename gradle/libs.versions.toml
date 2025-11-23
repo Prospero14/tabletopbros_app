@@ -12,6 +12,12 @@ constraintlayout = "2.1.4"
 gms-google-services = "4.4.1"
 navigationFragmentKtx = "2.9.6"
 navigationUiKtx = "2.9.6"
+compose = "1.6.0"
+compose-compiler = "1.5.14"
+compose-bom = "2024.10.00"
+kotlinx-coroutines = "1.8.1"
+kotlinx-serialization = "1.7.0"
+kotlinx-datetime = "0.6.0"
 
 
 [libraries]
@@ -29,5 +35,8 @@ androidx-navigation-ui-ktx = { group = "androidx.navigation", name = "navigation
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 google-gms-google-services = { id = "com.google.gms.google-services", version.ref = "gms-google-services" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 
