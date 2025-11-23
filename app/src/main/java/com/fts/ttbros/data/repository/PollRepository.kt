@@ -69,19 +69,20 @@ class PollRepository {
     }
 
     suspend fun pinPoll(pollId: String, userId: String) {
-        pollsCollection.document(pollId).update(
+        val updates = mapOf<String, Any>(
             "isPinned" to true,
             "pinnedBy" to userId,
             "pinnedAt" to System.currentTimeMillis()
-        ).await()
+        )
+        pollsCollection.document(pollId).update(updates).await()
     }
 
     suspend fun unpinPoll(pollId: String) {
-        val updates = mapOf<String, Any>(
-            "isPinned" to false,
-            "pinnedBy" to FieldValue.delete(),
-            "pinnedAt" to FieldValue.delete()
+        val updates = mutableMapOf<String, Any>(
+            "isPinned" to false
         )
+        updates["pinnedBy"] = FieldValue.delete()
+        updates["pinnedAt"] = FieldValue.delete()
         pollsCollection.document(pollId).update(updates).await()
     }
 }

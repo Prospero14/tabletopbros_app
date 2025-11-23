@@ -70,20 +70,21 @@ class ChatRepository(
 
     suspend fun pinMessage(teamId: String, chatType: ChatType, messageId: String, userId: String) {
         val messageRef = messagesCollection(teamId, chatType).document(messageId)
-        messageRef.update(
+        val updates = mapOf<String, Any>(
             FIELD_IS_PINNED to true,
             FIELD_PINNED_BY to userId,
             FIELD_PINNED_AT to System.currentTimeMillis()
-        ).await()
+        )
+        messageRef.update(updates).await()
     }
 
     suspend fun unpinMessage(teamId: String, chatType: ChatType, messageId: String) {
         val messageRef = messagesCollection(teamId, chatType).document(messageId)
-        val updates = mapOf<String, Any>(
-            FIELD_IS_PINNED to false,
-            FIELD_PINNED_BY to FieldValue.delete(),
-            FIELD_PINNED_AT to FieldValue.delete()
+        val updates = mutableMapOf<String, Any>(
+            FIELD_IS_PINNED to false
         )
+        updates[FIELD_PINNED_BY] = FieldValue.delete()
+        updates[FIELD_PINNED_AT] = FieldValue.delete()
         messageRef.update(updates).await()
     }
 
