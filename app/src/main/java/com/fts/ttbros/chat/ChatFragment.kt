@@ -345,24 +345,28 @@ class ChatFragment : Fragment() {
                 if (isUpdating || !isAdded) return
                 isUpdating = true
                 try {
+                    // Create local copy to avoid smart cast issues in closure
+                    val pollCopy = currentPoll
                     val newAdapter = com.fts.ttbros.chat.ui.PollOptionAdapter(
-                        poll = currentPoll,
+                        poll = pollCopy,
                         currentUserId = profile.uid,
                         onVote = { optionId ->
                             if (!isAdded) return@PollOptionAdapter
-                            android.util.Log.d("ChatFragment", "Vote clicked in dialog for poll: ${currentPoll.id}, option: $optionId")
+                            // Use local copy inside closure to avoid smart cast issues
+                            val pollToUpdate = currentPoll
+                            android.util.Log.d("ChatFragment", "Vote clicked in dialog for poll: ${pollToUpdate.id}, option: $optionId")
                             // Optimistically update poll in dialog immediately
-                            val updatedVotes = currentPoll.votes.toMutableMap().apply {
+                            val updatedVotes = pollToUpdate.votes.toMutableMap().apply {
                                 put(profile.uid, optionId)
                             }
-                            val updatedVoterNames = if (!currentPoll.isAnonymous) {
-                                currentPoll.voterNames.toMutableMap().apply {
+                            val updatedVoterNames = if (!pollToUpdate.isAnonymous) {
+                                pollToUpdate.voterNames.toMutableMap().apply {
                                     put(profile.uid, profile.displayName.ifBlank { profile.email })
                                 }
                             } else {
-                                currentPoll.voterNames
+                                pollToUpdate.voterNames
                             }
-                            currentPoll = currentPoll.copy(
+                            currentPoll = pollToUpdate.copy(
                                 votes = updatedVotes,
                                 voterNames = updatedVoterNames
                             )
@@ -373,7 +377,7 @@ class ChatFragment : Fragment() {
                         }
                     )
                     optionsRecyclerView.adapter = newAdapter
-                    newAdapter.submitList(currentPoll.options)
+                    newAdapter.submitList(pollCopy.options)
                 } finally {
                     isUpdating = false
                 }
