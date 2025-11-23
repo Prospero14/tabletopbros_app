@@ -98,8 +98,8 @@ class CalendarFragment : Fragment() {
 
     private fun showCreateEventDialog() {
         lifecycleScope.launch {
-            val profile = userRepository.currentProfile()
-            val teamId = profile?.currentTeamId ?: profile?.teamId ?: return@launch
+            val profile = userRepository.currentProfile() ?: return@launch
+            val teamId = profile.currentTeamId ?: profile.teamId ?: return@launch
             val userName = profile.displayName
 
             val dialog = CreateEventDialog(requireContext()) { title, description, dateTime ->
