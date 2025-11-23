@@ -322,18 +322,19 @@ class ChatFragment : Fragment() {
             if (!isAdded) return@launch
             val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.item_poll, null)
             
-            // Setup view
+            // Setup view - poll is guaranteed to be non-null here
+            val nonNullPoll = poll ?: return@launch
             val questionTextView = dialogView.findViewById<TextView>(R.id.pollQuestionTextView)
             val creatorTextView = dialogView.findViewById<TextView>(R.id.pollCreatorTextView)
             val optionsRecyclerView = dialogView.findViewById<RecyclerView>(R.id.pollOptionsRecyclerView)
             val pinnedIcon = dialogView.findViewById<android.view.View>(R.id.pollPinnedIcon)
             
-            questionTextView.text = poll.question
-            creatorTextView.text = getString(R.string.created_by, poll.createdByName)
-            pinnedIcon.isVisible = poll.isPinned
+            questionTextView.text = nonNullPoll.question
+            creatorTextView.text = getString(R.string.created_by, nonNullPoll.createdByName)
+            pinnedIcon.isVisible = nonNullPoll.isPinned
             
-            var currentPoll = poll
-            var optionAdapter = com.fts.ttbros.chat.ui.PollOptionAdapter(
+            var currentPoll = nonNullPoll
+            var optionAdapter: com.fts.ttbros.chat.ui.PollOptionAdapter = com.fts.ttbros.chat.ui.PollOptionAdapter(
                 poll = currentPoll,
                 currentUserId = profile.uid,
                 onVote = { optionId ->
@@ -368,7 +369,7 @@ class ChatFragment : Fragment() {
             
             optionsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
             optionsRecyclerView.adapter = optionAdapter
-            optionAdapter.submitList(poll.options)
+            optionAdapter.submitList(nonNullPoll.options)
 
             com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                 .setView(dialogView)
