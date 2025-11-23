@@ -119,13 +119,15 @@ class ChatAdapter(
                         onPollClick?.invoke(message.attachmentId)
                     }
                 }
-                // Highlight poll messages with purple accent
-                val pollTextColor = ContextCompat.getColor(context, R.color.purple_500)
+                // Highlight poll messages with orange accent (like footer)
+                val pollTextColor = ContextCompat.getColor(context, R.color.secondary)
                 messageTextView.setTextColor(pollTextColor)
                 messageTextView.setTypeface(null, android.graphics.Typeface.BOLD)
-                // Add subtle border to message card for polls
-                messageCard.strokeWidth = 2
-                messageCard.strokeColor = ContextCompat.getColor(context, R.color.purple_500)
+                // Add bright orange border and semi-transparent orange background for polls
+                messageCard.strokeWidth = 3
+                messageCard.strokeColor = ContextCompat.getColor(context, R.color.secondary)
+                // Semi-transparent orange background
+                messageCard.setCardBackgroundColor(ContextCompat.getColor(context, R.color.poll_background))
             } else {
                 // Handle text
                 messageTextView.text = message.text

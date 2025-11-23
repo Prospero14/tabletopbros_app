@@ -58,4 +58,7 @@
     <!-- Chat message bubble colors - полупрозрачные и бледные -->
     <color name="chat_bubble_own">#80B39DDB</color>
     <color name="chat_bubble_other">#E0FFFFFF</color>
+    
+    <!-- Poll message colors -->
+    <color name="poll_background">#80FF9E40</color> <!-- Semi-transparent orange -->
 </resources>

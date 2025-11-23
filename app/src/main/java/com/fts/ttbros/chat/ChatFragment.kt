@@ -211,14 +211,21 @@ class ChatFragment : Fragment() {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 try {
                     pollRepository.getChatPolls(teamId, chatType.key).collect { polls ->
-                        if (!isAdded || view == null) return@collect
+                        // Check if fragment is still attached and view exists before updating UI
+                        if (!isAdded || view == null || !viewLifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                            return@collect
+                        }
                         android.util.Log.d("ChatFragment", "Loaded ${polls.size} polls for chatType: ${chatType.key}, teamId: $teamId")
                         pollsAdapter.submitList(polls)
                         // Show/hide polls RecyclerView based on whether there are polls
                         pollsRecyclerView?.isVisible = polls.isNotEmpty()
                     }
                 } catch (e: Exception) {
-                    if (!isAdded || view == null) return@repeatOnLifecycle
+                    // Only show error if fragment is still attached and view exists
+                    if (!isAdded || view == null || !viewLifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                        android.util.Log.w("ChatFragment", "Error loading polls but fragment not attached: ${e.message}")
+                        return@repeatOnLifecycle
+                    }
                     android.util.Log.e("ChatFragment", "Error loading polls: ${e.message}", e)
                     val errorMessage = if (e.message?.contains("index") == true || e.message?.contains("Index") == true) {
                         "Ошибка: требуется создать индекс в Firestore для опросов"
@@ -344,7 +351,10 @@ class ChatFragment : Fragment() {
             var isUpdating = false
             
             fun updateAdapter() {
-                if (isUpdating || !isAdded) return
+                // Check if fragment is still attached and view exists
+                if (isUpdating || !isAdded || view == null || !viewLifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                    return
+                }
                 isUpdating = true
                 try {
                     // Create local copy to avoid smart cast issues in closure
@@ -353,7 +363,10 @@ class ChatFragment : Fragment() {
                         poll = pollCopy,
                         currentUserId = profile.uid,
                         onVote = { optionId ->
-                            if (!isAdded) return@PollOptionAdapter
+                            // Check if fragment is still attached before processing vote
+                            if (!isAdded || view == null || !viewLifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                                return@PollOptionAdapter
+                            }
                             // Use local copy inside closure to avoid smart cast issues
                             val pollToUpdate: Poll = currentPoll
                             android.util.Log.d("ChatFragment", "Vote clicked in dialog for poll: ${pollToUpdate.id}, option: $optionId")
