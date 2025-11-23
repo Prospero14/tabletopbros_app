@@ -322,54 +322,51 @@ class ChatFragment : Fragment() {
             if (!isAdded) return@launch
             val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.item_poll, null)
             
-            // Setup view - poll is guaranteed to be non-null here
-            val nonNullPoll = poll ?: return@launch
+            // Setup view - poll is guaranteed to be non-null here (checked above)
             val questionTextView = dialogView.findViewById<TextView>(R.id.pollQuestionTextView)
             val creatorTextView = dialogView.findViewById<TextView>(R.id.pollCreatorTextView)
             val optionsRecyclerView = dialogView.findViewById<RecyclerView>(R.id.pollOptionsRecyclerView)
             val pinnedIcon = dialogView.findViewById<android.view.View>(R.id.pollPinnedIcon)
             
-            questionTextView.text = nonNullPoll.question
-            creatorTextView.text = getString(R.string.created_by, nonNullPoll.createdByName)
-            pinnedIcon.isVisible = nonNullPoll.isPinned
+            questionTextView.text = poll.question
+            creatorTextView.text = getString(R.string.created_by, poll.createdByName)
+            pinnedIcon.isVisible = poll.isPinned
             
-            var currentPoll = nonNullPoll
-            var optionAdapter: com.fts.ttbros.chat.ui.PollOptionAdapter = com.fts.ttbros.chat.ui.PollOptionAdapter(
-                poll = currentPoll,
-                currentUserId = profile.uid,
-                onVote = { optionId ->
-                    android.util.Log.d("ChatFragment", "Vote clicked in dialog for poll: ${currentPoll.id}, option: $optionId")
-                    // Optimistically update poll in dialog immediately
-                    val updatedVotes = currentPoll.votes.toMutableMap().apply {
-                        put(profile.uid, optionId)
-                    }
-                    val updatedVoterNames = if (!currentPoll.isAnonymous) {
-                        currentPoll.voterNames.toMutableMap().apply {
-                            put(profile.uid, profile.displayName.ifBlank { profile.email })
+            var currentPoll = poll
+            
+            fun updateAdapter() {
+                val newAdapter = com.fts.ttbros.chat.ui.PollOptionAdapter(
+                    poll = currentPoll,
+                    currentUserId = profile.uid,
+                    onVote = { optionId ->
+                        android.util.Log.d("ChatFragment", "Vote clicked in dialog for poll: ${currentPoll.id}, option: $optionId")
+                        // Optimistically update poll in dialog immediately
+                        val updatedVotes = currentPoll.votes.toMutableMap().apply {
+                            put(profile.uid, optionId)
                         }
-                    } else {
-                        currentPoll.voterNames
+                        val updatedVoterNames = if (!currentPoll.isAnonymous) {
+                            currentPoll.voterNames.toMutableMap().apply {
+                                put(profile.uid, profile.displayName.ifBlank { profile.email })
+                            }
+                        } else {
+                            currentPoll.voterNames
+                        }
+                        currentPoll = currentPoll.copy(
+                            votes = updatedVotes,
+                            voterNames = updatedVoterNames
+                        )
+                        // Update adapter with new poll data to show vote immediately
+                        updateAdapter()
+                        // Also update in main list
+                        handleVote(currentPoll.id, optionId)
                     }
-                    currentPoll = currentPoll.copy(
-                        votes = updatedVotes,
-                        voterNames = updatedVoterNames
-                    )
-                    // Recreate adapter with updated poll to show vote immediately
-                    optionAdapter = com.fts.ttbros.chat.ui.PollOptionAdapter(
-                        poll = currentPoll,
-                        currentUserId = profile.uid,
-                        onVote = { /* Already voted */ }
-                    )
-                    optionsRecyclerView.adapter = optionAdapter
-                    optionAdapter.submitList(currentPoll.options)
-                    // Also update in main list
-                    handleVote(currentPoll.id, optionId)
-                }
-            )
+                )
+                optionsRecyclerView.adapter = newAdapter
+                newAdapter.submitList(currentPoll.options)
+            }
             
             optionsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
-            optionsRecyclerView.adapter = optionAdapter
-            optionAdapter.submitList(nonNullPoll.options)
+            updateAdapter()
 
             com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                 .setView(dialogView)
