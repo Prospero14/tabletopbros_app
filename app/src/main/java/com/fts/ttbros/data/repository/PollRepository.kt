@@ -27,11 +27,18 @@ class PollRepository {
             .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    close(error)
+                    // Log error but don't close - try to continue
+                    android.util.Log.e("PollRepository", "Error loading polls: ${error.message}", error)
+                    trySend(emptyList())
                     return@addSnapshotListener
                 }
                 val polls = snapshot?.documents?.mapNotNull { doc ->
-                    doc.toObject(Poll::class.java)
+                    try {
+                        doc.toObject(Poll::class.java)
+                    } catch (e: Exception) {
+                        android.util.Log.e("PollRepository", "Error parsing poll ${doc.id}: ${e.message}", e)
+                        null
+                    }
                 }?.sortedWith(compareBy<Poll>(
                     { !it.isPinned }, // Pinned first
                     { if (it.isPinned) -(it.pinnedAt ?: 0L) else -it.createdAt } // Most recent first within each group

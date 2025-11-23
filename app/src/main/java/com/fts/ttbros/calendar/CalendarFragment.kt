@@ -70,7 +70,7 @@ class CalendarFragment : Fragment() {
         lifecycleScope.launch {
             try {
                 val profile = userRepository.currentProfile()
-                val teamId = profile?.currentTeamId ?: return@launch
+                val teamId = profile?.currentTeamId ?: profile?.teamId ?: return@launch
 
                 eventRepository.getTeamEvents(teamId).collect { events ->
                     progressIndicator.isVisible = false
@@ -85,7 +85,13 @@ class CalendarFragment : Fragment() {
                 }
             } catch (e: Exception) {
                 progressIndicator.isVisible = false
-                Snackbar.make(requireView(), "Error loading events: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                android.util.Log.e("CalendarFragment", "Error loading events: ${e.message}", e)
+                val errorMessage = if (e.message?.contains("index") == true) {
+                    "Ошибка: требуется создать индекс в Firestore. См. FIRESTORE_INDEXES_SETUP.md"
+                } else {
+                    "Ошибка загрузки событий: ${e.message}"
+                }
+                Snackbar.make(requireView(), errorMessage, Snackbar.LENGTH_LONG).show()
             }
         }
     }
@@ -93,7 +99,7 @@ class CalendarFragment : Fragment() {
     private fun showCreateEventDialog() {
         lifecycleScope.launch {
             val profile = userRepository.currentProfile()
-            val teamId = profile?.currentTeamId ?: return@launch
+            val teamId = profile?.currentTeamId ?: profile?.teamId ?: return@launch
             val userName = profile.displayName
 
             val dialog = CreateEventDialog(requireContext()) { title, description, dateTime ->

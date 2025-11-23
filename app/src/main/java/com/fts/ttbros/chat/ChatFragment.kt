@@ -178,10 +178,12 @@ class ChatFragment : Fragment() {
             try {
                 pollRepository.getChatPolls(teamId, chatType.key).collect { polls ->
                     pollsAdapter.submitList(polls)
+                    android.util.Log.d("ChatFragment", "Loaded ${polls.size} polls for chatType: ${chatType.key}")
                 }
             } catch (e: Exception) {
+                android.util.Log.e("ChatFragment", "Error loading polls: ${e.message}", e)
                 view?.let {
-                    Snackbar.make(it, "Error loading polls: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                    Snackbar.make(it, "Ошибка загрузки опросов: ${e.message}", Snackbar.LENGTH_SHORT).show()
                 }
             }
         }

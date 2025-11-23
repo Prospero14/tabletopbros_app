@@ -26,11 +26,18 @@ class EventRepository {
             .orderBy("dateTime", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    close(error)
+                    // Log error but don't close - try to continue
+                    android.util.Log.e("EventRepository", "Error loading events: ${error.message}", error)
+                    trySend(emptyList())
                     return@addSnapshotListener
                 }
                 val events = snapshot?.documents?.mapNotNull { doc ->
-                    doc.toObject(Event::class.java)
+                    try {
+                        doc.toObject(Event::class.java)
+                    } catch (e: Exception) {
+                        android.util.Log.e("EventRepository", "Error parsing event ${doc.id}: ${e.message}", e)
+                        null
+                    }
                 } ?: emptyList()
                 trySend(events)
             }
