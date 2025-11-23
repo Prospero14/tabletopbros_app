@@ -66,8 +66,9 @@ class ChatAdapter(
             messageContainer.gravity = if (isMine) Gravity.END else Gravity.START
             
             // Sender Name Visibility
-            senderNameTextView.isVisible = !isMine
-            senderNameTextView.text = message.senderName
+            // User requested sender name before time.
+            senderNameTextView.isVisible = true // Always show name
+            senderNameTextView.text = if (isMine) "Me" else message.senderName.ifBlank { "Unknown" }
             // Use a visible color
             senderNameTextView.setTextColor(ContextCompat.getColor(context, R.color.gray_600))
 
@@ -111,7 +112,7 @@ class ChatAdapter(
                 messageTextView.setTypeface(null, android.graphics.Typeface.BOLD)
             } else if (message.type == "poll" && !message.attachmentId.isNullOrBlank()) {
                 // Handle poll
-                messageTextView.text = "📊 Poll: ${message.text}\n(Tap to Vote)"
+                messageTextView.text = "📊 POLL\n${message.text}\n\n👉 Tap to Vote"
                 messageTextView.setOnClickListener {
                     onPollClick?.invoke(message.attachmentId)
                 }
