@@ -30,12 +30,13 @@
             android:text="Player Name"
             android:textAppearance="?attr/textAppearanceSubtitle1" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/charSheetButton"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        <TextView
+            android:id="@+id/systemTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Чарник" />
+            android:text="System"
+            android:textAppearance="?attr/textAppearanceCaption"
+            android:textColor="?android:attr/textColorSecondary" />
 
     </LinearLayout>
 

@@ -123,7 +123,14 @@ class CharacterEditorFragment : Fragment() {
         binding.formRecyclerView.adapter = adapter
         
         binding.saveButton.setOnClickListener {
+            // Force focus clear to ensure last edit is captured
+            val currentFocus = activity?.currentFocus
+            currentFocus?.clearFocus()
             saveCharacter()
+        }
+        
+        binding.toolbar.findViewById<View>(R.id.backButton)?.setOnClickListener {
+            findNavController().popBackStack()
         }
         
         // Mode Switch
@@ -240,7 +247,13 @@ class CharacterEditorFragment : Fragment() {
                         "concept" to concept,
                         "data" to formData
                     ))
-                    showMessage("Character updated")
+                    repository.updateCharacter(characterId!!, mapOf(
+                        "name" to name,
+                        "clan" to clan,
+                        "concept" to concept,
+                        "data" to formData
+                    ))
+                    showMessage("Персонаж сохранен")
                 } else {
                     // Create
                     val newChar = Character(

@@ -220,7 +220,11 @@ class MainActivity : AppCompatActivity() {
                     return@launch
                 }
                 userProfile = profile
-                updateHeader(profile)
+                try {
+                    updateHeader(profile)
+                } catch (e: Exception) {
+                    android.util.Log.e("MainActivity", "Error updating header: ${e.message}", e)
+                }
 
                 if (profile.teams.isEmpty()) {
                     binding.groupPromptPanel.isVisible = true
