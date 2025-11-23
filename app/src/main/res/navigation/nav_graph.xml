@@ -2,11 +2,11 @@
 <navigation xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/characterFragment">
+    app:startDestination="@id/teamsFragment">
 
     <fragment
-        android:id="@+id/characterFragment"
-        android:name="com.fts.ttbros.character.CharacterFragment"
+        android:id="@+id/teamsFragment"
+        android:name="com.fts.ttbros.character.TeamsFragment"
         android:label="@string/app_name" />
 
     <fragment

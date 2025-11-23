@@ -132,23 +132,35 @@ class CharactersFragment : Fragment() {
                 return@launch
             }
             
+            val role = profile.role
+            val masterPlayerLabel = if (role == com.fts.ttbros.data.model.UserRole.MASTER) "Player Chat" else "Master Chat"
+            
+            val options = arrayOf("Team Chat", masterPlayerLabel)
+            
             MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Share Character")
-                .setMessage("Share '${character.name}' to team chat?")
-                .setPositiveButton("Share") { _, _ ->
-                    sendCharacterToChat(profile, character)
+                .setTitle("Share '${character.name}' to...")
+                .setItems(options) { _, which ->
+                    val chatType = when (which) {
+                        0 -> com.fts.ttbros.chat.model.ChatType.TEAM
+                        1 -> com.fts.ttbros.chat.model.ChatType.MASTER_PLAYER
+                        else -> com.fts.ttbros.chat.model.ChatType.TEAM
+                    }
+                    sendCharacterToChat(profile, character, chatType)
                 }
-                .setNegativeButton("Cancel", null)
                 .show()
         }
     }
     
-    private fun sendCharacterToChat(profile: com.fts.ttbros.data.model.UserProfile, character: com.fts.ttbros.data.model.Character) {
+    private fun sendCharacterToChat(
+        profile: com.fts.ttbros.data.model.UserProfile, 
+        character: com.fts.ttbros.data.model.Character,
+        chatType: com.fts.ttbros.chat.model.ChatType
+    ) {
         lifecycleScope.launch {
             try {
                 chatRepository.sendMessage(
                     profile.teamId!!,
-                    com.fts.ttbros.chat.model.ChatType.TEAM,
+                    chatType,
                     com.fts.ttbros.chat.model.ChatMessage(
                         senderId = profile.uid,
                         senderName = profile.displayName,
@@ -157,7 +169,7 @@ class CharactersFragment : Fragment() {
                         attachmentId = character.id
                     )
                 )
-                Snackbar.make(binding.root, "Character shared to chat", Snackbar.LENGTH_SHORT).show()
+                Snackbar.make(binding.root, "Character shared to ${chatType.name.lowercase().replace("_", " ")}", Snackbar.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Snackbar.make(binding.root, "Error sharing character: ${e.message}", Snackbar.LENGTH_SHORT).show()
             }

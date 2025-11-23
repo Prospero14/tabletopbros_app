@@ -41,11 +41,11 @@
 
     <ImageButton
         android:id="@+id/shareButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_gravity="end|top"
         android:background="?attr/selectableItemBackgroundBorderless"
-        android:padding="16dp"
+        android:padding="12dp"
         android:src="@drawable/ic_share"
         app:tint="?attr/colorControlNormal"
         android:contentDescription="Share Character" />

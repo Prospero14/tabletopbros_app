@@ -3,7 +3,7 @@
 
     <group android:checkableBehavior="single">
         <item
-            android:id="@+id/characterFragment"
+            android:id="@+id/teamsFragment"
             android:icon="@android:drawable/ic_menu_myplaces"
             android:title="@string/menu_character" />
         <item

@@ -57,7 +57,7 @@ class MainActivity : AppCompatActivity() {
 
         appBarConfiguration = AppBarConfiguration(
             setOf(
-                R.id.characterFragment,
+                R.id.teamsFragment,
                 R.id.teamChatFragment,
                 R.id.announcementChatFragment,
                 R.id.masterPlayerChatFragment,
