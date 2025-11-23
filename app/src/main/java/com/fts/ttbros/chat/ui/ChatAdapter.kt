@@ -20,7 +20,9 @@ import java.text.DateFormat
 
 class ChatAdapter(
     private val currentUserId: String,
-    private val onImportCharacter: (String, String) -> Unit // senderId, characterId
+    private val onImportCharacter: (String, String) -> Unit, // senderId, characterId
+    private val onPinMessage: ((String) -> Unit)? = null,
+    private val onUnpinMessage: ((String) -> Unit)? = null
 ) : ListAdapter<ChatMessage, ChatAdapter.MessageViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
@@ -40,6 +42,7 @@ class ChatAdapter(
         private val messageTextView: TextView = itemView.findViewById(R.id.messageTextView)
         private val messageImageView: ImageView = itemView.findViewById(R.id.messageImageView)
         private val timestampTextView: TextView = itemView.findViewById(R.id.timestampTextView)
+        private val pinnedIcon: ImageView = itemView.findViewById(R.id.pinnedIcon)
         // Dynamically adding button if needed or reusing view structure
         // Ideally we should update layout XML, but for now we can add a button programmatically or use text view as button if type is character
         // Let's assume we can add a button to the layout or reuse messageTextView with a background
@@ -105,6 +108,19 @@ class ChatAdapter(
                 DateFormat.getTimeInstance(DateFormat.SHORT).format(it)
             } ?: ""
             timestampTextView.text = formattedTime
+
+            // Show pinned indicator
+            pinnedIcon.isVisible = message.isPinned
+
+            // Add long click listener for pin/unpin
+            messageCard.setOnLongClickListener {
+                if (message.isPinned) {
+                    onUnpinMessage?.invoke(message.id)
+                } else {
+                    onPinMessage?.invoke(message.id)
+                }
+                true
+            }
         }
     }
 

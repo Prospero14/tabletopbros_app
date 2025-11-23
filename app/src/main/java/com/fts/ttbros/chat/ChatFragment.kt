@@ -27,6 +27,7 @@ import com.fts.ttbros.data.model.UserProfile
 import com.fts.ttbros.data.model.UserRole
 import com.fts.ttbros.data.repository.UserRepository
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collect
 
 class ChatFragment : Fragment() {
 
@@ -35,14 +36,17 @@ class ChatFragment : Fragment() {
     private lateinit var messageInputContainer: LinearLayout
     private lateinit var messageEditText: TextInputEditText
     private lateinit var sendButton: MaterialButton
+    private lateinit var createPollButton: MaterialButton
     
     private val chatRepository = ChatRepository()
     private val userRepository = UserRepository()
+    private val pollRepository = com.fts.ttbros.data.repository.PollRepository()
     private val auth by lazy { Firebase.auth }
     private var listenerRegistration: com.google.firebase.firestore.ListenerRegistration? = null
     private var userProfile: UserProfile? = null
     private lateinit var chatType: ChatType
     private lateinit var adapter: ChatAdapter
+    private lateinit var pollsAdapter: com.fts.ttbros.chat.ui.PollAdapter
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,11 +69,18 @@ class ChatFragment : Fragment() {
         messageInputContainer = view.findViewById(R.id.messageInputContainer)
         messageEditText = view.findViewById(R.id.messageEditText)
         sendButton = view.findViewById(R.id.sendButton)
+        createPollButton = view.findViewById(R.id.createPollButton)
         
         adapter = ChatAdapter(
             currentUserId = auth.currentUser?.uid.orEmpty(),
             onImportCharacter = { senderId, characterId ->
                 importCharacter(senderId, characterId)
+            },
+            onPinMessage = { messageId ->
+                handlePinMessage(messageId)
+            },
+            onUnpinMessage = { messageId ->
+                handleUnpinMessage(messageId)
             }
         )
         val layoutManager = LinearLayoutManager(requireContext()).apply {
@@ -78,7 +89,26 @@ class ChatFragment : Fragment() {
         messagesRecyclerView.layoutManager = layoutManager
         messagesRecyclerView.adapter = adapter
 
+        // Setup polls RecyclerView
+        val pollsRecyclerView: RecyclerView = view.findViewById(R.id.pollsRecyclerView)
+        pollsAdapter = com.fts.ttbros.chat.ui.PollAdapter(
+            currentUserId = auth.currentUser?.uid.orEmpty(),
+            currentUserName = auth.currentUser?.displayName ?: auth.currentUser?.email ?: "",
+            onVote = { pollId, optionId ->
+                handleVote(pollId, optionId)
+            },
+            onPinPoll = { pollId ->
+                handlePinPoll(pollId)
+            },
+            onUnpinPoll = { pollId ->
+                handleUnpinPoll(pollId)
+            }
+        )
+        pollsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+        pollsRecyclerView.adapter = pollsAdapter
+
         sendButton.setOnClickListener { sendMessage() }
+        createPollButton.setOnClickListener { showCreatePollDialog() }
         observeProfile()
     }
 
@@ -114,6 +144,7 @@ class ChatFragment : Fragment() {
             messageInputContainer.isVisible = true
             sendButton.isEnabled = canSend
             messageEditText.isEnabled = canSend
+            createPollButton.isEnabled = canSend
         }
     }
 
@@ -137,6 +168,140 @@ class ChatFragment : Fragment() {
                 }
             }
         )
+        
+        // Subscribe to polls
+        subscribeToPolls(teamId)
+    }
+    
+    private fun subscribeToPolls(teamId: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                pollRepository.getChatPolls(teamId, chatType.key).collect { polls ->
+                    pollsAdapter.submitList(polls)
+                }
+            } catch (e: Exception) {
+                view?.let {
+                    Snackbar.make(it, "Error loading polls: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    
+    private fun showCreatePollDialog() {
+        val profile = userProfile ?: return
+        val teamId = profile.teamId ?: return
+        
+        CreatePollDialog(requireContext()) { question, options, isAnonymous ->
+            viewLifecycleOwner.lifecycleScope.launch {
+                try {
+                    val poll = com.fts.ttbros.data.model.Poll(
+                        teamId = teamId,
+                        chatType = chatType.key,
+                        question = question,
+                        options = options,
+                        isAnonymous = isAnonymous,
+                        createdBy = profile.uid,
+                        createdByName = profile.displayName.ifBlank { profile.email }
+                    )
+                    pollRepository.createPoll(poll)
+                    view?.let {
+                        Snackbar.make(it, R.string.poll_created, Snackbar.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    view?.let {
+                        Snackbar.make(it, "Error creating poll: ${e.message}", Snackbar.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }.show()
+    }
+    
+    private fun handleVote(pollId: String, optionId: String) {
+        val profile = userProfile ?: return
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                // Get poll to check if anonymous
+                val polls = pollsAdapter.currentList
+                val poll = polls.find { it.id == pollId } ?: return@launch
+                
+                pollRepository.vote(
+                    pollId = pollId,
+                    userId = profile.uid,
+                    userName = profile.displayName.ifBlank { profile.email },
+                    optionId = optionId,
+                    isAnonymous = poll.isAnonymous
+                )
+            } catch (e: Exception) {
+                view?.let {
+                    Snackbar.make(it, "Error voting: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    
+    private fun handlePinMessage(messageId: String) {
+        val profile = userProfile ?: return
+        val teamId = profile.teamId ?: return
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                chatRepository.pinMessage(teamId, chatType, messageId, profile.uid)
+                view?.let {
+                    Snackbar.make(it, R.string.message_pinned, Snackbar.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                view?.let {
+                    Snackbar.make(it, "Error pinning message: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    
+    private fun handleUnpinMessage(messageId: String) {
+        val profile = userProfile ?: return
+        val teamId = profile.teamId ?: return
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                chatRepository.unpinMessage(teamId, chatType, messageId)
+                view?.let {
+                    Snackbar.make(it, R.string.message_unpinned, Snackbar.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                view?.let {
+                    Snackbar.make(it, "Error unpinning message: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    
+    private fun handlePinPoll(pollId: String) {
+        val profile = userProfile ?: return
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                pollRepository.pinPoll(pollId, profile.uid)
+                view?.let {
+                    Snackbar.make(it, R.string.poll_pinned, Snackbar.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                view?.let {
+                    Snackbar.make(it, "Error pinning poll: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    
+    private fun handleUnpinPoll(pollId: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                pollRepository.unpinPoll(pollId)
+                view?.let {
+                    Snackbar.make(it, R.string.poll_unpinned, Snackbar.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                view?.let {
+                    Snackbar.make(it, "Error unpinning poll: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                }
+            }
+        }
     }
     
     private fun sendMessage() {

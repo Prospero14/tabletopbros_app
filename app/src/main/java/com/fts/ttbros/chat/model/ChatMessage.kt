@@ -10,7 +10,10 @@ data class ChatMessage(
     val imageUrl: String? = null,
     val type: String = "text", // "text", "character"
     val attachmentId: String? = null,
-    val timestamp: Timestamp? = null
+    val timestamp: Timestamp? = null,
+    val isPinned: Boolean = false,
+    val pinnedBy: String? = null,
+    val pinnedAt: Long? = null
 ) {
     val formattedTime: String
         get() = timestamp?.toDate()?.toString().orEmpty()

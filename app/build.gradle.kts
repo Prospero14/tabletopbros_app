@@ -78,6 +78,17 @@ dependencies {
         implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.4")
         
         implementation("com.github.bumptech.glide:glide:4.16.0")
+    
+    // Calendar view
+    implementation("com.github.prolificinteractive:material-calendarview:2.0.1") {
+        exclude(group = "com.android.support")
+    }
+    
+    // WorkManager for scheduled notifications
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    
+    // Firebase Cloud Messaging
+    implementation("com.google.firebase:firebase-messaging-ktx")
     implementation(libs.androidx.navigation.fragment.ktx)
     implementation(libs.androidx.navigation.ui.ktx)
 

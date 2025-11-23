@@ -62,6 +62,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.announcementChatFragment,
                 R.id.masterPlayerChatFragment,
                 R.id.notesFragment,
+                R.id.calendarFragment,
                 R.id.documentsFragment,
                 R.id.charactersFragment
             ),

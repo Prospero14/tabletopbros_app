@@ -27,6 +27,10 @@
             android:icon="@android:drawable/ic_menu_edit"
             android:title="Заметки" />
         <item
+            android:id="@+id/calendarFragment"
+            android:icon="@android:drawable/ic_menu_today"
+            android:title="@string/menu_calendar" />
+        <item
             android:id="@+id/documentsFragment"
             android:icon="@android:drawable/ic_menu_agenda"
             android:title="Документы" />
