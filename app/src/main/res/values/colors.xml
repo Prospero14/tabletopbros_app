@@ -53,4 +53,8 @@
     <color name="purple_700">#512DA8</color>
     <color name="teal_200">#FF03DAC5</color>
     <color name="teal_700">#FF018786</color>
+    
+    <!-- Chat message bubble colors - полупрозрачные и бледные -->
+    <color name="chat_bubble_own">#80B39DDB</color>
+    <color name="chat_bubble_other">#E0FFFFFF</color>
 </resources>
