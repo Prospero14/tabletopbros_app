@@ -1,24 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="200dp"
-    android:height="200dp"
-    android:viewportWidth="100"
-    android:viewportHeight="100">
-    
-    <!-- Cloud-like shape: A central rectangle with multiple circles/arcs around it -->
-    <!-- Opacity 80% (CC in hex) -->
-    <path
-        android:fillColor="#CC2D2D2D"
-        android:pathData="M25,35 
-                          Q25,20 40,20 
-                          Q45,10 60,15 
-                          Q75,5 85,25 
-                          Q95,25 95,40 
-                          Q100,55 90,65 
-                          Q95,80 80,85 
-                          Q70,95 55,90 
-                          Q40,95 30,85 
-                          Q15,90 10,75 
-                          Q0,65 10,50 
-                          Q0,35 25,35 Z" />
-</vector>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <vector
+            android:width="200dp"
+            android:height="200dp"
+            android:viewportWidth="100"
+            android:viewportHeight="100">
+            <!-- Cloud-like shape: A central rectangle with multiple circles/arcs around it -->
+            <!-- Opacity 80% (CC in hex) -->
+            <path
+                android:fillColor="#CC2D2D2D"
+                android:pathData="M25,35 
+                                  Q25,20 40,20 
+                                  Q45,10 60,15 
+                                  Q75,5 85,25 
+                                  Q95,25 95,40 
+                                  Q100,55 90,65 
+                                  Q95,80 80,85 
+                                  Q70,95 55,90 
+                                  Q40,95 30,85 
+                                  Q15,90 10,75 
+                                  Q0,65 10,50 
+                                  Q0,35 25,35 Z" />
+        </vector>
+    </item>
+    <!-- Padding to keep content inside the "safe" area of the cloud -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@android:color/transparent"/>
+            <padding
+                android:left="32dp"
+                android:top="32dp"
+                android:right="32dp"
+                android:bottom="32dp"/>
+        </shape>
+    </item>
+</layer-list>
