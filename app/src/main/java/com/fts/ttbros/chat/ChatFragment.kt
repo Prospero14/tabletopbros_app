@@ -335,9 +335,10 @@ class ChatFragment : Fragment() {
                 poll = poll,
                 currentUserId = profile.uid,
                 onVote = { optionId ->
+                    android.util.Log.d("ChatFragment", "Vote clicked in dialog for poll: ${poll.id}, option: $optionId")
                     handleVote(poll.id, optionId)
                     // We don't dismiss dialog immediately so user can see result update if real-time
-                    // But since this is a dialog, maybe we should dismiss or refresh?
+                    // But since this is a dialog, maybe we should dismiss or refresh? 
                     // Real-time updates won't happen in this dialog unless we observe the poll.
                     // For simplicity, let's dismiss after vote or just let them close it.
                 }
@@ -362,14 +363,24 @@ class ChatFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             if (!isAdded || view == null) return@launch
             try {
-                // Get poll to check if anonymous
-                val polls = pollsAdapter.currentList
-                val poll = polls.find { it.id == pollId } ?: run {
+                // Try to find poll in current list first
+                var poll = pollsAdapter.currentList.find { it.id == pollId }
+                
+                // If not found, try to fetch from repository
+                if (poll == null) {
+                    android.util.Log.d("ChatFragment", "Poll not in list, fetching from repository: $pollId")
+                    poll = pollRepository.getPoll(pollId)
+                }
+                
+                if (poll == null) {
+                    android.util.Log.e("ChatFragment", "Poll not found: $pollId")
                     view?.let {
                         Snackbar.make(it, "Poll not found", Snackbar.LENGTH_SHORT).show()
                     }
                     return@launch
                 }
+                
+                android.util.Log.d("ChatFragment", "Voting for poll: $pollId, option: $optionId, isAnonymous: ${poll.isAnonymous}")
                 
                 pollRepository.vote(
                     pollId = pollId,
