@@ -104,7 +104,8 @@
     <string name="label_race">Раса</string>
     <string name="label_profession">Профессия</string>
     <string name="header_stats">Характеристики</string>
-    
+    <string name="nav_header_desc">Навигация</string>
+
     <string name="attr_reflexes">Рефлексы</string>
     <string name="attr_body">Телосложение</string>
     <string name="attr_willpower">Воля</string>
