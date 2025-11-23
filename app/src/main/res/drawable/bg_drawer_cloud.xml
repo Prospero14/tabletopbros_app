@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="300dp"
+    android:height="600dp"
+    android:viewportWidth="100"
+    android:viewportHeight="200">
+    
+    <!-- Cloud-like drawer background -->
+    <!-- Right side is straight (attached to screen edge) -->
+    <!-- Left side is wavy/cloudy -->
+    <!-- Color: #CC2D2D2D (Same as dialogs) -->
+    
+    <path
+        android:fillColor="#CC2D2D2D"
+        android:pathData="M20,0 
+                          L100,0 
+                          L100,200 
+                          L20,200 
+                          Q0,180 20,160 
+                          Q40,140 20,120 
+                          Q0,100 20,80 
+                          Q40,60 20,40 
+                          Q0,20 20,0 Z" />
+</vector>
