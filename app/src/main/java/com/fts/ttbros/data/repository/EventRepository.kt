@@ -20,6 +20,10 @@ class EventRepository {
         return docRef.id
     }
 
+    suspend fun updateEvent(event: Event) {
+        eventsCollection.document(event.id).set(event).await()
+    }
+
     fun getTeamEvents(teamId: String): Flow<List<Event>> = callbackFlow {
         val listener = eventsCollection
             .whereEqualTo("teamId", teamId)

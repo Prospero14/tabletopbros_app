@@ -72,7 +72,9 @@ dependencies {
         implementation("com.google.firebase:firebase-database-ktx")
         implementation("com.google.firebase:firebase-storage-ktx")
 
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+        implementation("com.applandeo:material-calendar-view:1.9.0-rc03")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
     implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.4")

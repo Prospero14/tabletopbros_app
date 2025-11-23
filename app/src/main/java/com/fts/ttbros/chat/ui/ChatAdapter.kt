@@ -66,18 +66,18 @@ class ChatAdapter(
             messageContainer.gravity = if (isMine) Gravity.END else Gravity.START
             
             // Sender Name Visibility
-            // Show sender name if it's not mine. 
-            // User asked for "sender name ... and time".
-            // We'll show name for others. Time for everyone.
             senderNameTextView.isVisible = !isMine
             senderNameTextView.text = message.senderName
+            // Use a visible color
+            senderNameTextView.setTextColor(ContextCompat.getColor(context, R.color.gray_600))
 
             // Timestamp
             val formattedTime = message.timestamp?.toDate()?.let {
                 DateFormat.getTimeInstance(DateFormat.SHORT).format(it)
             } ?: ""
             timestampTextView.text = formattedTime
-            timestampTextView.isVisible = true // Always show time as requested
+            timestampTextView.isVisible = true
+            timestampTextView.setTextColor(ContextCompat.getColor(context, R.color.gray_600))
 
             val bubbleColor = if (isMine) {
                 ContextCompat.getColor(context, R.color.chat_bubble_own)
@@ -85,6 +85,11 @@ class ChatAdapter(
                 ContextCompat.getColor(context, R.color.chat_bubble_other)
             }
             messageCard.setCardBackgroundColor(bubbleColor)
+            
+            // Debug logging
+            if (message.type == "poll") {
+                android.util.Log.d("ChatAdapter", "Binding poll message: ${message.text}, id: ${message.id}")
+            }
             
             // Handle image
             if (message.hasImage && !message.imageUrl.isNullOrBlank()) {
@@ -102,7 +107,6 @@ class ChatAdapter(
                 messageTextView.setOnClickListener {
                     onImportCharacter(message.senderId, message.attachmentId)
                 }
-                // Make it look like a button/link
                 messageTextView.setTextColor(ContextCompat.getColor(context, R.color.teal_700))
                 messageTextView.setTypeface(null, android.graphics.Typeface.BOLD)
             } else if (message.type == "poll" && !message.attachmentId.isNullOrBlank()) {
@@ -117,9 +121,6 @@ class ChatAdapter(
                 // Handle text
                 messageTextView.text = message.text
                 messageTextView.setOnClickListener(null) // Reset listener
-                messageTextView.setTextColor(ContextCompat.getColor(context, if (isMine) android.R.color.white else android.R.color.black)) // Reset color roughly
-                // Actually, color reset is tricky without knowing original colors. 
-                // Let's assume default colors are fine or set them explicitly.
                 val defaultTextColor = ContextCompat.getColor(context, if (isMine) R.color.white else R.color.black)
                 messageTextView.setTextColor(defaultTextColor)
                 messageTextView.typeface = android.graphics.Typeface.DEFAULT
@@ -132,7 +133,6 @@ class ChatAdapter(
 
             // Add long click listener for pin/unpin on both card and container
             val longClickListener = View.OnLongClickListener { view ->
-                android.util.Log.d("ChatAdapter", "Long click on message ${message.id}, isPinned: ${message.isPinned}")
                 if (message.isPinned) {
                     onUnpinMessage?.invoke(message.id)
                 } else {

@@ -37,6 +37,7 @@
     <color name="black">#000000</color>
     <color name="white">#FFFFFF</color>
     <color name="transparent">#00000000</color>
+    <color name="gray_600">#757575</color>
     
     <!-- Divider & Border -->
     <color name="divider">#E0E0E0</color>

@@ -9,10 +9,12 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <CalendarView
+        <com.applandeo.materialcalendarview.CalendarView
             android:id="@+id/calendarView"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            app:headerColor="@color/purple_500"
+            app:type="one_day_picker" />
 
         <TextView
             android:id="@+id/eventsHeaderTextView"
