@@ -23,6 +23,7 @@ import com.fts.ttbros.chat.data.ChatRepository
 import com.fts.ttbros.chat.model.ChatMessage
 import com.fts.ttbros.chat.model.ChatType
 import com.fts.ttbros.chat.ui.ChatAdapter
+import com.fts.ttbros.data.model.Poll
 import com.fts.ttbros.data.model.UserProfile
 import com.fts.ttbros.data.model.UserRole
 import com.fts.ttbros.data.repository.UserRepository
@@ -451,7 +452,7 @@ class ChatFragment : Fragment() {
             try {
                 chatRepository.pinMessage(teamId, chatType, messageId, profile.uid)
                 view?.let {
-                    Snackbar.make(it, R.string.message_pinned, Snackbar.LENGTH_SHORT).show()
+                    Snackbar.make(it, getString(R.string.message_pinned), Snackbar.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 view?.let {
@@ -468,7 +469,7 @@ class ChatFragment : Fragment() {
             try {
                 chatRepository.unpinMessage(teamId, chatType, messageId)
                 view?.let {
-                    Snackbar.make(it, R.string.message_unpinned, Snackbar.LENGTH_SHORT).show()
+                    Snackbar.make(it, getString(R.string.message_unpinned), Snackbar.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 view?.let {
@@ -484,7 +485,7 @@ class ChatFragment : Fragment() {
             try {
                 pollRepository.pinPoll(pollId, profile.uid)
                 view?.let {
-                    Snackbar.make(it, R.string.poll_pinned, Snackbar.LENGTH_SHORT).show()
+                    Snackbar.make(it, getString(R.string.poll_pinned), Snackbar.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 view?.let {
@@ -499,7 +500,7 @@ class ChatFragment : Fragment() {
             try {
                 pollRepository.unpinPoll(pollId)
                 view?.let {
-                    Snackbar.make(it, R.string.poll_unpinned, Snackbar.LENGTH_SHORT).show()
+                    Snackbar.make(it, getString(R.string.poll_unpinned), Snackbar.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 view?.let {
