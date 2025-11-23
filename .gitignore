@@ -21,3 +21,4 @@ local.properties
 /do_commit.ps1
 /execute_git_commands.ps1
 /GIT_COMMIT_INSTRUCTIONS.md
+build_release.bat
