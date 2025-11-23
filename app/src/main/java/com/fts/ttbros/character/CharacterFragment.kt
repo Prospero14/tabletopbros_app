@@ -17,6 +17,9 @@ import com.fts.ttbros.data.model.UserRole
 import com.fts.ttbros.data.repository.TeamRepository
 import com.fts.ttbros.data.repository.UserRepository
 import kotlinx.coroutines.launch
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.auth.ktx.auth
 
 class CharacterFragment : Fragment() {
 
@@ -189,7 +192,7 @@ class CharacterFragment : Fragment() {
                 val user = userRepository.currentProfile() ?: return@launch
                 // We need actual user object for createTeam, but repository uses auth.currentUser internally usually
                 // Assuming teamRepository.createTeam uses auth.currentUser
-                val team = teamRepository.createTeam(com.google.firebase.auth.ktx.auth.currentUser!!, system)
+                val team = teamRepository.createTeam(Firebase.auth.currentUser!!, system)
                 val finalTeamName = teamName.ifBlank { "Team ${team.code}" }
                 userRepository.addTeam(team.id, team.code, UserRole.MASTER, team.system, finalTeamName)
                 

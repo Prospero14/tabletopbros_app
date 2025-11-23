@@ -33,11 +33,12 @@ class NotesFragment : Fragment() {
     }
     private val notes = mutableListOf<Note>()
     private var currentPhotoPath: String? = null
+    private var currentPhotoPreview: ImageView? = null
 
     private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) {
             // Permission granted, proceed with camera
-            launchCamera()
+            currentPhotoPreview?.let { launchCamera(it) }
         } else {
             com.google.android.material.snackbar.Snackbar.make(
                 requireView(),
@@ -125,26 +126,15 @@ class NotesFragment : Fragment() {
     }
 
     private fun takePhoto(preview: ImageView) {
+        currentPhotoPreview = preview
         if (androidx.core.content.ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissionLauncher.launch(android.Manifest.permission.CAMERA)
             return
         }
-        launchCamera()
-        
-        // Show preview after taking photo with delay
-        preview.postDelayed({
-            currentPhotoPath?.let { path ->
-                val file = File(path)
-                if (file.exists()) {
-                    val bitmap = BitmapFactory.decodeFile(file.absolutePath)
-                    preview.setImageBitmap(bitmap)
-                    preview.isVisible = true
-                }
-            }
-        }, 1000)
+        launchCamera(preview)
     }
 
-    private fun launchCamera() {
+    private fun launchCamera(preview: ImageView) {
         try {
             val photoFile = File(requireContext().cacheDir, "note_${System.currentTimeMillis()}.jpg")
             currentPhotoPath = photoFile.absolutePath
@@ -161,6 +151,18 @@ class NotesFragment : Fragment() {
             }
 
             takePictureLauncher.launch(intent)
+            
+            // Show preview after taking photo with delay
+            preview.postDelayed({
+                currentPhotoPath?.let { path ->
+                    val file = File(path)
+                    if (file.exists()) {
+                        val bitmap = BitmapFactory.decodeFile(file.absolutePath)
+                        preview.setImageBitmap(bitmap)
+                        preview.isVisible = true
+                    }
+                }
+            }, 1000)
         } catch (e: Exception) {
             android.util.Log.e("NotesFragment", "Error taking photo", e)
             com.google.android.material.snackbar.Snackbar.make(

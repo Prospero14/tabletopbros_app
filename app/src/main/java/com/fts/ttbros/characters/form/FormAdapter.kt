@@ -148,19 +148,27 @@ class FormAdapter(
             binding.nameInputLayout.isEnabled = !readOnly
             binding.root.alpha = if (readOnly) 0.7f else 1.0f
 
-            // Remove old listener to avoid duplicates
+            // Remove old listeners to avoid duplicates
             binding.nameEditText.onFocusChangeListener = null
+            val existingWatchers = binding.nameEditText.tag as? MutableList<android.text.TextWatcher> ?: mutableListOf()
+            existingWatchers.forEach { binding.nameEditText.removeTextChangedListener(it) }
+            existingWatchers.clear()
             
-            // Use doAfterTextChanged for immediate updates
-            binding.nameEditText.addTextChangedListener(object : android.text.TextWatcher {
-                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-                override fun afterTextChanged(s: android.text.Editable?) {
-                    if (binding.nameEditText.hasFocus()) {
-                        onValueChanged("discipline_name_${item.id}", s?.toString() ?: "")
+            if (!readOnly) {
+                // Use doAfterTextChanged for immediate updates
+                val textWatcher = object : android.text.TextWatcher {
+                    override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                    override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+                    override fun afterTextChanged(s: android.text.Editable?) {
+                        if (binding.nameEditText.hasFocus()) {
+                            onValueChanged("discipline_name_${item.id}", s?.toString() ?: "")
+                        }
                     }
                 }
-            })
+                binding.nameEditText.addTextChangedListener(textWatcher)
+                existingWatchers.add(textWatcher)
+                binding.nameEditText.tag = existingWatchers
+            }
 
             updateDots(item.value)
             

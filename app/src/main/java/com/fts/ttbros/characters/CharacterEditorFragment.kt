@@ -114,7 +114,8 @@ class CharacterEditorFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
-        binding.toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material)
+        // Set navigation icon - toolbar will show default back arrow automatically
+        // Navigation icon is handled by Navigation component
         binding.toolbar.setNavigationOnClickListener {
             findNavController().popBackStack()
         }
@@ -247,12 +248,6 @@ class CharacterEditorFragment : Fragment() {
                 
                 if (characterId != null) {
                     // Update
-                    repository.updateCharacter(characterId!!, mapOf(
-                        "name" to name,
-                        "clan" to clan,
-                        "concept" to concept,
-                        "data" to formData
-                    ))
                     repository.updateCharacter(characterId!!, mapOf(
                         "name" to name,
                         "clan" to clan,
