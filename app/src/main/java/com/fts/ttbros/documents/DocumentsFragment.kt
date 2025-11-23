@@ -151,7 +151,12 @@ class DocumentsFragment : Fragment() {
                 val bundle = Bundle().apply {
                     putString("filePath", file.absolutePath)
                 }
-                findNavController().navigate(R.id.action_documentsFragment_to_pdfViewerFragment, bundle)
+                try {
+                    findNavController().navigate(R.id.action_documentsFragment_to_pdfViewerFragment, bundle)
+                } catch (e: Exception) {
+                    android.util.Log.e("DocumentsFragment", "Navigation error: ${e.message}", e)
+                    Toast.makeText(requireContext(), "Error opening PDF viewer", Toast.LENGTH_SHORT).show()
+                }
             } else {
                 Toast.makeText(requireContext(), "Файл не найден", Toast.LENGTH_SHORT).show()
             }

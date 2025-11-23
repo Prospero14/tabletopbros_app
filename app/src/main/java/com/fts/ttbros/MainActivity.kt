@@ -52,7 +52,8 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
 
         val navHostFragment = supportFragmentManager
-            .findFragmentById(R.id.fragmentContainer) as NavHostFragment
+            .findFragmentById(R.id.fragmentContainer) as? NavHostFragment
+            ?: throw IllegalStateException("NavHostFragment not found")
         navController = navHostFragment.navController
 
         appBarConfiguration = AppBarConfiguration(
@@ -90,8 +91,21 @@ class MainActivity : AppCompatActivity() {
                 }
                 R.id.charactersFragment -> {
                     // Always pop to root of characters tab to show list
-                    navController.popBackStack(R.id.charactersFragment, true)
-                    navController.navigate(R.id.charactersFragment)
+                    try {
+                        if (navController.currentDestination?.id != R.id.charactersFragment) {
+                            navController.popBackStack(R.id.charactersFragment, false)
+                            if (navController.currentDestination?.id != R.id.charactersFragment) {
+                                navController.navigate(R.id.charactersFragment)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // If navigation fails, try simple navigate
+                        try {
+                            navController.navigate(R.id.charactersFragment)
+                        } catch (e2: Exception) {
+                            android.util.Log.e("MainActivity", "Navigation error: ${e2.message}", e2)
+                        }
+                    }
                     binding.drawerLayout.closeDrawer(GravityCompat.END)
                     true
                 }
@@ -266,10 +280,8 @@ class MainActivity : AppCompatActivity() {
             try {
                 userRepository.switchTeam(teamId)
                 refreshProfile()
-                val currentId = navController.currentDestination?.id
-                if (currentId != null) {
-                    navController.navigate(currentId)
-                }
+                // Don't navigate to current destination - just refresh the current fragment
+                // Navigation to same destination can cause issues
                 Snackbar.make(binding.root, "Switched team", Snackbar.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Snackbar.make(binding.root, "Error switching team: ${e.message}", Snackbar.LENGTH_SHORT).show()
@@ -278,7 +290,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun copyToClipboard(code: String) {
-        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+            ?: return
         clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.dialog_team_code_title), code))
         Snackbar.make(binding.root, R.string.code_copied, Snackbar.LENGTH_SHORT).show()
     }

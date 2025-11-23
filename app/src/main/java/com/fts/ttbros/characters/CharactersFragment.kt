@@ -19,18 +19,23 @@ import kotlinx.coroutines.launch
 class CharactersFragment : Fragment() {
 
     private var _binding: FragmentCharactersBinding? = null
-    private val binding get() = _binding!!
+    private val binding get() = _binding ?: throw IllegalStateException("Binding is null. Fragment view may have been destroyed.")
     private val repository = CharacterRepository()
     private val userRepository = com.fts.ttbros.data.repository.UserRepository()
     private val chatRepository = com.fts.ttbros.chat.data.ChatRepository()
     
     private val adapter = CharactersAdapter(
         onCharacterClick = { character ->
-            val bundle = Bundle().apply {
-                putString("characterId", character.id)
-                putString("system", character.system)
+            try {
+                val bundle = Bundle().apply {
+                    putString("characterId", character.id)
+                    putString("system", character.system)
+                }
+                findNavController().navigate(R.id.action_charactersFragment_to_characterEditorFragment, bundle)
+            } catch (e: Exception) {
+                android.util.Log.e("CharactersFragment", "Navigation error: ${e.message}", e)
+                Snackbar.make(binding.root, "Error opening character editor", Snackbar.LENGTH_SHORT).show()
             }
-            findNavController().navigate(R.id.action_charactersFragment_to_characterEditorFragment, bundle)
         },
         onShareClick = { character ->
             shareCharacter(character)
@@ -115,11 +120,16 @@ class CharactersFragment : Fragment() {
             .setTitle(getString(R.string.select_game_system))
             .setItems(systems) { _, which ->
                 val selectedSystem = systemCodes[which]
-                val bundle = Bundle().apply {
-                    putString("characterId", null)
-                    putString("system", selectedSystem)
+                try {
+                    val bundle = Bundle().apply {
+                        putString("characterId", null)
+                        putString("system", selectedSystem)
+                    }
+                    findNavController().navigate(R.id.action_charactersFragment_to_characterEditorFragment, bundle)
+                } catch (e: Exception) {
+                    android.util.Log.e("CharactersFragment", "Navigation error: ${e.message}", e)
+                    Snackbar.make(binding.root, "Error opening character editor", Snackbar.LENGTH_SHORT).show()
                 }
-                findNavController().navigate(R.id.action_charactersFragment_to_characterEditorFragment, bundle)
             }
             .show()
     }

@@ -34,9 +34,9 @@ object NotificationHelper {
                 description = "Notifications for new polls"
             }
 
-            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(eventsChannel)
-            notificationManager.createNotificationChannel(pollsChannel)
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            notificationManager?.createNotificationChannel(eventsChannel)
+            notificationManager?.createNotificationChannel(pollsChannel)
         }
     }
 
@@ -60,8 +60,8 @@ object NotificationHelper {
             .setAutoCancel(true)
             .build()
 
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(notificationId, notification)
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        notificationManager?.notify(notificationId, notification)
     }
 
     fun showPollNotification(context: Context, title: String, message: String, notificationId: Int) {
@@ -84,7 +84,7 @@ object NotificationHelper {
             .setAutoCancel(true)
             .build()
 
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(notificationId, notification)
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        notificationManager?.notify(notificationId, notification)
     }
 }

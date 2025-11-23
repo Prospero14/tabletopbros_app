@@ -71,7 +71,7 @@ class ChatFragment : Fragment() {
             inflater.inflate(R.layout.fragment_chat, container, false)
         } catch (e: Exception) {
             android.util.Log.e("ChatFragment", "Error inflating layout: ${e.message}", e)
-            null // This will cause a crash later, but at least we logged it
+            throw RuntimeException("Failed to inflate ChatFragment layout", e)
         }
     }
 

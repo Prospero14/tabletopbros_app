@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 class CharacterEditorFragment : Fragment() {
 
     private var _binding: FragmentCharacterEditorBinding? = null
-    private val binding get() = _binding!!
+    private val binding get() = _binding ?: throw IllegalStateException("Binding is null. Fragment view may have been destroyed.")
     
     private val repository = CharacterRepository()
     private var characterId: String? = null
@@ -118,7 +118,15 @@ class CharacterEditorFragment : Fragment() {
         // Navigation icon is handled by Navigation component
         binding.toolbar.setNavigationIcon(R.drawable.ic_arrow_back)
         binding.toolbar.setNavigationOnClickListener {
-            findNavController().popBackStack()
+            try {
+                if (!findNavController().popBackStack()) {
+                    // If back stack is empty, try to navigate up
+                    findNavController().navigateUp()
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("CharacterEditorFragment", "Navigation error: ${e.message}", e)
+                activity?.onBackPressed()
+            }
         }
 
         binding.formRecyclerView.layoutManager = LinearLayoutManager(requireContext())
@@ -191,7 +199,14 @@ class CharacterEditorFragment : Fragment() {
                         renderForm()
                     } else {
                         showError("Character not found")
-                        findNavController().navigateUp()
+                        try {
+                            if (!findNavController().navigateUp()) {
+                                activity?.onBackPressed()
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("CharacterEditorFragment", "Navigation error: ${e.message}", e)
+                            activity?.onBackPressed()
+                        }
                     }
                 }
             } catch (e: Exception) {
