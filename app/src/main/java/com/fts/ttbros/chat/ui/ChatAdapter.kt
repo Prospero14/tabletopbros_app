@@ -43,6 +43,7 @@ class ChatAdapter(
         private val messageImageView: ImageView = itemView.findViewById(R.id.messageImageView)
         private val timestampTextView: TextView = itemView.findViewById(R.id.timestampTextView)
         private val pinnedIcon: ImageView = itemView.findViewById(R.id.pinnedIcon)
+        private val pinnedIcon: ImageView = itemView.findViewById(R.id.pinnedIcon)
         // Dynamically adding button if needed or reusing view structure
         // Ideally we should update layout XML, but for now we can add a button programmatically or use text view as button if type is character
         // Let's assume we can add a button to the layout or reuse messageTextView with a background
@@ -112,8 +113,9 @@ class ChatAdapter(
             // Show pinned indicator
             pinnedIcon.isVisible = message.isPinned
 
-            // Add long click listener for pin/unpin
-            messageCard.setOnLongClickListener {
+            // Add long click listener for pin/unpin on both card and container
+            val longClickListener = View.OnLongClickListener { view ->
+                android.util.Log.d("ChatAdapter", "Long click on message ${message.id}, isPinned: ${message.isPinned}")
                 if (message.isPinned) {
                     onUnpinMessage?.invoke(message.id)
                 } else {
@@ -121,6 +123,8 @@ class ChatAdapter(
                 }
                 true
             }
+            messageCard.setOnLongClickListener(longClickListener)
+            messageContainer.setOnLongClickListener(longClickListener)
         }
     }
 

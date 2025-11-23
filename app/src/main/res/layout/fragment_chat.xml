@@ -31,12 +31,15 @@
         android:id="@+id/pollsRecyclerView"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:minHeight="0dp"
         android:clipToPadding="false"
         android:paddingBottom="8dp"
         android:nestedScrollingEnabled="false"
+        android:visibility="visible"
         app:layout_constraintBottom_toTopOf="@+id/messageInputContainer"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/messagesRecyclerView" />
 
     <LinearLayout
         android:id="@+id/messageInputContainer"

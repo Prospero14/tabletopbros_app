@@ -177,14 +177,22 @@ class ChatFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 pollRepository.getChatPolls(teamId, chatType.key).collect { polls ->
+                    android.util.Log.d("ChatFragment", "Loaded ${polls.size} polls for chatType: ${chatType.key}, teamId: $teamId")
                     pollsAdapter.submitList(polls)
-                    android.util.Log.d("ChatFragment", "Loaded ${polls.size} polls for chatType: ${chatType.key}")
+                    // Show/hide polls RecyclerView based on whether there are polls
+                    view?.findViewById<RecyclerView>(R.id.pollsRecyclerView)?.isVisible = polls.isNotEmpty()
                 }
             } catch (e: Exception) {
                 android.util.Log.e("ChatFragment", "Error loading polls: ${e.message}", e)
-                view?.let {
-                    Snackbar.make(it, "Ошибка загрузки опросов: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                val errorMessage = if (e.message?.contains("index") == true || e.message?.contains("Index") == true) {
+                    "Ошибка: требуется создать индекс в Firestore для опросов"
+                } else {
+                    "Ошибка загрузки опросов: ${e.message}"
                 }
+                view?.let {
+                    Snackbar.make(it, errorMessage, Snackbar.LENGTH_LONG).show()
+                }
+                view?.findViewById<RecyclerView>(R.id.pollsRecyclerView)?.isVisible = false
             }
         }
     }
@@ -205,7 +213,8 @@ class ChatFragment : Fragment() {
                         createdBy = profile.uid,
                         createdByName = profile.displayName.ifBlank { profile.email }
                     )
-                    pollRepository.createPoll(poll)
+                    val pollId = pollRepository.createPoll(poll)
+                    android.util.Log.d("ChatFragment", "Poll created with ID: $pollId, chatType: ${chatType.key}, teamId: $teamId")
                     view?.let {
                         Snackbar.make(it, R.string.poll_created, Snackbar.LENGTH_SHORT).show()
                     }
