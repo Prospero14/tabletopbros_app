@@ -68,6 +68,8 @@ dependencies {
         implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.4")
         
         implementation("com.github.bumptech.glide:glide:4.16.0")
+    implementation(libs.androidx.navigation.fragment.ktx)
+    implementation(libs.androidx.navigation.ui.ktx)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

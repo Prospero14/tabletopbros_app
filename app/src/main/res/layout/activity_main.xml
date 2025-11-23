@@ -67,7 +67,7 @@
         android:layout_marginTop="?attr/actionBarSize"
         android:layout_marginBottom="?attr/actionBarSize"
         app:headerLayout="@layout/nav_header_main"
-        android:background="@drawable/bg_drawer_cloud"
+        android:background="@drawable/bg_drawer_rounded"
         app:menu="@menu/navigation_menu" />
 
 </androidx.drawerlayout.widget.DrawerLayout>
