@@ -42,7 +42,7 @@ class ChatRepository(
                     )
                 }?.sortedWith(compareBy<ChatMessage>(
                     { !it.isPinned }, // Pinned first
-                    { if (it.isPinned) -(it.pinnedAt ?: 0L) else -(it.timestamp?.toDate()?.time ?: 0L) } // Most recent first within each group
+                    { if (it.isPinned) -(it.pinnedAt ?: 0L) else (it.timestamp?.toDate()?.time ?: 0L) } // Pinned: Newest first. Unpinned: Oldest first (Standard chat).
                 )).orEmpty()
                 onEvent(messages)
             }
