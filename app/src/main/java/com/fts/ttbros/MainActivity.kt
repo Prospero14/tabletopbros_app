@@ -68,10 +68,7 @@ class MainActivity : AppCompatActivity() {
             binding.drawerLayout
         )
         
-        binding.toolbar.setNavigationIcon(R.drawable.ic_menu)
-        binding.toolbar.setNavigationOnClickListener {
-            binding.drawerLayout.openDrawer(GravityCompat.END)
-        }
+        // Removed toolbar navigation icon setup as requested (burger menu moved to footer)
 
         setupActionBarWithNavController(navController, appBarConfiguration)
         binding.navigationView.setupWithNavController(navController)
@@ -125,11 +122,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupHeader() {
         val headerView = binding.navigationView.getHeaderView(0)
-        val teamContainer = headerView.findViewById<View>(R.id.navHeaderTeamContainer)
-        teamContainer.setOnClickListener {
-            binding.drawerLayout.closeDrawer(GravityCompat.END)
-            showTeamSwitcherDialog()
-        }
+        // Removed teamContainer setup as requested
         
         val avatarView = headerView.findViewById<ImageView>(R.id.navHeaderAvatar)
         avatarView.setOnClickListener {
@@ -197,17 +190,7 @@ class MainActivity : AppCompatActivity() {
         headerView.findViewById<TextView>(R.id.navHeaderUser).text = profile.displayName
         // Email is hidden as requested
         
-        val currentTeam = profile.teams.find { it.teamId == profile.currentTeamId }
-        val teamName = if (currentTeam != null) {
-             currentTeam.teamName.ifBlank { "Team ${currentTeam.teamCode}" }
-        } else {
-             "No Team Selected"
-        }
-        val role = currentTeam?.role?.name ?: ""
-        
-        headerView.findViewById<TextView>(R.id.navHeaderTeamName).text = teamName
-        headerView.findViewById<TextView>(R.id.navHeaderRole).text = role
-        headerView.findViewById<TextView>(R.id.navHeaderRole).isVisible = role.isNotEmpty()
+        // Removed team name and role update as requested
     }
 
     override fun onStart() {
