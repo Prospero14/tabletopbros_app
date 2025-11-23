@@ -334,6 +334,9 @@ class ChatFragment : Fragment() {
                     optionId = optionId,
                     isAnonymous = poll.isAnonymous
                 )
+                view?.let {
+                    Snackbar.make(it, R.string.vote_recorded, Snackbar.LENGTH_SHORT).show()
+                }
             } catch (e: Exception) {
                 view?.let {
                     Snackbar.make(it, "Error voting: ${e.message}", Snackbar.LENGTH_SHORT).show()

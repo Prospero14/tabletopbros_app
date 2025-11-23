@@ -95,7 +95,7 @@ class CalendarFragment : Fragment() {
                     progressIndicator.isVisible = false
                     allEvents = events
                     updateCalendarEvents(events)
-                    filterEventsByDate(selectedDate)
+                    filterEventsByDate(null) // Show upcoming events by default
                 }
             } catch (e: Exception) {
                 progressIndicator.isVisible = false
@@ -108,25 +108,43 @@ class CalendarFragment : Fragment() {
     }
 
     private fun updateCalendarEvents(events: List<Event>) {
-        val eventDays = events.map { event ->
-            val calendar = Calendar.getInstance()
-            calendar.timeInMillis = event.dateTime
-            EventDay(calendar, R.drawable.ic_dot_filled)
+        try {
+            val eventDays = events.map { event ->
+                val calendar = Calendar.getInstance()
+                calendar.timeInMillis = event.dateTime
+                EventDay(calendar, R.drawable.ic_dot_filled)
+            }
+            calendarView.setEvents(eventDays)
+        } catch (e: Exception) {
+            android.util.Log.e("CalendarFragment", "Error setting events to calendar: ${e.message}", e)
         }
-        calendarView.setEvents(eventDays)
     }
 
-    private fun filterEventsByDate(date: Calendar) {
-        val filteredEvents = allEvents.filter { event ->
-            val eventCalendar = Calendar.getInstance()
-            eventCalendar.timeInMillis = event.dateTime
-            isSameDay(date, eventCalendar)
+    private fun filterEventsByDate(date: Calendar?) {
+        val filteredEvents = if (date == null) {
+            // Show upcoming events (from today onwards)
+            val today = Calendar.getInstance()
+            // Reset time to start of day
+            today.set(Calendar.HOUR_OF_DAY, 0)
+            today.set(Calendar.MINUTE, 0)
+            today.set(Calendar.SECOND, 0)
+            today.set(Calendar.MILLISECOND, 0)
+            
+            allEvents.filter { event ->
+                event.dateTime >= today.timeInMillis
+            }.sortedBy { it.dateTime }
+        } else {
+            allEvents.filter { event ->
+                val eventCalendar = Calendar.getInstance()
+                eventCalendar.timeInMillis = event.dateTime
+                isSameDay(date, eventCalendar)
+            }
         }
         
         if (filteredEvents.isEmpty()) {
             eventsRecyclerView.isVisible = false
             noEventsTextView.isVisible = true
-            noEventsTextView.text = "No events for ${SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(date.time)}"
+            noEventsTextView.text = if (date == null) getString(R.string.no_events) else "No events for ${SimpleDateFormat("dd.MM.yyyy", Locale.getDefault()).format(date.time)}"
         } else {
             eventsRecyclerView.isVisible = true
             noEventsTextView.isVisible = false

@@ -167,7 +167,7 @@
     <string name="skill_first_aid">First Aid</string>
 
     <!-- Calendar -->
-    <string name="menu_calendar">Calendar</string>
+    <string name="menu_calendar">Календарь</string>
     <string name="create_event">Create Event</string>
     <string name="event_title">Event Title</string>
     <string name="event_description">Description (optional)</string>
@@ -199,5 +199,6 @@
     <string name="message_unpinned">Message unpinned</string>
     <string name="poll_pinned">Poll pinned</string>
     <string name="poll_unpinned">Poll unpinned</string>
+    <string name="vote_recorded">Vote recorded</string>
 
 </resources>

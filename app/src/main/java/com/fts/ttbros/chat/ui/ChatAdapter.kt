@@ -112,15 +112,17 @@ class ChatAdapter(
                 messageTextView.setTypeface(null, android.graphics.Typeface.BOLD)
             } else if (message.type == "poll") {
                 // Handle poll
-                val actionText = if (!message.attachmentId.isNullOrBlank()) "\n\n👉 Tap to Vote" else "\n(Error: No ID)"
-                messageTextView.text = "📊 POLL\n${message.text}$actionText"
+                val actionText = if (!message.attachmentId.isNullOrBlank()) "\n(Tap to Vote)" else "\n(Error: No ID)"
+                messageTextView.text = "${message.text}$actionText"
                 messageTextView.setOnClickListener {
                     if (!message.attachmentId.isNullOrBlank()) {
                         onPollClick?.invoke(message.attachmentId)
                     }
                 }
-                messageTextView.setTextColor(ContextCompat.getColor(context, R.color.purple_500))
-                messageTextView.setTypeface(null, android.graphics.Typeface.BOLD)
+                // Reset color to default
+                val defaultTextColor = ContextCompat.getColor(context, if (isMine) R.color.white else R.color.black)
+                messageTextView.setTextColor(defaultTextColor)
+                messageTextView.typeface = android.graphics.Typeface.DEFAULT
             } else {
                 // Handle text
                 messageTextView.text = message.text
