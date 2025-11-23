@@ -37,6 +37,7 @@
     <color name="black">#000000</color>
     <color name="white">#FFFFFF</color>
     <color name="transparent">#00000000</color>
+    <color name="gray_600">#757575</color>
     
     <!-- Divider & Border -->
     <color name="divider">#E0E0E0</color>
@@ -53,4 +54,8 @@
     <color name="purple_700">#512DA8</color>
     <color name="teal_200">#FF03DAC5</color>
     <color name="teal_700">#FF018786</color>
+    
+    <!-- Chat message bubble colors - полупрозрачные и бледные -->
+    <color name="chat_bubble_own">#80B39DDB</color>
+    <color name="chat_bubble_other">#E0FFFFFF</color>
 </resources>

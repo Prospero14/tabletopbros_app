@@ -120,6 +120,27 @@
     
     <string name="label_inventory">Инвентарь</string>
 
+    <!-- Polls -->
+    <string name="create_poll">Создать опрос</string>
+    <string name="poll_question">Вопрос опроса</string>
+    <string name="poll_option">Вариант %d</string>
+    <string name="add_option">Добавить вариант</string>
+    <string name="remove_option">Удалить</string>
+    <string name="anonymous_poll">Анонимный опрос</string>
+    <string name="poll_created">Опрос создан</string>
+    <string name="vote">Голосовать</string>
+    <string name="votes">%d голосов</string>
+    <string name="you_voted">Вы проголосовали</string>
+    <string name="max_options_reached">Максимум 6 вариантов</string>
+    <string name="poll_votes_count">%1$d / %2$d</string>
+    <string name="created_by">Создано %s</string>
+    <string name="pinned_message">Закрепленное сообщение</string>
+    <string name="pinned_poll">Закрепленный опрос</string>
+    <string name="message_pinned">Сообщение закреплено</string>
+    <string name="message_unpinned">Сообщение откреплено</string>
+    <string name="poll_pinned">Опрос закреплен</string>
+    <string name="poll_unpinned">Опрос откреплен</string>
+
     <!-- DnD 5e -->
     <string name="attr_constitution">Телосложение</string>
     <string name="attr_wisdom">Мудрость</string>

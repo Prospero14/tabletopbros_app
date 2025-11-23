@@ -45,6 +45,11 @@
         android:label="Заметки" />
 
     <fragment
+        android:id="@+id/calendarFragment"
+        android:name="com.fts.ttbros.calendar.CalendarFragment"
+        android:label="@string/menu_calendar" />
+
+    <fragment
         android:id="@+id/documentsFragment"
         android:name="com.fts.ttbros.documents.DocumentsFragment"
         android:label="Документы">

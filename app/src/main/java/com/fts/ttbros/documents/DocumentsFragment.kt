@@ -35,11 +35,11 @@ class DocumentsFragment : Fragment() {
     private val documents = listOf(
         RuleBook("1", "Dungeons & Dragons 5e Player's Handbook", "dnd_5e_phb.pdf", "https://drive.google.com/uc?export=download&id=1wR9VH195dnIYlphMr63d5fdsns4o5xSn"),
         RuleBook("2", "Vampire: The Masquerade 5e Corebook", "vtm_5e_core.pdf", "https://drive.google.com/uc?export=download&id=1MUU2c_MSMEQ5yA_JBiIIdBdaQa8sLAX4"),
-        RuleBook("3", "The Witcher TRPG", "witcher_trpg.pdf", "https://drive.google.com/uc?export=download&id=1rSQuKUko9dqBPf7GtqMTtDeadubZZ7di"),
+        // RuleBook("3", "The Witcher TRPG", "witcher_trpg.pdf", "https://drive.google.com/uc?export=download&id=1rSQuKUko9dqBPf7GtqMTtDeadubZZ7di"),
         RuleBook("4", "VTM 5e Character Sheet", "vtm_5e_sheet.pdf", "https://drive.google.com/uc?export=download&id=1LInpHrBwqPO6Cfluj4ZmetARUsMuqNGm"),
         RuleBook("5", "DND 5e Character Sheet", "dnd_5e_sheet.pdf", "https://drive.google.com/uc?export=download&id=1Y18OaGV5pkY0Z7pF7NVmFOGzsPt1Wq2Q"),
-        RuleBook("6", "Witcher Map", "witcher_map.pdf", "https://drive.google.com/uc?export=download&id=1a12ynj-atTsgU-rE0cY0QzR8dNKoPXi0"),
-        RuleBook("7", "Witcher Character Sheet", "witcher_sheet.pdf", "https://drive.google.com/uc?export=download&id=15FSjt8QnGeWAWQc-hSfa7cAO3zBFk0cR")
+        //RuleBook("6", "Witcher Map", "witcher_map.pdf", "https://drive.google.com/uc?export=download&id=1a12ynj-atTsgU-rE0cY0QzR8dNKoPXi0"),
+        //RuleBook("7", "Witcher Character Sheet", "witcher_sheet.pdf", "https://drive.google.com/uc?export=download&id=15FSjt8QnGeWAWQc-hSfa7cAO3zBFk0cR")
     )
     
     private lateinit var adapter: DocumentsAdapter

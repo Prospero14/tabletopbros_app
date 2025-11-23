@@ -13,3 +13,11 @@
 .externalNativeBuild
 .cxx
 local.properties
+/commit_current_branch.bat
+/COMMIT_CURRENT_BRANCH.md
+/commit_to_fix_branch.bat
+/COMMIT_TO_FIX_BRANCH.md
+/commit_to_fix_branch.ps1
+/do_commit.ps1
+/execute_git_commands.ps1
+/GIT_COMMIT_INSTRUCTIONS.md

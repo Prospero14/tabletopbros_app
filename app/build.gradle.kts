@@ -26,9 +26,19 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("release-key.jks")
+            storePassword = "android123"
+            keyAlias = "release-key"
+            keyPassword = "android123"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -62,12 +72,22 @@ dependencies {
         implementation("com.google.firebase:firebase-database-ktx")
         implementation("com.google.firebase:firebase-storage-ktx")
 
-        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+        implementation("com.applandeo:material-calendar-view:1.9.0-rc03")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
-        implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
-        implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.4")
-        
-        implementation("com.github.bumptech.glide:glide:4.16.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.4")
+    
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+
+    // WorkManager for scheduled notifications
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
+    
+    // Firebase Cloud Messaging
+    implementation("com.google.firebase:firebase-messaging-ktx")
+    implementation(libs.androidx.navigation.fragment.ktx)
+    implementation(libs.androidx.navigation.ui.ktx)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
