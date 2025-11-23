@@ -114,9 +114,9 @@ class CharacterEditorFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
-        binding.toolbar.setNavigationIcon(R.drawable.ic_menu)
+        binding.toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material)
         binding.toolbar.setNavigationOnClickListener {
-            (requireActivity() as? MainActivity)?.openDrawer()
+            findNavController().popBackStack()
         }
 
         binding.formRecyclerView.layoutManager = LinearLayoutManager(requireContext())
@@ -129,9 +129,7 @@ class CharacterEditorFragment : Fragment() {
             saveCharacter()
         }
         
-        binding.toolbar.findViewById<View>(R.id.backButton)?.setOnClickListener {
-            findNavController().popBackStack()
-        }
+
         
         // Mode Switch
         val prefs = requireContext().getSharedPreferences("ttbros_prefs", android.content.Context.MODE_PRIVATE)
@@ -172,6 +170,8 @@ class CharacterEditorFragment : Fragment() {
         adapter.readOnly = !isEdit
         binding.saveButton.isVisible = isEdit
         binding.modeSwitch.text = if (isEdit) "Редактирование" else "Зафиксировано"
+        // Re-render form to ensure data is consistent (fixes disappearing disciplines)
+        renderForm()
     }
 
     private fun loadCharacter() {
@@ -217,7 +217,13 @@ class CharacterEditorFragment : Fragment() {
 
     private fun saveCharacter() {
         val name = formData["name"] as? String ?: "Unnamed"
-        val clan = formData["clan"] as? String ?: ""
+        // Map class/profession to clan for display in list
+        val clan = when {
+            formData.containsKey("clan") -> formData["clan"] as? String ?: ""
+            formData.containsKey("class") -> formData["class"] as? String ?: ""
+            formData.containsKey("profession") -> formData["profession"] as? String ?: ""
+            else -> ""
+        }
         val concept = formData["concept"] as? String ?: ""
         
         // Ensure disciplines are properly formatted before saving

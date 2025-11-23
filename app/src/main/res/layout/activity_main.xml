@@ -54,52 +54,7 @@
 
         </LinearLayout>
 
-        <LinearLayout
-            android:id="@+id/groupPromptPanel"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center"
-            android:orientation="vertical"
-            android:padding="24dp"
-            android:visibility="gone"
-            android:background="?android:attr/windowBackground">
 
-            <ImageView
-                android:layout_width="120dp"
-                android:layout_height="120dp"
-                android:layout_marginBottom="24dp"
-                android:layout_gravity="center"
-                android:src="@mipmap/ic_launcher"
-                android:contentDescription="@string/app_name" />
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/groupCodeEditText"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="@string/enter_group_code"
-                    android:inputType="text" />
-
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/joinGroupButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:text="@string/join_group" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/createGroupButton"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/create_new_group" />
-
-        </LinearLayout>
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
@@ -109,6 +64,7 @@
         android:layout_height="match_parent"
         android:layout_gravity="end"
         android:fitsSystemWindows="true"
+        android:layout_marginTop="?attr/actionBarSize"
         android:layout_marginBottom="?attr/actionBarSize"
         app:headerLayout="@layout/nav_header_main"
         app:menu="@menu/navigation_menu" />

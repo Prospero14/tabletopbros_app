@@ -127,5 +127,41 @@
     <string name="skill_perception">Perception</string>
     <string name="label_class">Class</string>
     <string name="label_level">Level</string>
+    <string name="label_background">Background</string>
+    <string name="label_alignment">Alignment</string>
+    <string name="label_xp">Experience Points</string>
+    <string name="label_ac">Armor Class</string>
+    <string name="label_initiative">Initiative</string>
+    <string name="label_speed">Speed</string>
+    <string name="label_hp_max">Hit Points Max</string>
+    <string name="label_hp_current">Current Hit Points</string>
+    <string name="label_hit_dice">Hit Dice</string>
+    <string name="label_proficiencies">Proficiencies &amp; Languages</string>
+    <string name="label_features">Features &amp; Traits</string>
+    <string name="label_attacks">Attacks &amp; Spellcasting</string>
+    <string name="label_equipment">Equipment</string>
+    
+    <string name="skill_animal_handling">Animal Handling</string>
+    <string name="skill_arcana">Arcana</string>
+    <string name="skill_deception">Deception</string>
+    <string name="skill_history">History</string>
+    <string name="skill_nature">Nature</string>
+    <string name="skill_religion">Religion</string>
+    <string name="skill_sleight_of_hand">Sleight of Hand</string>
+
+    <string name="label_gender">Gender</string>
+    <string name="label_age">Age</string>
+    <string name="label_hp">Health Points</string>
+    <string name="label_run">Run</string>
+    <string name="label_leap">Leap</string>
+    <string name="label_defining_skill">Defining Skill</string>
+    
+    <string name="skill_deduction">Deduction</string>
+    <string name="skill_monster_lore">Monster Lore</string>
+    <string name="skill_social_etiquette">Social Etiquette</string>
+    <string name="skill_brawling">Brawling</string>
+    <string name="skill_dodge_escape">Dodge/Escape</string>
+    <string name="skill_crafting">Crafting</string>
+    <string name="skill_first_aid">First Aid</string>
 
 </resources>
