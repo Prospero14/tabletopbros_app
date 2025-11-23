@@ -76,10 +76,11 @@ class PollRepository {
     }
 
     suspend fun unpinPoll(pollId: String) {
-        pollsCollection.document(pollId).update(
+        val updates = mapOf<String, Any>(
             "isPinned" to false,
             "pinnedBy" to null,
             "pinnedAt" to null
-        ).await()
+        )
+        pollsCollection.document(pollId).update(updates).await()
     }
 }

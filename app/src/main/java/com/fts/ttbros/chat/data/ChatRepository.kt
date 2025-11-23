@@ -42,7 +42,7 @@ class ChatRepository(
                     )
                 }?.sortedWith(compareBy<ChatMessage>(
                     { !it.isPinned }, // Pinned first
-                    { if (it.isPinned) -(it.pinnedAt ?: 0L) else -(it.timestamp?.seconds ?: 0L) } // Most recent first within each group
+                    { if (it.isPinned) -(it.pinnedAt ?: 0L) else -(it.timestamp?.toDate()?.time ?: 0L) } // Most recent first within each group
                 )).orEmpty()
                 onEvent(messages)
             }
@@ -79,11 +79,12 @@ class ChatRepository(
 
     suspend fun unpinMessage(teamId: String, chatType: ChatType, messageId: String) {
         val messageRef = messagesCollection(teamId, chatType).document(messageId)
-        messageRef.update(
+        val updates = mapOf<String, Any>(
             FIELD_IS_PINNED to false,
             FIELD_PINNED_BY to null,
             FIELD_PINNED_AT to null
-        ).await()
+        )
+        messageRef.update(updates).await()
     }
 
     companion object {
