@@ -110,8 +110,13 @@ class MainActivity : AppCompatActivity() {
                     true
                 }
                 else -> {
-                    val currentId = navController.currentDestination?.id
-
+                    NavigationUI.onNavDestinationSelected(item, navController)
+                    binding.drawerLayout.closeDrawer(GravityCompat.END)
+                    true
+                }
+            }
+        }
+        
         setupHeader()
         setupFooter()
     }
@@ -238,7 +243,7 @@ class MainActivity : AppCompatActivity() {
         val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
         
         if (currentTeam == null || currentTeam.teamCode.isBlank()) {
-            Snackbar.make(binding.root, R.string.error_unknown, Snackbar.LENGTH_SHORT).show()
+            Snackbar.make(binding.root, getString(R.string.error_unknown), Snackbar.LENGTH_SHORT).show()
             return
         }
         MaterialAlertDialogBuilder(this)
