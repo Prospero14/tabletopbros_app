@@ -20,6 +20,14 @@ class PollRepository {
         return docRef.id
     }
 
+    suspend fun getPoll(pollId: String): Poll? {
+        return try {
+            pollsCollection.document(pollId).get().await().toObject(Poll::class.java)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
     fun getChatPolls(teamId: String, chatType: String): Flow<List<Poll>> = callbackFlow {
         val listener = pollsCollection
             .whereEqualTo("teamId", teamId)

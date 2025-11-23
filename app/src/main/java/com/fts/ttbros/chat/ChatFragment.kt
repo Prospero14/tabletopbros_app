@@ -81,6 +81,9 @@ class ChatFragment : Fragment() {
             },
             onUnpinMessage = { messageId ->
                 handleUnpinMessage(messageId)
+            },
+            onPollClick = { pollId ->
+                showPollDetailsDialog(pollId)
             }
         )
         val layoutManager = LinearLayoutManager(requireContext()).apply {
@@ -225,6 +228,67 @@ class ChatFragment : Fragment() {
                 }
             }
         }.show()
+    }
+
+    private fun showPollDetailsDialog(pollId: String) {
+        val profile = userProfile ?: return
+        
+        viewLifecycleOwner.lifecycleScope.launch {
+            // Try to find in current list first
+            var poll = pollsAdapter.currentList.find { it.id == pollId }
+            
+            if (poll == null) {
+                // Fetch from repo
+                try {
+                    poll = pollRepository.getPoll(pollId)
+                } catch (e: Exception) {
+                    view?.let {
+                        Snackbar.make(it, "Error loading poll: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+            }
+            
+            if (poll == null) {
+                view?.let {
+                    Snackbar.make(it, "Poll not found", Snackbar.LENGTH_SHORT).show()
+                }
+                return@launch
+            }
+
+            val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.item_poll, null)
+            
+            // Setup view
+            val questionTextView = dialogView.findViewById<TextView>(R.id.pollQuestionTextView)
+            val creatorTextView = dialogView.findViewById<TextView>(R.id.pollCreatorTextView)
+            val optionsRecyclerView = dialogView.findViewById<RecyclerView>(R.id.pollOptionsRecyclerView)
+            val pinnedIcon = dialogView.findViewById<android.view.View>(R.id.pollPinnedIcon)
+            
+            questionTextView.text = poll.question
+            creatorTextView.text = getString(R.string.created_by, poll.createdByName)
+            pinnedIcon.isVisible = poll.isPinned
+            
+            val optionAdapter = com.fts.ttbros.chat.ui.PollOptionAdapter(
+                poll = poll,
+                currentUserId = profile.uid,
+                onVote = { optionId ->
+                    handleVote(poll.id, optionId)
+                    // We don't dismiss dialog immediately so user can see result update if real-time
+                    // But since this is a dialog, maybe we should dismiss or refresh?
+                    // Real-time updates won't happen in this dialog unless we observe the poll.
+                    // For simplicity, let's dismiss after vote or just let them close it.
+                }
+            )
+            
+            optionsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+            optionsRecyclerView.adapter = optionAdapter
+            optionAdapter.submitList(poll.options)
+
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setView(dialogView)
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+        }
     }
     
     private fun handleVote(pollId: String, optionId: String) {

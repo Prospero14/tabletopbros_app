@@ -22,7 +22,8 @@ class ChatAdapter(
     private val currentUserId: String,
     private val onImportCharacter: (String, String) -> Unit, // senderId, characterId
     private val onPinMessage: ((String) -> Unit)? = null,
-    private val onUnpinMessage: ((String) -> Unit)? = null
+    private val onUnpinMessage: ((String) -> Unit)? = null,
+    private val onPollClick: ((String) -> Unit)? = null // pollId
 ) : ListAdapter<ChatMessage, ChatAdapter.MessageViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
@@ -42,7 +43,6 @@ class ChatAdapter(
         private val messageTextView: TextView = itemView.findViewById(R.id.messageTextView)
         private val messageImageView: ImageView = itemView.findViewById(R.id.messageImageView)
         private val timestampTextView: TextView = itemView.findViewById(R.id.timestampTextView)
-        private val pinnedIcon: ImageView = itemView.findViewById(R.id.pinnedIcon)
         private val pinnedIcon: ImageView = itemView.findViewById(R.id.pinnedIcon)
         // Dynamically adding button if needed or reusing view structure
         // Ideally we should update layout XML, but for now we can add a button programmatically or use text view as button if type is character
@@ -90,6 +90,14 @@ class ChatAdapter(
                 }
                 // Make it look like a button/link
                 messageTextView.setTextColor(ContextCompat.getColor(context, R.color.teal_700))
+                messageTextView.setTypeface(null, android.graphics.Typeface.BOLD)
+            } else if (message.type == "poll" && !message.attachmentId.isNullOrBlank()) {
+                // Handle poll
+                messageTextView.text = "📊 Poll: ${message.text}\n(Tap to Vote)"
+                messageTextView.setOnClickListener {
+                    onPollClick?.invoke(message.attachmentId)
+                }
+                messageTextView.setTextColor(ContextCompat.getColor(context, R.color.purple_500))
                 messageTextView.setTypeface(null, android.graphics.Typeface.BOLD)
             } else {
                 // Handle text
