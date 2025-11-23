@@ -84,8 +84,11 @@ class PollOptionAdapter(
 
             // Handle click to vote
             optionContainer.setOnClickListener {
+                android.util.Log.d("PollOptionAdapter", "Option clicked: ${option.id}, userVote: $userVote")
                 if (userVote != option.id) {
                     onVote(option.id)
+                } else {
+                    android.util.Log.d("PollOptionAdapter", "User already voted for this option")
                 }
             }
         }

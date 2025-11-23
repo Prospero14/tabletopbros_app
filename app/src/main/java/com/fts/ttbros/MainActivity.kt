@@ -97,21 +97,6 @@ class MainActivity : AppCompatActivity() {
                 }
                 else -> {
                     val currentId = navController.currentDestination?.id
-                    if (currentId == item.itemId) {
-                        // Pop to root of the current tab to reset state
-                        navController.popBackStack(item.itemId, false)
-                        binding.drawerLayout.closeDrawer(GravityCompat.END)
-                        true
-                    } else {
-                        val handled = NavigationUI.onNavDestinationSelected(item, navController)
-                        if (handled) {
-                            binding.drawerLayout.closeDrawer(GravityCompat.END)
-                        }
-                        handled
-                    }
-                }
-            }
-        }
 
         setupHeader()
         setupFooter()
