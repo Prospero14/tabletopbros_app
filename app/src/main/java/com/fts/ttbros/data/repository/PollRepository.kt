@@ -1,6 +1,7 @@
 package com.fts.ttbros.data.repository
 
 import com.fts.ttbros.data.model.Poll
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.channels.awaitClose
@@ -78,8 +79,8 @@ class PollRepository {
     suspend fun unpinPoll(pollId: String) {
         val updates = mapOf<String, Any>(
             "isPinned" to false,
-            "pinnedBy" to null,
-            "pinnedAt" to null
+            "pinnedBy" to FieldValue.delete(),
+            "pinnedAt" to FieldValue.delete()
         )
         pollsCollection.document(pollId).update(updates).await()
     }

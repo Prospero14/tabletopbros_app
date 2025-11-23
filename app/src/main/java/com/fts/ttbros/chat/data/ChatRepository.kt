@@ -81,8 +81,8 @@ class ChatRepository(
         val messageRef = messagesCollection(teamId, chatType).document(messageId)
         val updates = mapOf<String, Any>(
             FIELD_IS_PINNED to false,
-            FIELD_PINNED_BY to null,
-            FIELD_PINNED_AT to null
+            FIELD_PINNED_BY to FieldValue.delete(),
+            FIELD_PINNED_AT to FieldValue.delete()
         )
         messageRef.update(updates).await()
     }
