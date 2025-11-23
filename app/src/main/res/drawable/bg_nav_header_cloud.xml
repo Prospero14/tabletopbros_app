@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="300dp"
+    android:height="200dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    
+    <!-- Cloud-like header background -->
+    <!-- Matches the drawer background style but for the header -->
+    <!-- Left side wavy, Bottom side wavy to blend into menu -->
+    <!-- Color: @color/primary (Purple) -->
+    
+    <path
+        android:fillColor="#FF6200EE"
+        android:pathData="M10,0 
+                          L100,0 
+                          L100,90 
+                          Q50,100 10,90 
+                          Q0,85 10,80 
+                          Q20,75 10,70 
+                          Q0,65 10,60 
+                          Q20,55 10,50 
+                          Q0,45 10,40 
+                          Q20,35 10,30 
+                          Q0,25 10,20 
+                          Q20,15 10,10 
+                          Q0,5 10,0 Z" />
+</vector>

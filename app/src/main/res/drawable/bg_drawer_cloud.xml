@@ -7,18 +7,33 @@
     
     <!-- Cloud-like drawer background -->
     <!-- Right side is straight (attached to screen edge) -->
-    <!-- Left side is wavy/cloudy -->
+    <!-- Left side is wavy/cloudy with smaller amplitude -->
     <!-- Color: #CC2D2D2D (Same as dialogs) -->
     
     <path
         android:fillColor="#CC2D2D2D"
-        android:pathData="M20,0 
+        android:pathData="M10,0 
                           L100,0 
                           L100,200 
-                          L20,200 
-                          Q0,180 20,160 
-                          Q40,140 20,120 
-                          Q0,100 20,80 
-                          Q40,60 20,40 
-                          Q0,20 20,0 Z" />
+                          L10,200 
+                          Q0,195 10,190 
+                          Q20,185 10,180 
+                          Q0,175 10,170 
+                          Q20,165 10,160 
+                          Q0,155 10,150 
+                          Q20,145 10,140 
+                          Q0,135 10,130 
+                          Q20,125 10,120 
+                          Q0,115 10,110 
+                          Q20,105 10,100
+                          Q0,95 10,90 
+                          Q20,85 10,80 
+                          Q0,75 10,70 
+                          Q20,65 10,60 
+                          Q0,55 10,50 
+                          Q20,45 10,40 
+                          Q0,35 10,30 
+                          Q20,25 10,20 
+                          Q0,15 10,10 
+                          Q20,5 10,0 Z" />
 </vector>
