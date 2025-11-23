@@ -93,7 +93,8 @@ class MainActivity : AppCompatActivity() {
                 else -> {
                     val currentId = navController.currentDestination?.id
                     if (currentId == item.itemId) {
-                        navController.navigate(item.itemId)
+                        // Pop to root of the current tab to reset state
+                        navController.popBackStack(item.itemId, false)
                         binding.drawerLayout.closeDrawer(GravityCompat.END)
                         true
                     } else {
@@ -109,6 +110,14 @@ class MainActivity : AppCompatActivity() {
         
         setupGroupPrompt()
         setupHeader()
+        setupFooter()
+    }
+
+    private fun setupFooter() {
+        // Using findViewById because binding might not be updated until rebuild
+        findViewById<View>(R.id.footerMenuButton)?.setOnClickListener {
+            binding.drawerLayout.openDrawer(GravityCompat.END)
+        }
     }
 
     private fun setupHeader() {
@@ -443,8 +452,10 @@ class MainActivity : AppCompatActivity() {
                 binding.groupCodeEditText.text?.clear()
                 refreshProfile()
                 
-                // Show team switcher dialog instead of code dialog
-                showTeamSwitcherDialog()
+                // Automatically select the new team
+                userRepository.switchTeam(team.id)
+                refreshProfile()
+                Snackbar.make(binding.root, "Team created and selected", Snackbar.LENGTH_SHORT).show()
             } catch (error: Exception) {
                 Snackbar.make(binding.root, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
             } finally {

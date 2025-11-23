@@ -78,12 +78,12 @@
     <!-- Text Appearances -->
     <style name="TextAppearance.App.Headline1" parent="TextAppearance.MaterialComponents.Headline1">
         <item name="android:textColor">@color/text_primary</item>
-        <item name="fontFamily">sans-serif-medium</item>
+        <item name="fontFamily">sans-serif-light</item>
     </style>
     
     <style name="TextAppearance.App.Headline2" parent="TextAppearance.MaterialComponents.Headline2">
         <item name="android:textColor">@color/text_primary</item>
-        <item name="fontFamily">sans-serif-medium</item>
+        <item name="fontFamily">sans-serif-light</item>
     </style>
     
     <style name="TextAppearance.App.Body1" parent="TextAppearance.MaterialComponents.Body1">

@@ -114,7 +114,7 @@ class CharacterEditorFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         
         binding.toolbar.setNavigationOnClickListener {
-            findNavController().navigateUp()
+            findNavController().popBackStack()
         }
 
         binding.formRecyclerView.layoutManager = LinearLayoutManager(requireContext())
