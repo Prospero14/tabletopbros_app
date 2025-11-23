@@ -179,7 +179,25 @@ class ChatFragment : Fragment() {
             .show()
     }
     
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            launchCamera()
+        } else {
+            Snackbar.make(requireView(), "Camera permission required", Snackbar.LENGTH_SHORT).show()
+        }
+    }
+
     private fun takePhoto() {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+            return
+        }
+        launchCamera()
+    }
+
+    private fun launchCamera() {
         try {
             val photoFile = File(requireContext().cacheDir, "chat_${System.currentTimeMillis()}.jpg")
             val photoUri = FileProvider.getUriForFile(

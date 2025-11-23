@@ -10,6 +10,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.fts.ttbros.MainActivity
+import com.fts.ttbros.R
 import com.fts.ttbros.characters.form.FormAdapter
 import com.fts.ttbros.characters.templates.VtmTemplate
 import com.fts.ttbros.characters.templates.ViedzminTemplate
@@ -113,9 +114,9 @@ class CharacterEditorFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
-        binding.toolbar.setNavigationIcon(androidx.appcompat.R.drawable.abc_ic_ab_back_material)
+        binding.toolbar.setNavigationIcon(R.drawable.ic_menu)
         binding.toolbar.setNavigationOnClickListener {
-            findNavController().popBackStack()
+            (requireActivity() as? MainActivity)?.openDrawer()
         }
 
         binding.formRecyclerView.layoutManager = LinearLayoutManager(requireContext())
