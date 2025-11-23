@@ -68,7 +68,10 @@ class MainActivity : AppCompatActivity() {
             binding.drawerLayout
         )
         
-        // Removed toolbar navigation icon setup as requested (burger menu moved to footer)
+        binding.toolbar.setNavigationIcon(R.drawable.ic_menu)
+        binding.toolbar.setNavigationOnClickListener {
+            binding.drawerLayout.openDrawer(GravityCompat.END)
+        }
 
         setupActionBarWithNavController(navController, appBarConfiguration)
         binding.navigationView.setupWithNavController(navController)
