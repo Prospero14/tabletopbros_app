@@ -9,7 +9,9 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
@@ -48,6 +50,7 @@ class ChatFragment : Fragment() {
     private lateinit var chatType: ChatType
     private lateinit var adapter: ChatAdapter
     private lateinit var pollsAdapter: com.fts.ttbros.chat.ui.PollAdapter
+    private var pollsRecyclerView: RecyclerView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -108,7 +111,7 @@ class ChatFragment : Fragment() {
         messagesRecyclerView.adapter = adapter
 
         // Setup polls RecyclerView
-        val pollsRecyclerView: RecyclerView = view.findViewById(R.id.pollsRecyclerView)
+        pollsRecyclerView = view.findViewById(R.id.pollsRecyclerView)
         pollsAdapter = com.fts.ttbros.chat.ui.PollAdapter(
             currentUserId = auth.currentUser?.uid.orEmpty(),
             currentUserName = auth.currentUser?.displayName ?: auth.currentUser?.email ?: "",
@@ -122,8 +125,8 @@ class ChatFragment : Fragment() {
                 handleUnpinPoll(pollId)
             }
         )
-        pollsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
-        pollsRecyclerView.adapter = pollsAdapter
+        pollsRecyclerView?.layoutManager = LinearLayoutManager(requireContext())
+        pollsRecyclerView?.adapter = pollsAdapter
 
         sendButton.setOnClickListener { sendMessage() }
         createPollButton.setOnClickListener { showCreatePollDialog() }
@@ -205,26 +208,28 @@ class ChatFragment : Fragment() {
     
     private fun subscribeToPolls(teamId: String) {
         viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                pollRepository.getChatPolls(teamId, chatType.key).collect { polls ->
-                    if (!isAdded || view == null) return@collect
-                    android.util.Log.d("ChatFragment", "Loaded ${polls.size} polls for chatType: ${chatType.key}, teamId: $teamId")
-                    pollsAdapter.submitList(polls)
-                    // Show/hide polls RecyclerView based on whether there are polls
-                    view?.findViewById<RecyclerView>(R.id.pollsRecyclerView)?.isVisible = polls.isNotEmpty()
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                try {
+                    pollRepository.getChatPolls(teamId, chatType.key).collect { polls ->
+                        if (!isAdded || view == null) return@collect
+                        android.util.Log.d("ChatFragment", "Loaded ${polls.size} polls for chatType: ${chatType.key}, teamId: $teamId")
+                        pollsAdapter.submitList(polls)
+                        // Show/hide polls RecyclerView based on whether there are polls
+                        pollsRecyclerView?.isVisible = polls.isNotEmpty()
+                    }
+                } catch (e: Exception) {
+                    if (!isAdded || view == null) return@repeatOnLifecycle
+                    android.util.Log.e("ChatFragment", "Error loading polls: ${e.message}", e)
+                    val errorMessage = if (e.message?.contains("index") == true || e.message?.contains("Index") == true) {
+                        "Ошибка: требуется создать индекс в Firestore для опросов"
+                    } else {
+                        "Ошибка загрузки опросов: ${e.message}"
+                    }
+                    view?.let {
+                        Snackbar.make(it, errorMessage, Snackbar.LENGTH_LONG).show()
+                    }
+                    pollsRecyclerView?.isVisible = false
                 }
-            } catch (e: Exception) {
-                if (!isAdded || view == null) return@launch
-                android.util.Log.e("ChatFragment", "Error loading polls: ${e.message}", e)
-                val errorMessage = if (e.message?.contains("index") == true || e.message?.contains("Index") == true) {
-                    "Ошибка: требуется создать индекс в Firestore для опросов"
-                } else {
-                    "Ошибка загрузки опросов: ${e.message}"
-                }
-                view?.let {
-                    Snackbar.make(it, errorMessage, Snackbar.LENGTH_LONG).show()
-                }
-                view?.findViewById<RecyclerView>(R.id.pollsRecyclerView)?.isVisible = false
             }
         }
     }
@@ -320,7 +325,8 @@ class ChatFragment : Fragment() {
             }
 
             if (!isAdded) return@launch
-            val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.item_poll, null)
+            val context = context ?: return@launch
+            val dialogView = LayoutInflater.from(context).inflate(R.layout.item_poll, null)
             
             // Setup view - poll is guaranteed to be non-null here (checked above)
             val questionTextView = dialogView.findViewById<TextView>(R.id.pollQuestionTextView)
@@ -333,42 +339,50 @@ class ChatFragment : Fragment() {
             pinnedIcon.isVisible = poll.isPinned
             
             var currentPoll = poll
+            var isUpdating = false
             
             fun updateAdapter() {
-                val newAdapter = com.fts.ttbros.chat.ui.PollOptionAdapter(
-                    poll = currentPoll,
-                    currentUserId = profile.uid,
-                    onVote = { optionId ->
-                        android.util.Log.d("ChatFragment", "Vote clicked in dialog for poll: ${currentPoll.id}, option: $optionId")
-                        // Optimistically update poll in dialog immediately
-                        val updatedVotes = currentPoll.votes.toMutableMap().apply {
-                            put(profile.uid, optionId)
-                        }
-                        val updatedVoterNames = if (!currentPoll.isAnonymous) {
-                            currentPoll.voterNames.toMutableMap().apply {
-                                put(profile.uid, profile.displayName.ifBlank { profile.email })
+                if (isUpdating || !isAdded) return
+                isUpdating = true
+                try {
+                    val newAdapter = com.fts.ttbros.chat.ui.PollOptionAdapter(
+                        poll = currentPoll,
+                        currentUserId = profile.uid,
+                        onVote = { optionId ->
+                            if (!isAdded) return@PollOptionAdapter
+                            android.util.Log.d("ChatFragment", "Vote clicked in dialog for poll: ${currentPoll.id}, option: $optionId")
+                            // Optimistically update poll in dialog immediately
+                            val updatedVotes = currentPoll.votes.toMutableMap().apply {
+                                put(profile.uid, optionId)
                             }
-                        } else {
-                            currentPoll.voterNames
+                            val updatedVoterNames = if (!currentPoll.isAnonymous) {
+                                currentPoll.voterNames.toMutableMap().apply {
+                                    put(profile.uid, profile.displayName.ifBlank { profile.email })
+                                }
+                            } else {
+                                currentPoll.voterNames
+                            }
+                            currentPoll = currentPoll.copy(
+                                votes = updatedVotes,
+                                voterNames = updatedVoterNames
+                            )
+                            // Update adapter with new poll data to show vote immediately
+                            updateAdapter()
+                            // Also update in main list
+                            handleVote(currentPoll.id, optionId)
                         }
-                        currentPoll = currentPoll.copy(
-                            votes = updatedVotes,
-                            voterNames = updatedVoterNames
-                        )
-                        // Update adapter with new poll data to show vote immediately
-                        updateAdapter()
-                        // Also update in main list
-                        handleVote(currentPoll.id, optionId)
-                    }
-                )
-                optionsRecyclerView.adapter = newAdapter
-                newAdapter.submitList(currentPoll.options)
+                    )
+                    optionsRecyclerView.adapter = newAdapter
+                    newAdapter.submitList(currentPoll.options)
+                } finally {
+                    isUpdating = false
+                }
             }
             
-            optionsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+            optionsRecyclerView.layoutManager = LinearLayoutManager(context)
             updateAdapter()
 
-            com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+            com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
                 .setView(dialogView)
                 .setPositiveButton(android.R.string.ok, null)
                 .show()
@@ -578,6 +592,7 @@ class ChatFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         listenerRegistration?.remove()
+        pollsRecyclerView = null
     }
 
     companion object {
