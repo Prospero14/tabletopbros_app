@@ -50,7 +50,7 @@ class DiceRollDialog(
         
         val builder = MaterialAlertDialogBuilder(context)
         val inflater = activity.layoutInflater
-        val view = inflate.inflate(com.fts.ttbros.R.layout.dialog_dice_roll, null)
+        val view = inflater.inflate(com.fts.ttbros.R.layout.dialog_dice_roll, null)
 
         diceTypeSpinner = view.findViewById(com.fts.ttbros.R.id.diceTypeSpinner)
         quantityEditText = view.findViewById(com.fts.ttbros.R.id.quantityEditText)
@@ -69,9 +69,10 @@ class DiceRollDialog(
         setupDiceSpinner()
         setupButtons()
 
-        val dialog = builder.setView(view)
+        val dialog = builder
             .setTitle("Бросок кубиков")
-            .setNegativeButton("Отмена") { _, _ -> }
+            .setView(view)
+            .setNegativeButton("Отмена", null)
             .create()
 
         // Устанавливаем размер диалога
