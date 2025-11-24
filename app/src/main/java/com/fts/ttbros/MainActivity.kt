@@ -42,6 +42,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var appBarConfiguration: AppBarConfiguration
     private val userRepository = UserRepository()
     private val teamRepository = TeamRepository()
+
+    private val yandexDisk = com.fts.ttbros.data.repository.YandexDiskRepository() // ДОБАВИТЬ ЭТУ СТРОКУ
     private val auth by lazy { Firebase.auth }
     private var userProfile: UserProfile? = null
 
@@ -183,37 +185,57 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         startActivityForResult(intent, REQUEST_CODE_PICK_IMAGE)
     }
-    
+
     private fun removeAvatar() {
-        val headerView = binding.navigationView.getHeaderView(0)
-        val avatarView = headerView.findViewById<ImageView>(R.id.navHeaderAvatar)
-        avatarView.setImageResource(android.R.drawable.sym_def_app_icon)
-        // TODO: Remove from storage if saved
+        lifecycleScope.launch {
+            try {
+                // Удалить URL из Firestore
+                userRepository.updateAvatarUrl(null)
+
+                // Обновить UI
+                val headerView = binding.navigationView.getHeaderView(0)
+                val avatarView = headerView.findViewById<ImageView>(R.id.navHeaderAvatar)
+                avatarView.setImageResource(android.R.drawable.sym_def_app_icon)
+
+                Snackbar.make(binding.root, "Аватар удалён", Snackbar.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Snackbar.make(binding.root, "Ошибка удаления аватара", Snackbar.LENGTH_SHORT).show()
+            }
+        }
     }
-    
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_CODE_PICK_IMAGE && resultCode == RESULT_OK && data != null) {
             val imageUri: Uri? = data.data
             imageUri?.let {
-                try {
-                    val inputStream = contentResolver.openInputStream(it)
-                    val bitmap = BitmapFactory.decodeStream(inputStream)
-                    inputStream?.close()
-                    
-                    val headerView = binding.navigationView.getHeaderView(0)
-                    val avatarView = headerView.findViewById<ImageView>(R.id.navHeaderAvatar)
-                    
-                    // Make circular and center crop
-                    val dimension = Math.min(bitmap.width, bitmap.height)
-                    val thumbnail = android.media.ThumbnailUtils.extractThumbnail(bitmap, dimension, dimension)
-                    val roundedBitmap = RoundedBitmapDrawableFactory.create(resources, thumbnail)
-                    roundedBitmap.isCircular = true
-                    avatarView.setImageDrawable(roundedBitmap)
-                    
-                    // TODO: Save to Firebase Storage
-                } catch (e: Exception) {
-                    Snackbar.make(binding.root, "Ошибка загрузки изображения", Snackbar.LENGTH_SHORT).show()
+                lifecycleScope.launch {
+                    try {
+                        // Показать прогресс
+                        Snackbar.make(binding.root, "Загрузка аватара...", Snackbar.LENGTH_LONG).show()
+
+                        // Загрузить на Яндекс.Диск
+                        val userId = auth.currentUser?.uid ?: return@launch
+                        val avatarUrl = yandexDisk.uploadAvatar(userId, it, this@MainActivity)
+
+                        // Сохранить URL в Firestore
+                        userRepository.updateAvatarUrl(avatarUrl)
+
+                        // Обновить UI
+                        val headerView = binding.navigationView.getHeaderView(0)
+                        val avatarView = headerView.findViewById<ImageView>(R.id.navHeaderAvatar)
+
+                        // Загрузить с помощью Glide
+                        com.bumptech.glide.Glide.with(this@MainActivity)
+                            .load(avatarUrl)
+                            .circleCrop()
+                            .placeholder(android.R.drawable.sym_def_app_icon)
+                            .into(avatarView)
+
+                        Snackbar.make(binding.root, "Аватар загружен", Snackbar.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        Snackbar.make(binding.root, "Ошибка загрузки аватара: ${e.message}", Snackbar.LENGTH_LONG).show()
+                    }
                 }
             }
         }
@@ -222,9 +244,18 @@ class MainActivity : AppCompatActivity() {
     private fun updateHeader(profile: UserProfile) {
         val headerView = binding.navigationView.getHeaderView(0)
         headerView.findViewById<TextView>(R.id.navHeaderUser).text = profile.displayName
-        // Email is hidden as requested
-        
-        // Removed team name and role update as requested
+
+        // Загрузить аватар если есть
+        val avatarView = headerView.findViewById<ImageView>(R.id.navHeaderAvatar)
+        if (!profile.avatarUrl.isNullOrBlank()) {
+            com.bumptech.glide.Glide.with(this)
+                .load(profile.avatarUrl)
+                .circleCrop()
+                .placeholder(android.R.drawable.sym_def_app_icon)
+                .into(avatarView)
+        } else {
+            avatarView.setImageResource(android.R.drawable.sym_def_app_icon)
+        }
     }
 
     override fun onStart() {
