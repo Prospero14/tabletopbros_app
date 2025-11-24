@@ -402,9 +402,12 @@ class CharactersFragment : Fragment() {
             
             val options = arrayOf("Team Chat", masterPlayerLabel)
             
-            val context = context ?: return
-            if (!isAdded) return
-            MaterialAlertDialogBuilder(context)
+            val contextForDialog = context
+            if (contextForDialog == null || !isAdded) {
+                android.util.Log.w("CharactersFragment", "Context is null or fragment not added, cannot show share dialog")
+                return@launch
+            }
+            MaterialAlertDialogBuilder(contextForDialog)
                 .setTitle("Share '${character.name}' to...")
                 .setItems(options) { _, which ->
                     val chatType = when (which) {
