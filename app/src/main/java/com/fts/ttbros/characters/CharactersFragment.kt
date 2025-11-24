@@ -54,7 +54,8 @@ class CharactersFragment : Fragment() {
     private var allCharacters: List<com.fts.ttbros.data.model.Character> = emptyList()
     private var allBuilders: List<CharacterSheet> = emptyList()
     private val buildersAdapter = BuildersAdapter(
-        onBuilderClick = { builder -> createCharacterFromBuilder(builder) }
+        onBuilderClick = { builder -> createCharacterFromBuilder(builder) },
+        onBuilderLongClick = { builder -> showDeleteBuilderDialog(builder) }
     )
 
     override fun onCreateView(
@@ -82,7 +83,7 @@ class CharactersFragment : Fragment() {
     }
     
     private fun setupTabs() {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val profile = userRepository.currentProfile()
                 val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
@@ -168,7 +169,7 @@ class CharactersFragment : Fragment() {
 
     private fun loadCharacters() {
         binding.progressBar.isVisible = true
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
                 allCharacters = repository.getCharacters()
                 // Get team system for filtering
@@ -189,7 +190,7 @@ class CharactersFragment : Fragment() {
     }
     
     private fun loadTeamCharacters() {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val userId = Firebase.auth.currentUser?.uid ?: return@launch
                 // Загружаем командные чарники (isTemplate = false)
@@ -220,7 +221,7 @@ class CharactersFragment : Fragment() {
     }
     
     private fun checkSystemAndAddCharacter() {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val profile = userRepository.currentProfile()
             if (profile == null) {
                 showSystemSelectionDialog()
@@ -278,7 +279,7 @@ class CharactersFragment : Fragment() {
     }
     
     private fun shareCharacter(character: com.fts.ttbros.data.model.Character) {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val profile = userRepository.currentProfile()
             if (profile == null || profile.teamId.isNullOrBlank()) {
                 Snackbar.make(binding.root, "You must join a team to share characters", Snackbar.LENGTH_LONG).show()
@@ -309,7 +310,7 @@ class CharactersFragment : Fragment() {
         character: com.fts.ttbros.data.model.Character,
         chatType: com.fts.ttbros.chat.model.ChatType
     ) {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
                 chatRepository.sendMessage(
                     profile.teamId!!,
@@ -341,13 +342,36 @@ class CharactersFragment : Fragment() {
     }
     
     private fun deleteCharacter(characterId: String) {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
                 repository.deleteCharacter(characterId)
                 Snackbar.make(binding.root, "Character deleted", Snackbar.LENGTH_SHORT).show()
                 loadCharacters()
             } catch (e: Exception) {
                 Snackbar.make(binding.root, "Error deleting character: ${e.message}", Snackbar.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    private fun showDeleteBuilderDialog(builder: CharacterSheet) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Удалить билдер")
+            .setMessage("Вы уверены, что хотите удалить '${builder.characterName}'? Это действие нельзя отменить.")
+            .setPositiveButton("Удалить") { _, _ ->
+                deleteBuilder(builder)
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+    
+    private fun deleteBuilder(builder: CharacterSheet) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                sheetRepository.deleteSheet(builder.id)
+                Snackbar.make(binding.root, "Билдер удалён", Snackbar.LENGTH_SHORT).show()
+                loadTeamCharacters()
+            } catch (e: Exception) {
+                Snackbar.make(binding.root, "Ошибка удаления: ${e.message}", Snackbar.LENGTH_SHORT).show()
             }
         }
     }
@@ -362,7 +386,8 @@ class CharactersFragment : Fragment() {
  * Адаптер для отображения билдеров персонажей
  */
 class BuildersAdapter(
-    private val onBuilderClick: (CharacterSheet) -> Unit
+    private val onBuilderClick: (CharacterSheet) -> Unit,
+    private val onBuilderLongClick: (CharacterSheet) -> Unit
 ) : RecyclerView.Adapter<BuildersAdapter.BuilderViewHolder>() {
     
     private var builders: List<CharacterSheet> = emptyList()
@@ -396,6 +421,15 @@ class BuildersAdapter(
                 val position = bindingAdapterPosition
                 if (position != RecyclerView.NO_POSITION) {
                     onBuilderClick(builders[position])
+                }
+            }
+            binding.root.setOnLongClickListener {
+                val position = bindingAdapterPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    onBuilderLongClick(builders[position])
+                    true
+                } else {
+                    false
                 }
             }
             // Скрываем кнопку share для билдеров

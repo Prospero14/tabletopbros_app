@@ -480,6 +480,18 @@ class CharacterSheetsFragment : Fragment() {
     }
     
     private fun deleteSheet(sheet: CharacterSheet) {
+        val context = context ?: return
+        MaterialAlertDialogBuilder(context)
+            .setTitle("Удалить лист персонажа")
+            .setMessage("Вы уверены, что хотите удалить '${sheet.characterName}'? Это действие нельзя отменить.")
+            .setPositiveButton("Удалить") { _, _ ->
+                performDeleteSheet(sheet)
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+
+    private fun performDeleteSheet(sheet: CharacterSheet) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 sheetRepository.deleteSheet(sheet.id)
