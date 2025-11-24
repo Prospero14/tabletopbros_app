@@ -77,7 +77,8 @@ class DocumentsFragment : Fragment() {
             onSheetDelete = { sheet -> showDeleteSheetDialog(sheet) }
         )
         
-        binding.documentsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+        val context = context ?: return
+        binding.documentsRecyclerView.layoutManager = LinearLayoutManager(context)
         binding.documentsRecyclerView.adapter = adapter
         
         // Hide delete all button as we moved to individual delete
@@ -206,8 +207,13 @@ class DocumentsFragment : Fragment() {
                             
                             // 2. Материалы для игроков - только те, что загрузил текущий мастер
                             playerMaterials = docs.filter { doc ->
-                                doc.downloadUrl.contains("/player_materials/") && doc.uploadedBy == currentUserId
+                                val isMaterial = doc.downloadUrl.contains("/player_materials/") && doc.uploadedBy == currentUserId
+                                if (isMaterial) {
+                                    android.util.Log.d("DocumentsFragment", "Found player material: ${doc.title}, URL: ${doc.downloadUrl}, uploadedBy: ${doc.uploadedBy}")
+                                }
+                                isMaterial
                             }
+                            android.util.Log.d("DocumentsFragment", "Total player materials: ${playerMaterials.size}")
                             
                             // 3. Материалы от мастера - для игроков (загруженные мастером, но не текущим пользователем)
                             masterMaterials = docs.filter { doc ->
@@ -299,8 +305,10 @@ class DocumentsFragment : Fragment() {
         binding.progressBar.isVisible = true
         viewLifecycleOwner.lifecycleScope.launch {
             try {
+                val context = context ?: return@launch
+                if (!isAdded) return@launch
                 val document = documentRepository.uploadDocument(
-                    teamId, uri, title, fileName, currentUserId, currentUserName, requireContext(), isMaterial
+                    teamId, uri, title, fileName, currentUserId, currentUserName, context, isMaterial
                 )
                 
                 if (isAdded && view != null) {
@@ -309,11 +317,24 @@ class DocumentsFragment : Fragment() {
                 
                 // Если это материал, предлагаем отправить в чат и переключаемся на вкладку материалов
                 if (isMaterial && document != null) {
+                    android.util.Log.d("DocumentsFragment", "Material uploaded: ${document.title}, URL: ${document.downloadUrl}")
+                    android.util.Log.d("DocumentsFragment", "Material contains /player_materials/: ${document.downloadUrl.contains("/player_materials/")}")
+                    android.util.Log.d("DocumentsFragment", "Material uploadedBy: ${document.uploadedBy}, currentUserId: $currentUserId")
+                    
                     // Переключаемся на вкладку "Материалы для игроков" (таб 2 для мастера)
                     if (isMaster && binding.tabLayout.tabCount > 2) {
                         binding.tabLayout.getTabAt(2)?.select()
+                        // Принудительно обновляем список после переключения вкладки
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                            // Небольшая задержка для обновления Flow
+                            kotlinx.coroutines.delay(500)
+                            // Список обновится автоматически через Flow, но можно принудительно обновить
+                        }
                     }
                     showSendToChatDialog(document)
+                } else {
+                    // Для обычных документов обновляем список
+                    android.util.Log.d("DocumentsFragment", "Document uploaded: ${document?.title}, URL: ${document?.downloadUrl}")
                 }
             } catch (e: Exception) {
                 android.util.Log.e("DocumentsFragment", "Error uploading document: ${e.message}", e)
@@ -381,7 +402,9 @@ class DocumentsFragment : Fragment() {
     }
     
     private fun showDeleteDialog(doc: Document) {
-        MaterialAlertDialogBuilder(requireContext())
+        val context = context ?: return
+        if (!isAdded) return
+        MaterialAlertDialogBuilder(context)
             .setTitle("Delete Document")
             .setMessage("Delete '${doc.title}'?")
             .setPositiveButton("Delete") { _, _ ->
@@ -404,7 +427,9 @@ class DocumentsFragment : Fragment() {
     }
     
     private fun checkDownloads(docs: List<Document>) {
-        val docsDir = File(requireContext().filesDir, "documents")
+        val context = context ?: return
+        if (!isAdded) return
+        val docsDir = File(context.filesDir, "documents")
         if (!docsDir.exists()) docsDir.mkdirs()
         
         val downloadedIds = mutableSetOf<String>()
@@ -420,7 +445,9 @@ class DocumentsFragment : Fragment() {
     }
     
     private fun onDocumentClicked(doc: Document) {
-        val docsDir = File(requireContext().filesDir, "documents")
+        val context = context ?: return
+        if (!isAdded) return
+        val docsDir = File(context.filesDir, "documents")
         docsDir.mkdirs() // Создать папку если не существует
         val file = File(docsDir, "${doc.id}_${doc.fileName}")
         
@@ -542,7 +569,9 @@ class DocumentsFragment : Fragment() {
                         return@launch
                     }
                     
-                    val docsDir = File(requireContext().filesDir, "documents")
+                    val context = context ?: return@launch
+                    if (!isAdded) return@launch
+                    val docsDir = File(context.filesDir, "documents")
                     docsDir.mkdirs()
                     val file = File(docsDir, "${sheet.id}_${sheet.characterName}.pdf")
                     

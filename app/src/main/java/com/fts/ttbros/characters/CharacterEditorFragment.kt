@@ -134,7 +134,8 @@ class CharacterEditorFragment : Fragment() {
             }
         }
 
-        binding.formRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+        val context = context ?: return
+        binding.formRecyclerView.layoutManager = LinearLayoutManager(context)
         binding.formRecyclerView.adapter = adapter
         
         binding.saveButton.setOnClickListener {
@@ -147,7 +148,8 @@ class CharacterEditorFragment : Fragment() {
 
         
         // Mode Switch
-        val prefs = requireContext().getSharedPreferences("ttbros_prefs", android.content.Context.MODE_PRIVATE)
+        val context = context ?: return
+        val prefs = context.getSharedPreferences("ttbros_prefs", android.content.Context.MODE_PRIVATE)
         val savedMode = prefs.getBoolean("pref_lock_mode", false)
         val isNew = characterId == null
         val initialMode = if (isNew) true else savedMode
@@ -232,53 +234,102 @@ class CharacterEditorFragment : Fragment() {
                     if (builder != null) {
                         system = builder.system
                         
+                        android.util.Log.d("CharacterEditor", "Loading builder: ${builder.characterName}, system: ${builder.system}")
+                        android.util.Log.d("CharacterEditor", "Builder attributes: ${builder.attributes}")
+                        android.util.Log.d("CharacterEditor", "Builder skills: ${builder.skills}")
+                        android.util.Log.d("CharacterEditor", "Builder stats: ${builder.stats}")
+                        android.util.Log.d("CharacterEditor", "Builder parsedData keys: ${builder.parsedData.keys}")
+                        
+                        // Очищаем formData перед заполнением
+                        formData.clear()
+                        
                         // Заполняем форму данными из билдера
                         formData["name"] = builder.characterName
                         
-                        // Копируем атрибуты из билдера
+                        // Копируем атрибуты из билдера (с правильными именами для системы)
                         builder.attributes.forEach { (key, value) ->
-                            formData[key] = value
+                            // Нормализуем имена атрибутов для разных систем
+                            val normalizedKey = when {
+                                key.contains("Strength", ignoreCase = true) -> "strength"
+                                key.contains("Dexterity", ignoreCase = true) -> "dexterity"
+                                key.contains("Constitution", ignoreCase = true) -> "constitution"
+                                key.contains("Intelligence", ignoreCase = true) -> "intelligence"
+                                key.contains("Wisdom", ignoreCase = true) -> "wisdom"
+                                key.contains("Charisma", ignoreCase = true) -> "charisma"
+                                key.contains("Сила", ignoreCase = true) -> "strength"
+                                key.contains("Ловкость", ignoreCase = true) -> "dexterity"
+                                key.contains("Выносливость", ignoreCase = true) -> "constitution"
+                                key.contains("Интеллект", ignoreCase = true) -> "intelligence"
+                                key.contains("Мудрость", ignoreCase = true) -> "wisdom"
+                                key.contains("Харизма", ignoreCase = true) -> "charisma"
+                                else -> key.lowercase()
+                            }
+                            formData[normalizedKey] = value
+                            android.util.Log.d("CharacterEditor", "Copied attribute: $key -> $normalizedKey = $value")
                         }
                         
                         // Копируем навыки из билдера
                         builder.skills.forEach { (key, value) ->
-                            formData["skill_$key"] = value
+                            val normalizedKey = key.lowercase().replace(" ", "_")
+                            formData["skill_$normalizedKey"] = value
+                            android.util.Log.d("CharacterEditor", "Copied skill: $key -> skill_$normalizedKey = $value")
                         }
                         
                         // Копируем другие статистики из билдера
                         builder.stats.forEach { (key, value) ->
-                            formData[key] = value
+                            formData[key.lowercase()] = value
+                            android.util.Log.d("CharacterEditor", "Copied stat: $key = $value")
                         }
                         
-                        // Копируем parsedData если есть
+                        // Копируем parsedData если есть (приоритет над отдельными полями)
                         builder.parsedData.forEach { (key, value) ->
-                            if (!formData.containsKey(key)) {
-                                formData[key] = value
+                            try {
+                                if (key != "attributes" && key != "skills" && key != "stats" && key != "rawText" && key != "lines") {
+                                    formData[key.lowercase()] = value
+                                    android.util.Log.d("CharacterEditor", "Copied parsedData: $key = $value")
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("CharacterEditor", "Error copying parsedData key $key: ${e.message}", e)
                             }
                         }
                         
-                        renderForm()
-                        Snackbar.make(binding.root, "Персонаж создан из билдера '${builder.characterName}'", Snackbar.LENGTH_LONG).show()
+                        android.util.Log.d("CharacterEditor", "Final formData keys: ${formData.keys}")
+                        android.util.Log.d("CharacterEditor", "Final formData: $formData")
+                        
+                        if (isAdded && view != null) {
+                            renderForm()
+                            Snackbar.make(binding.root, "Персонаж создан из загруженного листа '${builder.characterName}'", Snackbar.LENGTH_LONG).show()
+                        }
                     } else {
-                        showError("Билдер не найден")
-                        try {
-                            if (!findNavController().navigateUp()) {
+                        if (isAdded && view != null) {
+                            showError("Билдер не найден")
+                            try {
+                                if (!findNavController().navigateUp()) {
+                                    activity?.onBackPressed()
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("CharacterEditorFragment", "Navigation error: ${e.message}", e)
                                 activity?.onBackPressed()
                             }
-                        } catch (e: Exception) {
-                            android.util.Log.e("CharacterEditorFragment", "Navigation error: ${e.message}", e)
-                            activity?.onBackPressed()
                         }
+                    }
+                } else {
+                    if (isAdded && view != null) {
+                        showError("ID билдера не указан")
                     }
                 }
             } catch (e: Exception) {
-                showError("Ошибка загрузки билдера: ${e.message}")
+                android.util.Log.e("CharacterEditorFragment", "Error loading builder: ${e.message}", e)
+                if (isAdded && view != null) {
+                    showError("Ошибка загрузки билдера: ${e.message}")
+                }
             }
         }
     }
 
     private fun renderForm() {
-        val contextWithLocale = getLocalizedContext(requireContext(), currentLocale)
+        val context = context ?: return
+        val contextWithLocale = getLocalizedContext(context, currentLocale)
         val items = when (system) {
             "vtm_5e" -> VtmTemplate.generate(formData, contextWithLocale)
             "viedzmin_2e" -> ViedzminTemplate.generate(formData, contextWithLocale)

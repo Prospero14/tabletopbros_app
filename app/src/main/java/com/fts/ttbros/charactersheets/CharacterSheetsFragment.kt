@@ -70,7 +70,8 @@ class CharacterSheetsFragment : Fragment() {
             }
         )
         
-        sheetsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+        val context = context ?: return
+        sheetsRecyclerView.layoutManager = LinearLayoutManager(context)
         sheetsRecyclerView.adapter = adapter
         
         addSheetButton.setOnClickListener {
@@ -494,94 +495,197 @@ class CharacterSheetsFragment : Fragment() {
             document.close()
             document = null
             
-            // Basic parsing - extract name and basic info
-            // This is a simplified version - you'd want more sophisticated parsing
+            android.util.Log.d("CharacterSheetsFragment", "PDF text extracted, length: ${text.length} characters")
+            
+            // ПОЛНЫЙ ПАРСИНГ - извлекаем ВСЕ данные из PDF
             val lines = text.lines()
             val parsedData = mutableMapOf<String, Any>()
             
-            // Try to find character name (usually on first few lines)
+            // 1. Извлекаем имя персонажа
             val nameLine = lines.firstOrNull { it.contains("Name", ignoreCase = true) || it.contains("Имя", ignoreCase = true) }
             parsedData["name"] = nameLine?.substringAfter(":")?.trim()?.substringAfter(" ")?.trim() ?: "Безымянный персонаж"
             
-            // Try to detect system
+            // 2. Определяем систему
             parsedData["system"] = when {
-                text.contains("D&D", ignoreCase = true) || text.contains("Dungeons", ignoreCase = true) -> "dnd_5e"
-                text.contains("Vampire", ignoreCase = true) || text.contains("VTM", ignoreCase = true) -> "vtm_5e"
+                text.contains("D&D", ignoreCase = true) || text.contains("Dungeons", ignoreCase = true) || text.contains("DnD", ignoreCase = true) -> "dnd_5e"
+                text.contains("Vampire", ignoreCase = true) || text.contains("VTM", ignoreCase = true) || text.contains("VtM", ignoreCase = true) -> "vtm_5e"
+                text.contains("Viedzmin", ignoreCase = true) || text.contains("Ведьмак", ignoreCase = true) -> "viedzmin_2e"
                 else -> "unknown"
             }
             
-            // Extract attributes (this is very basic - would need format-specific parsing)
+            // 3. Извлекаем ВСЕ пары ключ-значение (универсальный паттерн)
+            val allKeyValuePairs = mutableMapOf<String, Any>()
+            val keyValuePattern = Regex("([А-Яа-яA-Za-z\\s]+?)\\s*[:=]\\s*([^\\n]+)", RegexOption.IGNORE_CASE)
+            lines.forEach { line ->
+                keyValuePattern.findAll(line).forEach { match ->
+                    val key = match.groupValues[1].trim()
+                    val value = match.groupValues[2].trim()
+                    if (key.isNotBlank() && value.isNotBlank() && key.length < 100) {
+                        // Нормализуем ключ
+                        val normalizedKey = key.lowercase().replace(" ", "_").replace("-", "_")
+                        // Пытаемся определить тип значения
+                        val processedValue = when {
+                            value.toIntOrNull() != null -> value.toInt()
+                            value.toDoubleOrNull() != null -> value.toDouble()
+                            value.equals("true", ignoreCase = true) || value.equals("да", ignoreCase = true) -> true
+                            value.equals("false", ignoreCase = true) || value.equals("нет", ignoreCase = true) -> false
+                            else -> value
+                        }
+                        allKeyValuePairs[normalizedKey] = processedValue
+                        // Также сохраняем с оригинальным ключом
+                        allKeyValuePairs[key] = processedValue
+                    }
+                }
+            }
+            
+            // 4. Извлекаем все числовые значения с их контекстом
+            val numericValues = mutableMapOf<String, Number>()
+            val numericPattern = Regex("([А-Яа-яA-Za-z\\s]+?)\\s*(\\d+)", RegexOption.IGNORE_CASE)
+            lines.forEach { line ->
+                numericPattern.findAll(line).forEach { match ->
+                    val label = match.groupValues[1].trim()
+                    val number = match.groupValues[2].toIntOrNull()
+                    if (label.isNotBlank() && number != null && label.length < 50) {
+                        val normalizedLabel = label.lowercase().replace(" ", "_")
+                        numericValues[normalizedLabel] = number
+                        numericValues[label] = number
+                    }
+                }
+            }
+            
+            // 5. Извлекаем атрибуты (специфичные для систем)
             val attributes = mutableMapOf<String, Int>()
             val skills = mutableMapOf<String, Int>()
             val stats = mutableMapOf<String, Any>()
             
-            // Улучшенный парсинг атрибутов и навыков для всех систем
-            lines.forEach { line ->
-                val trimmedLine = line.trim()
-                
-                // Атрибуты D&D 5e
-                val dndAttributePattern = Regex("(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma|Сила|Ловкость|Выносливость|Интеллект|Мудрость|Харизма)\\s*:?\\s*(\\d+)", RegexOption.IGNORE_CASE)
-                dndAttributePattern.find(trimmedLine)?.let { match ->
-                    val attrName = match.groupValues[1]
-                    val value = match.groupValues[2].toIntOrNull() ?: 0
-                    attributes[attrName] = value
-                }
-                
-                // Атрибуты VTM 5e
-                val vtmAttributePattern = Regex("(Intelligence|Wits|Resolve|Strength|Dexterity|Stamina|Presence|Manipulation|Composure|Интеллект|Сообразительность|Решимость|Сила|Ловкость|Выносливость|Присутствие|Манипуляция|Самообладание)\\s*:?\\s*(\\d+)", RegexOption.IGNORE_CASE)
-                vtmAttributePattern.find(trimmedLine)?.let { match ->
-                    val attrName = match.groupValues[1]
-                    val value = match.groupValues[2].toIntOrNull() ?: 0
-                    attributes[attrName] = value
-                }
-                
-                // Навыки D&D 5e
-                val dndSkillPattern = Regex("(Acrobatics|Animal Handling|Arcana|Athletics|Deception|History|Insight|Intimidation|Investigation|Medicine|Nature|Perception|Performance|Persuasion|Religion|Sleight of Hand|Stealth|Survival)\\s*:?\\s*(\\d+)", RegexOption.IGNORE_CASE)
-                dndSkillPattern.find(trimmedLine)?.let { match ->
-                    val skillName = match.groupValues[1]
-                    val value = match.groupValues[2].toIntOrNull() ?: 0
-                    skills[skillName] = value
-                }
-                
-                // Навыки VTM 5e
-                val vtmSkillPattern = Regex("(Academics|Animal Ken|Athletics|Awareness|Brawl|Craft|Drive|Etiquette|Firearms|Investigation|Larceny|Leadership|Medicine|Melee|Occult|Performance|Persuasion|Science|Stealth|Streetwise|Subterfuge|Survival)\\s*:?\\s*(\\d+)", RegexOption.IGNORE_CASE)
-                vtmSkillPattern.find(trimmedLine)?.let { match ->
-                    val skillName = match.groupValues[1]
-                    val value = match.groupValues[2].toIntOrNull() ?: 0
-                    skills[skillName] = value
-                }
-                
-                // Статистики (HP, AC, и т.д.)
-                val hpPattern = Regex("(HP|Hit Points|Здоровье|ХП)\\s*:?\\s*(\\d+)", RegexOption.IGNORE_CASE)
-                hpPattern.find(trimmedLine)?.let { match ->
-                    val value = match.groupValues[2].toIntOrNull() ?: 0
-                    stats["HP"] = value
-                }
-                
-                val acPattern = Regex("(AC|Armor Class|Класс защиты|КЗ)\\s*:?\\s*(\\d+)", RegexOption.IGNORE_CASE)
-                acPattern.find(trimmedLine)?.let { match ->
-                    val value = match.groupValues[2].toIntOrNull() ?: 0
-                    stats["AC"] = value
-                }
-                
-                // Humanity/Willpower для VTM
-                val humanityPattern = Regex("(Humanity|Humanity Rating|Человечность)\\s*:?\\s*(\\d+)", RegexOption.IGNORE_CASE)
-                humanityPattern.find(trimmedLine)?.let { match ->
-                    val value = match.groupValues[2].toIntOrNull() ?: 0
-                    stats["Humanity"] = value
-                }
-                
-                val willpowerPattern = Regex("(Willpower|Willpower Rating|Сила воли)\\s*:?\\s*(\\d+)", RegexOption.IGNORE_CASE)
-                willpowerPattern.find(trimmedLine)?.let { match ->
-                    val value = match.groupValues[2].toIntOrNull() ?: 0
-                    stats["Willpower"] = value
+            // Атрибуты D&D 5e
+            val dndAttributes = listOf("Strength", "Dexterity", "Constitution", "Intelligence", "Wisdom", "Charisma",
+                "Сила", "Ловкость", "Выносливость", "Интеллект", "Мудрость", "Харизма")
+            dndAttributes.forEach { attr ->
+                val pattern = Regex("$attr\\s*[:=]?\\s*(\\d+)", RegexOption.IGNORE_CASE)
+                lines.forEach { line ->
+                    pattern.find(line)?.let { match ->
+                        val value = match.groupValues[1].toIntOrNull() ?: 0
+                        attributes[attr] = value
+                    }
                 }
             }
             
+            // Атрибуты VTM 5e
+            val vtmAttributes = listOf("Intelligence", "Wits", "Resolve", "Strength", "Dexterity", "Stamina",
+                "Presence", "Manipulation", "Composure", "Интеллект", "Сообразительность", "Решимость",
+                "Сила", "Ловкость", "Выносливость", "Присутствие", "Манипуляция", "Самообладание")
+            vtmAttributes.forEach { attr ->
+                val pattern = Regex("$attr\\s*[:=]?\\s*(\\d+)", RegexOption.IGNORE_CASE)
+                lines.forEach { line ->
+                    pattern.find(line)?.let { match ->
+                        val value = match.groupValues[1].toIntOrNull() ?: 0
+                        attributes[attr] = value
+                    }
+                }
+            }
+            
+            // 6. Извлекаем навыки (все возможные)
+            val allSkills = listOf(
+                // D&D
+                "Acrobatics", "Animal Handling", "Arcana", "Athletics", "Deception", "History",
+                "Insight", "Intimidation", "Investigation", "Medicine", "Nature", "Perception",
+                "Performance", "Persuasion", "Religion", "Sleight of Hand", "Stealth", "Survival",
+                // VTM
+                "Academics", "Animal Ken", "Awareness", "Brawl", "Craft", "Drive", "Etiquette",
+                "Firearms", "Larceny", "Leadership", "Melee", "Occult", "Science", "Streetwise",
+                "Subterfuge"
+            )
+            allSkills.forEach { skill ->
+                val pattern = Regex("$skill\\s*[:=]?\\s*(\\d+)", RegexOption.IGNORE_CASE)
+                lines.forEach { line ->
+                    pattern.find(line)?.let { match ->
+                        val value = match.groupValues[1].toIntOrNull() ?: 0
+                        skills[skill] = value
+                    }
+                }
+            }
+            
+            // 7. Извлекаем статистики (HP, AC, Humanity, Willpower и т.д.)
+            val statPatterns = mapOf(
+                "HP" to listOf("HP", "Hit Points", "Здоровье", "ХП", "Health"),
+                "AC" to listOf("AC", "Armor Class", "Класс защиты", "КЗ", "Armor"),
+                "Humanity" to listOf("Humanity", "Humanity Rating", "Человечность"),
+                "Willpower" to listOf("Willpower", "Willpower Rating", "Сила воли"),
+                "Speed" to listOf("Speed", "Скорость", "Movement"),
+                "Level" to listOf("Level", "Уровень", "Lvl"),
+                "Class" to listOf("Class", "Класс"),
+                "Race" to listOf("Race", "Раса"),
+                "Background" to listOf("Background", "Предыстория"),
+                "Clan" to listOf("Clan", "Клан"),
+                "Concept" to listOf("Concept", "Концепция"),
+                "Predator" to listOf("Predator", "Стиль охоты", "Predator Type")
+            )
+            
+            statPatterns.forEach { (statKey, patterns) ->
+                patterns.forEach { pattern ->
+                    val regex = Regex("$pattern\\s*[:=]?\\s*([^\\n]+)", RegexOption.IGNORE_CASE)
+                    lines.forEach { line ->
+                        regex.find(line)?.let { match ->
+                            val value = match.groupValues[1].trim()
+                            val numericValue = value.toIntOrNull()
+                            if (numericValue != null) {
+                                stats[statKey] = numericValue
+                            } else {
+                                stats[statKey] = value
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 8. Извлекаем разделы (заголовки и их содержимое)
+            val sections = mutableMapOf<String, MutableList<String>>()
+            var currentSection: String? = null
+            val sectionPattern = Regex("^([А-Яа-яA-Z][А-Яа-яA-Z\\s]+?)(?:[:]|$)", RegexOption.MULTILINE)
+            
+            lines.forEachIndexed { index, line ->
+                val trimmed = line.trim()
+                // Проверяем, является ли строка заголовком раздела
+                if (trimmed.isNotEmpty() && 
+                    trimmed.length < 50 && 
+                    !trimmed.contains(":") && 
+                    !trimmed.matches(Regex(".*\\d+.*")) &&
+                    trimmed[0].isUpperCase()) {
+                    currentSection = trimmed
+                    if (!sections.containsKey(currentSection)) {
+                        sections[currentSection] = mutableListOf()
+                    }
+                } else if (currentSection != null && trimmed.isNotEmpty()) {
+                    sections[currentSection]?.add(trimmed)
+                }
+            }
+            
+            // 9. Сохраняем все извлеченные данные
             parsedData["attributes"] = attributes
             parsedData["skills"] = skills
             parsedData["stats"] = stats
-            parsedData["rawText"] = text // Store raw text for reference
+            parsedData["allKeyValuePairs"] = allKeyValuePairs
+            parsedData["numericValues"] = numericValues
+            parsedData["sections"] = sections.mapValues { it.value.toList() } // Конвертируем в List для сериализации
+            parsedData["rawText"] = text
+            parsedData["lines"] = lines.toList() // Сохраняем все строки
+            
+            // 10. Логирование для отладки
+            android.util.Log.d("CharacterSheetsFragment", "=== FULL PDF PARSING RESULTS ===")
+            android.util.Log.d("CharacterSheetsFragment", "Name: ${parsedData["name"]}")
+            android.util.Log.d("CharacterSheetsFragment", "System: ${parsedData["system"]}")
+            android.util.Log.d("CharacterSheetsFragment", "Attributes count: ${attributes.size}")
+            android.util.Log.d("CharacterSheetsFragment", "Skills count: ${skills.size}")
+            android.util.Log.d("CharacterSheetsFragment", "Stats count: ${stats.size}")
+            android.util.Log.d("CharacterSheetsFragment", "Key-Value pairs count: ${allKeyValuePairs.size}")
+            android.util.Log.d("CharacterSheetsFragment", "Numeric values count: ${numericValues.size}")
+            android.util.Log.d("CharacterSheetsFragment", "Sections count: ${sections.size}")
+            android.util.Log.d("CharacterSheetsFragment", "Total parsed data keys: ${parsedData.keys}")
+            android.util.Log.d("CharacterSheetsFragment", "All attributes: $attributes")
+            android.util.Log.d("CharacterSheetsFragment", "All skills: $skills")
+            android.util.Log.d("CharacterSheetsFragment", "All stats: $stats")
+            android.util.Log.d("CharacterSheetsFragment", "Sections: ${sections.keys}")
             
             parsedData
         } catch (e: OutOfMemoryError) {
@@ -620,7 +724,10 @@ class CharacterSheetsFragment : Fragment() {
     private fun openSheetEditor(sheet: CharacterSheet) {
         // Navigate to sheet editor
         // For now, just show a toast
-        Toast.makeText(requireContext(), "Открытие листа: ${sheet.characterName}", Toast.LENGTH_SHORT).show()
+        val context = context
+        if (context != null && isAdded) {
+            Toast.makeText(context, "Открытие листа: ${sheet.characterName}", Toast.LENGTH_SHORT).show()
+        }
         // TODO: Navigate to sheet editor fragment
     }
     

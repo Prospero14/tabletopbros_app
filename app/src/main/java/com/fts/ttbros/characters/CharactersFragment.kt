@@ -26,6 +26,7 @@ class CharactersFragment : Fragment() {
     private val repository = CharacterRepository()
     private val userRepository = com.fts.ttbros.data.repository.UserRepository()
     private val chatRepository = com.fts.ttbros.chat.data.ChatRepository()
+    private val sheetRepository = com.fts.ttbros.data.repository.CharacterSheetRepository()
     
     private val adapter = CharactersAdapter(
         onCharacterClick = { character ->
@@ -62,7 +63,8 @@ class CharactersFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.charactersRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+        val context = context ?: return
+        binding.charactersRecyclerView.layoutManager = LinearLayoutManager(context)
         binding.charactersRecyclerView.adapter = adapter
 
         binding.addCharacterFab.setOnClickListener {
@@ -158,40 +160,68 @@ class CharactersFragment : Fragment() {
     
     private fun checkSystemAndAddCharacter() {
         viewLifecycleOwner.lifecycleScope.launch {
-            val profile = userRepository.currentProfile()
-            if (profile == null) {
-                showSystemSelectionDialog()
-                return@launch
-            }
-            
-            val currentTeam = profile.teams.find { it.teamId == profile.currentTeamId }
-            val system = currentTeam?.teamSystem
-            
-            val popup = android.widget.PopupMenu(requireContext(), binding.addCharacterFab)
+            try {
+                if (!isAdded || view == null) return@launch
+                
+                val profile = userRepository.currentProfile()
+                val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
+                val teamSystem = currentTeam?.teamSystem
+                
+                val context = context ?: return@launch
+                val popup = android.widget.PopupMenu(context, binding.addCharacterFab)
             popup.menu.add(0, 1, 0, "Классический лист персонажа")
             
-            if (!system.isNullOrBlank()) {
-                val systemName = when (system) {
-                    "vtm_5e" -> "VTM"
-                    "dnd_5e" -> "D&D"
-                    "viedzmin_2e" -> "Viedzmin"
-                    else -> system
+            // Загружаем доступные билдеры (загруженные листы персонажей)
+            val userId = Firebase.auth.currentUser?.uid
+            if (userId != null) {
+                try {
+                    val sheets = sheetRepository.getUserSheets(userId)
+                    if (sheets.isNotEmpty()) {
+                        popup.menu.add(0, 2, 1, "Загруженный лист персонажа")
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("CharactersFragment", "Error loading sheets: ${e.message}", e)
                 }
-                popup.menu.add(0, 2, 1, "Загруженный лист персонажа")
             }
             
             popup.setOnMenuItemClickListener { item ->
-                when (item.itemId) {
-                    1 -> showSystemSelectionDialog()
-                    2 -> {
-                        if (system != null) {
-                            openCharacterEditor(system)
+                try {
+                    when (item.itemId) {
+                        1 -> {
+                            if (isAdded && view != null) {
+                                showSystemSelectionDialog(teamSystem)
+                            }
                         }
+                        2 -> {
+                            // Показываем диалог выбора билдера
+                            if (isAdded && view != null) {
+                                showBuilderSelectionDialog()
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("CharactersFragment", "Error in menu item click: ${e.message}", e)
+                    if (isAdded && view != null) {
+                        Snackbar.make(binding.root, "Ошибка: ${e.message}", Snackbar.LENGTH_SHORT).show()
                     }
                 }
                 true
             }
-            popup.show()
+            
+            try {
+                popup.show()
+            } catch (e: Exception) {
+                android.util.Log.e("CharactersFragment", "Error showing popup: ${e.message}", e)
+                if (isAdded && view != null) {
+                    Snackbar.make(binding.root, "Ошибка открытия меню: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                }
+            }
+            } catch (e: Exception) {
+                android.util.Log.e("CharactersFragment", "Error in checkSystemAndAddCharacter: ${e.message}", e)
+                if (isAdded && view != null) {
+                    Snackbar.make(binding.root, "Ошибка: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                }
+            }
         }
     }
     
@@ -207,31 +237,156 @@ class CharactersFragment : Fragment() {
             Snackbar.make(binding.root, "Error opening character editor", Snackbar.LENGTH_SHORT).show()
         }
     }
-
-    private fun showSystemSelectionDialog() {
-        val systems = arrayOf(
-            getString(R.string.vampire_masquerade),
-            getString(R.string.dungeons_dragons),
-            getString(R.string.viedzmin_2e)
-        )
-        val systemCodes = arrayOf("vtm_5e", "dnd_5e", "viedzmin_2e")
-
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle(getString(R.string.select_game_system))
-            .setItems(systems) { _, which ->
-                val selectedSystem = systemCodes[which]
-                try {
-                    val bundle = Bundle().apply {
-                        putString("characterId", null)
-                        putString("system", selectedSystem)
+    
+    private fun showBuilderSelectionDialog() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                if (!isAdded || view == null) return@launch
+                
+                val userId = Firebase.auth.currentUser?.uid
+                if (userId == null) {
+                    Snackbar.make(binding.root, "Пользователь не авторизован", Snackbar.LENGTH_SHORT).show()
+                    return@launch
+                }
+                
+                val sheets = sheetRepository.getUserSheets(userId)
+                if (sheets.isEmpty()) {
+                    Snackbar.make(binding.root, "Нет загруженных листов персонажей", Snackbar.LENGTH_SHORT).show()
+                    return@launch
+                }
+                
+                // Создаем список названий билдеров
+                val builderNames = sheets.map { it.characterName ?: "Безымянный лист" }
+                
+                // Проверяем контекст перед показом диалога
+                val context = context ?: return@launch
+                if (!isAdded) return@launch
+                
+                // Показываем диалог выбора
+                MaterialAlertDialogBuilder(context)
+                    .setTitle("Выберите загруженный лист персонажа")
+                    .setItems(builderNames.toTypedArray()) { _, which ->
+                        try {
+                            if (which >= 0 && which < sheets.size) {
+                                val selectedSheet = sheets[which]
+                                if (selectedSheet.id.isNotBlank()) {
+                                    openCharacterEditorFromBuilder(selectedSheet.id)
+                                } else {
+                                    if (isAdded && view != null) {
+                                        Snackbar.make(binding.root, "Ошибка: неверный лист персонажа", Snackbar.LENGTH_SHORT).show()
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("CharactersFragment", "Error selecting builder: ${e.message}", e)
+                            if (isAdded && view != null) {
+                                Snackbar.make(binding.root, "Ошибка выбора: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                            }
+                        }
                     }
-                    findNavController().navigate(R.id.action_charactersFragment_to_characterEditorFragment, bundle)
-                } catch (e: Exception) {
-                    android.util.Log.e("CharactersFragment", "Navigation error: ${e.message}", e)
-                    Snackbar.make(binding.root, "Error opening character editor", Snackbar.LENGTH_SHORT).show()
+                    .setNegativeButton("Отмена", null)
+                    .show()
+            } catch (e: Exception) {
+                android.util.Log.e("CharactersFragment", "Error showing builder selection: ${e.message}", e)
+                if (isAdded && view != null) {
+                    Snackbar.make(binding.root, "Ошибка загрузки билдеров: ${e.message}", Snackbar.LENGTH_SHORT).show()
                 }
             }
-            .show()
+        }
+    }
+    
+    private fun openCharacterEditorFromBuilder(builderId: String) {
+        try {
+            val bundle = Bundle().apply {
+                putString("characterId", null)
+                putString("system", null) // Система будет определена из билдера
+                putString("builderId", builderId)
+            }
+            findNavController().navigate(R.id.action_charactersFragment_to_characterEditorFragment, bundle)
+        } catch (e: Exception) {
+            android.util.Log.e("CharactersFragment", "Navigation error: ${e.message}", e)
+            Snackbar.make(binding.root, "Ошибка открытия редактора персонажа", Snackbar.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showSystemSelectionDialog(teamSystem: String?) {
+        try {
+            if (!isAdded || view == null) return
+            
+            val context = context ?: return
+            
+            // Фильтруем системы: если есть teamSystem, показываем только её
+            val availableSystems = if (!teamSystem.isNullOrBlank()) {
+                // Показываем только систему команды
+                when (teamSystem) {
+                    "vtm_5e" -> arrayOf(getString(R.string.vampire_masquerade))
+                    "dnd_5e" -> arrayOf(getString(R.string.dungeons_dragons))
+                    "viedzmin_2e" -> arrayOf(getString(R.string.viedzmin_2e))
+                    else -> arrayOf(
+                        getString(R.string.vampire_masquerade),
+                        getString(R.string.dungeons_dragons),
+                        getString(R.string.viedzmin_2e)
+                    )
+                }
+            } else {
+                // Если системы нет, показываем все
+                arrayOf(
+                    getString(R.string.vampire_masquerade),
+                    getString(R.string.dungeons_dragons),
+                    getString(R.string.viedzmin_2e)
+                )
+            }
+            
+            val systems = availableSystems
+            // Маппинг систем должен соответствовать отфильтрованному списку
+            val systemCodes = if (!teamSystem.isNullOrBlank()) {
+                when (teamSystem) {
+                    "vtm_5e" -> arrayOf("vtm_5e")
+                    "dnd_5e" -> arrayOf("dnd_5e")
+                    "viedzmin_2e" -> arrayOf("viedzmin_2e")
+                    else -> arrayOf("vtm_5e", "dnd_5e", "viedzmin_2e")
+                }
+            } else {
+                arrayOf("vtm_5e", "dnd_5e", "viedzmin_2e")
+            }
+
+            if (systems.isEmpty() || systemCodes.isEmpty() || systems.size != systemCodes.size) {
+                android.util.Log.e("CharactersFragment", "Systems arrays mismatch: systems=${systems.size}, codes=${systemCodes.size}")
+                Snackbar.make(binding.root, "Ошибка: неверная конфигурация систем", Snackbar.LENGTH_SHORT).show()
+                return
+            }
+
+            MaterialAlertDialogBuilder(context)
+                .setTitle(getString(R.string.select_game_system))
+                .setItems(systems) { _, which ->
+                    try {
+                        if (which >= 0 && which < systemCodes.size) {
+                            val selectedSystem = systemCodes[which]
+                            val bundle = Bundle().apply {
+                                putString("characterId", null)
+                                putString("system", selectedSystem)
+                            }
+                            findNavController().navigate(R.id.action_charactersFragment_to_characterEditorFragment, bundle)
+                        } else {
+                            android.util.Log.e("CharactersFragment", "Invalid system index: $which")
+                            if (isAdded && view != null) {
+                                Snackbar.make(binding.root, "Ошибка выбора системы", Snackbar.LENGTH_SHORT).show()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("CharactersFragment", "Navigation error: ${e.message}", e)
+                        if (isAdded && view != null) {
+                            Snackbar.make(binding.root, "Ошибка открытия редактора: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                .show()
+        } catch (e: Exception) {
+            android.util.Log.e("CharactersFragment", "Error showing system selection: ${e.message}", e)
+            if (isAdded && view != null) {
+                Snackbar.make(binding.root, "Ошибка: ${e.message}", Snackbar.LENGTH_SHORT).show()
+            }
+        }
     }
     
     private fun shareCharacter(character: com.fts.ttbros.data.model.Character) {
@@ -247,7 +402,9 @@ class CharactersFragment : Fragment() {
             
             val options = arrayOf("Team Chat", masterPlayerLabel)
             
-            MaterialAlertDialogBuilder(requireContext())
+            val context = context ?: return
+            if (!isAdded) return
+            MaterialAlertDialogBuilder(context)
                 .setTitle("Share '${character.name}' to...")
                 .setItems(options) { _, which ->
                     val chatType = when (which) {

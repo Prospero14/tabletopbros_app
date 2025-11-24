@@ -47,6 +47,7 @@ class DocumentRepository {
             android.util.Log.d("DocumentRepository", "Starting upload to Yandex.Disk")
             
             // 1. Upload to Yandex.Disk and get public URL
+            android.util.Log.d("DocumentRepository", "Uploading file: $fileName, isMaterial: $isMaterial")
             val downloadUrl = yandexDisk.uploadFile(
                 teamId = teamId,
                 fileName = fileName,
@@ -56,6 +57,7 @@ class DocumentRepository {
             )
             
             android.util.Log.d("DocumentRepository", "File uploaded, URL: $downloadUrl")
+            android.util.Log.d("DocumentRepository", "URL contains /player_materials/: ${downloadUrl.contains("/player_materials/")}")
             
             // 2. Get file size
             val size = context.contentResolver

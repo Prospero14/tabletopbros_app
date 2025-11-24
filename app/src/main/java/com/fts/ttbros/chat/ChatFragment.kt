@@ -12,6 +12,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
@@ -116,7 +117,8 @@ class ChatFragment : Fragment() {
                 handleMaterialClick(message)
             }
         )
-        val layoutManager = LinearLayoutManager(requireContext()).apply {
+        val context = context ?: return
+        val layoutManager = LinearLayoutManager(context).apply {
             stackFromEnd = true
         }
         messagesRecyclerView.layoutManager = layoutManager
@@ -137,7 +139,10 @@ class ChatFragment : Fragment() {
                 handleUnpinPoll(pollId)
             }
         )
-        pollsRecyclerView?.layoutManager = LinearLayoutManager(requireContext())
+        val contextForPolls = context
+        if (contextForPolls != null) {
+            pollsRecyclerView?.layoutManager = LinearLayoutManager(contextForPolls)
+        }
         pollsRecyclerView?.adapter = pollsAdapter
 
         sendButton.setOnClickListener { sendMessage() }
@@ -155,7 +160,10 @@ class ChatFragment : Fragment() {
                             Snackbar.make(it, getString(R.string.error_group_not_found), Snackbar.LENGTH_LONG)
                                 .setAction(getString(R.string.join_group)) {
                                     try {
-                                        startActivity(Intent(requireContext(), GroupActivity::class.java))
+                                        val contextForIntent = context
+                                        if (contextForIntent != null && isAdded) {
+                                            startActivity(Intent(contextForIntent, GroupActivity::class.java))
+                                        }
                                     } catch (e: Exception) {
                                         android.util.Log.e("ChatFragment", "Error starting GroupActivity: ${e.message}", e)
                                     }
@@ -284,7 +292,8 @@ class ChatFragment : Fragment() {
             }
             
             try {
-                val context = requireContext()
+                val context = context ?: return@setOnClickListener
+                if (!isAdded) return@setOnClickListener
                 val popupMenu = android.widget.PopupMenu(context, anchorView, android.view.Gravity.TOP)
                 popupMenu.menuInflater.inflate(com.fts.ttbros.R.menu.chat_actions_menu, popupMenu.menu)
                 
@@ -339,7 +348,9 @@ class ChatFragment : Fragment() {
         
         android.util.Log.d("ChatFragment", "Showing create poll dialog")
         try {
-            CreatePollDialog(requireContext()) { question, options, isAnonymous ->
+            val context = context ?: return
+            if (!isAdded) return
+            CreatePollDialog(context) { question, options, isAnonymous ->
                 android.util.Log.d("ChatFragment", "Poll dialog callback called: question='$question', options=${options.size}, isAnonymous=$isAnonymous")
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
@@ -649,7 +660,9 @@ class ChatFragment : Fragment() {
                                 val title = targetDocument.title
                                 
                                 // Скачиваем файл во временный файл
-                                val tempFile = java.io.File(requireContext().cacheDir, "temp_material_${System.currentTimeMillis()}.pdf")
+                                val contextForFile = context ?: return@launch
+                                if (!isAdded) return@launch
+                                val tempFile = java.io.File(contextForFile.cacheDir, "temp_material_${System.currentTimeMillis()}.pdf")
                                 java.net.URL(downloadUrl).openStream().use { input ->
                                     java.io.FileOutputStream(tempFile).use { output ->
                                         input.copyTo(output)
@@ -665,7 +678,7 @@ class ChatFragment : Fragment() {
                                     fileName = fileName,
                                     userId = profile.uid,
                                     userName = profile.displayName,
-                                    context = requireContext(),
+                                    context = contextForFile,
                                     isMaterial = true
                                 )
                                 
@@ -933,7 +946,9 @@ class ChatFragment : Fragment() {
                     
                     if (document != null) {
                         // Скачиваем и открываем файл
-                        val docsDir = java.io.File(requireContext().filesDir, "documents")
+                        val contextForDocs = context ?: return@launch
+                        if (!isAdded) return@launch
+                        val docsDir = java.io.File(contextForDocs.filesDir, "documents")
                         docsDir.mkdirs()
                         val file = java.io.File(docsDir, "${document.id}_${document.fileName}")
                         
