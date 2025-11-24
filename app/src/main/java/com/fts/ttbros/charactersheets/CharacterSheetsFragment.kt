@@ -1,5 +1,6 @@
 package com.fts.ttbros.charactersheets
 
+import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -172,10 +173,10 @@ class CharacterSheetsFragment : Fragment() {
             val inputStream = context.contentResolver.openInputStream(uri)
             inputStream?.use { stream ->
                 parsePdfContent(stream)
-            } ?: emptyMap()
+            } ?: emptyMap<String, Any>()
         } catch (e: Exception) {
             android.util.Log.e("CharacterSheetsFragment", "Error parsing PDF: ${e.message}", e)
-            emptyMap()
+            emptyMap<String, Any>()
         }
     }
     

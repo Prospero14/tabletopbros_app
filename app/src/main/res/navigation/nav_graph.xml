@@ -91,15 +91,15 @@
         <argument
             android:name="characterId"
             app:argType="string"
-            android:nullable="true" />
+            app:nullable="true" />
         <argument
             android:name="system"
             app:argType="string"
-            android:nullable="true" />
+            app:nullable="true" />
         <argument
             android:name="builderId"
             app:argType="string"
-            android:nullable="true" />
+            app:nullable="true" />
     </fragment>
 
     <fragment

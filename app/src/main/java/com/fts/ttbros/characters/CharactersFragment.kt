@@ -9,6 +9,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.fts.ttbros.R
 import com.fts.ttbros.data.model.CharacterSheet
 import com.fts.ttbros.data.repository.CharacterRepository
@@ -16,6 +17,8 @@ import com.fts.ttbros.data.repository.CharacterSheetRepository
 import com.fts.ttbros.databinding.FragmentCharactersBinding
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.launch
 
 class CharactersFragment : Fragment() {
@@ -157,7 +160,7 @@ class CharactersFragment : Fragment() {
     }
     
     private fun showBuilders() {
-        binding.charactersRecyclerView.adapter = buildersAdapter
+        binding.charactersRecyclerView.adapter = buildersAdapter as RecyclerView.Adapter<RecyclerView.ViewHolder>
         buildersAdapter.submitList(allBuilders)
         binding.emptyView.isVisible = allBuilders.isEmpty()
         binding.emptyView.text = "Нет билдеров. Загрузите PDF лист персонажа в разделе 'Листы персонажей'"
@@ -188,7 +191,7 @@ class CharactersFragment : Fragment() {
     private fun loadBuilders() {
         lifecycleScope.launch {
             try {
-                val userId = com.google.firebase.auth.ktx.auth.currentUser?.uid ?: return@launch
+                val userId = Firebase.auth.currentUser?.uid ?: return@launch
                 allBuilders = sheetRepository.getUserSheets(userId).filter { it.isTemplate }
                 
                 val selectedTabPosition = binding.tabLayout.selectedTabPosition
