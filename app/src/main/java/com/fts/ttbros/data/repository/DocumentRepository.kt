@@ -101,6 +101,54 @@ class DocumentRepository {
         }
     }
 
+    suspend fun uploadCharacterSheetMetadata(
+        teamId: String,
+        pdfUrl: String,
+        characterName: String,
+        system: String,
+        userId: String,
+        userName: String
+    ): Document? {
+        try {
+            val fileName = "character_sheet_${characterName}_${System.currentTimeMillis()}.pdf"
+            
+            val docMap = hashMapOf(
+                "teamId" to teamId,
+                "title" to "Character Sheet: $characterName",
+                "fileName" to fileName,
+                "downloadUrl" to pdfUrl,
+                "uploadedBy" to userId,
+                "uploadedByName" to userName,
+                "timestamp" to Timestamp.now(),
+                "sizeBytes" to 0L, // Unknown size for already uploaded files
+                "system" to system
+            )
+            
+            val docRef = db.collection("teams")
+                .document(teamId)
+                .collection("documents")
+                .add(docMap)
+                .await()
+                
+            android.util.Log.d("DocumentRepository", "Character sheet metadata saved to Firestore")
+            
+            return Document(
+                id = docRef.id,
+                teamId = teamId,
+                title = "Character Sheet: $characterName",
+                fileName = fileName,
+                downloadUrl = pdfUrl,
+                uploadedBy = userId,
+                uploadedByName = userName,
+                timestamp = Timestamp.now(),
+                sizeBytes = 0L
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("DocumentRepository", "Error saving character sheet metadata: ${e.message}", e)
+            throw e
+        }
+    }
+
     suspend fun deleteDocument(teamId: String, documentId: String, downloadUrl: String) {
         // 1. Delete from Firestore
         db.collection("teams")

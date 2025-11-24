@@ -36,6 +36,7 @@ class CharacterSheetsFragment : Fragment() {
     private val yandexDisk = com.fts.ttbros.data.repository.YandexDiskRepository()
     private val sheetRepository = CharacterSheetRepository()
     private val userRepository = com.fts.ttbros.data.repository.UserRepository()
+    private val documentRepository = com.fts.ttbros.data.repository.DocumentRepository()
     private lateinit var adapter: CharacterSheetsAdapter
     
     private val pickPdfLauncher = registerForActivityResult(
@@ -185,6 +186,26 @@ class CharacterSheetsFragment : Fragment() {
                     return@launch
                 }
                 
+                // Save character sheet metadata to Firestore so it appears in Documents tab
+                val userProfile = userRepository.currentProfile()
+                val teamId = userProfile?.teamId
+                if (teamId != null) {
+                    try {
+                        documentRepository.uploadCharacterSheetMetadata(
+                            teamId = teamId,
+                            pdfUrl = pdfUrl,
+                            characterName = validationResult.characterName ?: "Unknown",
+                            system = validationResult.system ?: "unknown",
+                            userId = userId,
+                            userName = auth.currentUser?.displayName ?: "Unknown"
+                        )
+                        android.util.Log.d("CharacterSheetsFragment", "Character sheet metadata saved to Firestore")
+                    } catch (e: Exception) {
+                        android.util.Log.e("CharacterSheetsFragment", "Error saving metadata: ${e.message}", e)
+                        // Don't fail the upload if metadata save fails
+                    }
+                }
+                
                 view?.let {
                     Snackbar.make(it, "Парсинг PDF...", Snackbar.LENGTH_SHORT).show()
                 }
@@ -256,7 +277,9 @@ class CharacterSheetsFragment : Fragment() {
      */
     private data class ValidationResult(
         val isValid: Boolean,
-        val errorMessage: String? = null
+        val errorMessage: String? = null,
+        val characterName: String? = null,
+        val system: String? = null
     )
     
     /**
@@ -349,7 +372,15 @@ class CharacterSheetsFragment : Fragment() {
                 )
             }
             
-            ValidationResult(true)
+            // Extract character name and system from text
+            val characterName = extractCharacterName(text)
+            val system = detectSystem(text)
+            
+            ValidationResult(
+                isValid = true,
+                characterName = characterName,
+                system = system
+            )
         } catch (e: Exception) {
             android.util.Log.e("CharacterSheetsFragment", "Error validating PDF content: ${e.message}", e)
             try {
@@ -358,6 +389,49 @@ class CharacterSheetsFragment : Fragment() {
                 android.util.Log.e("CharacterSheetsFragment", "Error closing PDF document: ${closeException.message}", closeException)
             }
             ValidationResult(false, "Ошибка при проверке файла: ${e.message}")
+        }
+    }
+    
+    /**
+     * Extract character name from PDF text
+     */
+    private fun extractCharacterName(text: String): String {
+        // Try to find name after "name:" or "имя:" keywords
+        val namePatterns = listOf(
+            Regex("name[:\\s]+([^\\n]{1,50})", RegexOption.IGNORE_CASE),
+            Regex("имя[:\\s]+([^\\n]{1,50})", RegexOption.IGNORE_CASE),
+            Regex("character name[:\\s]+([^\\n]{1,50})", RegexOption.IGNORE_CASE)
+        )
+        
+        for (pattern in namePatterns) {
+            val match = pattern.find(text)
+            if (match != null && match.groupValues.size > 1) {
+                return match.groupValues[1].trim().take(50)
+            }
+        }
+        
+        return "Unknown Character"
+    }
+    
+    /**
+     * Detect game system from PDF text
+     */
+    private fun detectSystem(text: String): String {
+        return when {
+            text.contains("vampire", ignoreCase = true) || 
+            text.contains("clan", ignoreCase = true) ||
+            text.contains("disciplines", ignoreCase = true) ||
+            text.contains("blood potency", ignoreCase = true) -> "vtm_5e"
+            
+            text.contains("dungeons", ignoreCase = true) ||
+            text.contains("dragons", ignoreCase = true) ||
+            text.contains("d&d", ignoreCase = true) ||
+            text.contains("armor class", ignoreCase = true) -> "dnd_5e"
+            
+            text.contains("viedzmin", ignoreCase = true) ||
+            text.contains("ведьмак", ignoreCase = true) -> "viedzmin_2e"
+            
+            else -> "unknown"
         }
     }
     
