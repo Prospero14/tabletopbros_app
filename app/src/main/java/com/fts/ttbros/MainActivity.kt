@@ -1,5 +1,6 @@
 package com.fts.ttbros
 
+
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.content.ClipData
@@ -47,6 +48,7 @@ class MainActivity : AppCompatActivity() {
 
     private val yandexDisk = com.fts.ttbros.data.repository.YandexDiskRepository() // ДОБАВИТЬ ЭТУ СТРОКУ
     private lateinit var gestureDetector: GestureDetector
+    private var isNavigating = false // Защита от множественных навигаций
 
     // Порядок пунктов меню для свайпа
     private val menuOrder = listOf(
@@ -181,85 +183,6 @@ class MainActivity : AppCompatActivity() {
             binding.drawerLayout.closeDrawer(GravityCompat.END)
             showAvatarMenu()
         }
-    }
-    private fun setupSwipeGesture() {
-        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
-            private val SWIPE_THRESHOLD = 100
-            private val SWIPE_VELOCITY_THRESHOLD = 100
-
-            override fun onFling(
-                e1: MotionEvent?,
-                e2: MotionEvent,
-                velocityX: Float,
-                velocityY: Float
-            ): Boolean {
-                if (e1 == null) return false
-
-                val diffX = e2.x - e1.x
-                val diffY = e2.y - e1.y
-
-                if (Math.abs(diffX) > Math.abs(diffY)) {
-                    if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
-                        if (diffX > 0) {
-                            // Свайп вправо - следующий пункт меню
-                            navigateToNextMenuItem()
-                        }else {
-                            // Свайп влево - предыдущий пункт
-                            navigateToPreviousMenuItem()
-                        }
-                        return true
-                    }
-                }
-                return false
-            }
-        })
-    }
-    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        gestureDetector.onTouchEvent(ev)
-        return super.dispatchTouchEvent(ev)
-    }
-    private fun navigateToNextMenuItem() {
-        val currentDestination = navController.currentDestination?.id ?: return
-        val currentIndex = menuOrder.indexOf(currentDestination)
-
-        if (currentIndex != -1 && currentIndex < menuOrder.size - 1) {
-            val nextDestination = menuOrder[currentIndex + 1]
-            try {
-                val navOptions = NavOptions.Builder()
-                    .setEnterAnim(R.anim.slide_in_right)
-                    .setExitAnim(R.anim.slide_out_left)
-                    .setPopEnterAnim(R.anim.slide_in_left)
-                    .setPopExitAnim(R.anim.slide_out_right)
-                    .build()
-                navController.navigate(nextDestination, null, navOptions)
-            } catch (e: Exception) {
-                android.util.Log.e("MainActivity", "Swipe navigation error: ${e.message}", e)
-            }
-        }
-    }
-    private fun navigateToPreviousMenuItem() {
-        val currentDestination = navController.currentDestination?.id ?: return
-        val currentIndex = menuOrder.indexOf(currentDestination)
-
-        if (currentIndex > 0) {
-            val previousDestination = menuOrder[currentIndex - 1]
-            try {
-                val navOptions = NavOptions.Builder()
-                    .setEnterAnim(R.anim.slide_in_left)
-                    .setExitAnim(R.anim.slide_out_right)
-                    .setPopEnterAnim(R.anim.slide_in_right)
-                    .setPopExitAnim(R.anim.slide_out_left)
-                    .build()
-                navController.navigate(previousDestination, null, navOptions)
-            } catch (e: Exception) {
-                android.util.Log.e("MainActivity", "Swipe navigation error: ${e.message}", e)
-            }
-        }
-    }
-    private fun showAvatarMenu() {
-        MaterialAlertDialogBuilder(this)
-            .setTitle("Аватар")
-            .setItems(arrayOf("Загрузить из галереи", "Удалить")) { _, which ->
                 when (which) {
                     0 -> pickImageFromGallery()
                     1 -> removeAvatar()
@@ -269,8 +192,115 @@ class MainActivity : AppCompatActivity() {
             .setBackground(androidx.core.content.ContextCompat.getDrawable(this, R.drawable.bg_cloud_dialog))
             .show()
     }
+private fun setupSwipeGesture() {
+    gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+        private val SWIPE_THRESHOLD = 100
+        private val SWIPE_VELOCITY_THRESHOLD = 100
+
+        override fun onFling(
+            e1: MotionEvent?,
+            e2: MotionEvent,
+            velocityX: Float,
+            velocityY: Float
+        ): Boolean {
+            if (e1 == null) return false
+
+            // Игнорировать свайп если уже идёт навигация
+            if (isNavigating) return false
+
+            val diffX = e2.x - e1.x
+            val diffY = e2.y - e1.y
+
+            if (Math.abs(diffX) > Math.abs(diffY)) {
+                if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
+                    if (diffX > 0) {
+                        // Свайп вправо - следующий пункт меню
+                        navigateToNextMenuItem()
+                    } else {
+                        // Свайп влево - предыдущий пункт меню
+                        navigateToPreviousMenuItem()
+                    }
+                    return true
+                }
+            }
+            return false
+        }
+    })
+}
+override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+    gestureDetector.onTouchEvent(ev)
+    return super.dispatchTouchEvent(ev)
+}
+
+private fun navigateToNextMenuItem() {
+    // Проверка что не идёт другая навигация
+    if (isNavigating) return
     
-    private fun pickImageFromGallery() {
+    val currentDestination = navController.currentDestination?.id ?: return
+    val currentIndex = menuOrder.indexOf(currentDestination)
+    
+    if (currentIndex != -1 && currentIndex < menuOrder.size - 1) {
+        val nextDestination = menuOrder[currentIndex + 1]
+        
+        // Установить флаг навигации
+        isNavigating = true
+        
+        try {
+            val navOptions = NavOptions.Builder()
+                .setEnterAnim(R.anim.slide_in_right)
+                .setExitAnim(R.anim.slide_out_left)
+                .setPopEnterAnim(R.anim.slide_in_left)
+                .setPopExitAnim(R.anim.slide_out_right)
+                .build()
+            navController.navigate(nextDestination, null, navOptions)
+            
+            // Сбросить флаг через небольшую задержку
+            binding.root.postDelayed({
+                isNavigating = false
+            }, 500) // 500ms задержка перед следующим свайпом
+            
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Swipe navigation error: ${e.message}", e)
+            isNavigating = false // Сбросить флаг при ошибке
+        }
+    }
+}
+
+private fun navigateToPreviousMenuItem() {
+    // Проверка что не идёт другая навигация
+    if (isNavigating) return
+    
+    val currentDestination = navController.currentDestination?.id ?: return
+    val currentIndex = menuOrder.indexOf(currentDestination)
+    
+    if (currentIndex > 0) {
+        val previousDestination = menuOrder[currentIndex - 1]
+        
+        // Установить флаг навигации
+        isNavigating = true
+        
+        try {
+            val navOptions = NavOptions.Builder()
+                .setEnterAnim(R.anim.slide_in_left)
+                .setExitAnim(R.anim.slide_out_right)
+                .setPopEnterAnim(R.anim.slide_in_right)
+                .setPopExitAnim(R.anim.slide_out_left)
+                .build()
+            navController.navigate(previousDestination, null, navOptions)
+            
+            // Сбросить флаг через небольшую задержку
+            binding.root.postDelayed({
+                isNavigating = false
+            }, 500)
+            
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Swipe navigation error: ${e.message}", e)
+            isNavigating = false
+        }
+    }
+}
+
+private fun pickImageFromGallery() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         startActivityForResult(intent, REQUEST_CODE_PICK_IMAGE)
     }
