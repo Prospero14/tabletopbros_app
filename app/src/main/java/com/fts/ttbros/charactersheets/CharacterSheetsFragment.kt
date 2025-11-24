@@ -34,6 +34,7 @@ class CharacterSheetsFragment : Fragment() {
     private val auth by lazy { Firebase.auth }
     private val yandexDisk = com.fts.ttbros.data.repository.YandexDiskRepository()
     private val sheetRepository = CharacterSheetRepository()
+    private val characterRepository = com.fts.ttbros.data.repository.CharacterRepository()
     private val userRepository = com.fts.ttbros.data.repository.UserRepository()
     private lateinit var adapter: CharacterSheetsAdapter
     
@@ -199,28 +200,31 @@ class CharacterSheetsFragment : Fragment() {
                 val systemName = when (teamSystem) {
                     "vtm_5e" -> "VTM"
                     "dnd_5e" -> "D&D"
-                    "viedzmin_2e" -> "Viedzmin 2e"
+                    "viedzmin_2e" -> "Viedzmin"
                     else -> teamSystem
                 }
                 
-                // Create character sheet (командный чарник, не билдер)
-                val sheet = CharacterSheet(
+                // Создаем Character из загруженного PDF (Вариант 1: упрощенный)
+                val characterName = "Чарник $systemName"
+                val characterData = mutableMapOf<String, Any>()
+                characterData.putAll(parsedData)
+                characterData["pdfUrl"] = pdfUrl
+                characterData["attributes"] = (parsedData["attributes"] as? Map<*, *>)?.mapKeys { it.key.toString() }?.mapValues { (it.value as? Number)?.toInt() ?: 0 } ?: emptyMap()
+                characterData["skills"] = (parsedData["skills"] as? Map<*, *>)?.mapKeys { it.key.toString() }?.mapValues { (it.value as? Number)?.toInt() ?: 0 } ?: emptyMap()
+                characterData["stats"] = (parsedData["stats"] as? Map<*, *>)?.mapKeys { it.key.toString() }?.mapValues { it.value ?: "" } ?: emptyMap()
+                
+                val character = com.fts.ttbros.data.model.Character(
                     userId = userId,
-                    characterName = "командный чарник \"$systemName\"",
+                    name = characterName,
                     system = teamSystem,
-                    pdfUrl = pdfUrl,
-                    parsedData = parsedData,
-                    attributes = (parsedData["attributes"] as? Map<*, *>)?.mapKeys { it.key.toString() }?.mapValues { (it.value as? Number)?.toInt() ?: 0 } ?: emptyMap(),
-                    skills = (parsedData["skills"] as? Map<*, *>)?.mapKeys { it.key.toString() }?.mapValues { (it.value as? Number)?.toInt() ?: 0 } ?: emptyMap(),
-                    stats = (parsedData["stats"] as? Map<*, *>)?.mapKeys { it.key.toString() }?.mapValues { it.value ?: "" } ?: emptyMap(),
-                    isTemplate = false // Это командный чарник, не билдер
+                    data = characterData
                 )
                 
                 // Показать диалог подтверждения создания чарника
                 // Используем Main диспетчер для показа диалога в UI потоке
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (isAdded && view != null && context != null) {
-                        showCreateCharacterConfirmationDialog(sheet)
+                        showCreateCharacterConfirmationDialog(character, systemName)
                     }
                 }
             } catch (e: Exception) {
@@ -513,7 +517,7 @@ class CharacterSheetsFragment : Fragment() {
         }
     }
     
-    private fun showCreateCharacterConfirmationDialog(sheet: CharacterSheet) {
+    private fun showCreateCharacterConfirmationDialog(character: com.fts.ttbros.data.model.Character, systemName: String) {
         val context = context ?: return
         if (!isAdded || view == null) {
             android.util.Log.w("CharacterSheetsFragment", "Fragment not attached, cannot show dialog")
@@ -532,11 +536,11 @@ class CharacterSheetsFragment : Fragment() {
         
         try {
             MaterialAlertDialogBuilder(context)
-                .setTitle("Создать командный чарник?")
-                .setMessage("PDF успешно распарсен. Хотите создать командный чарник из этого листа?\n\nНазвание: ${sheet.characterName}\nСистема: ${sheet.system}")
+                .setTitle("Создать чарник?")
+                .setMessage("PDF успешно распарсен. Хотите создать чарник из этого листа?\n\nНазвание: ${character.name}\nСистема: $systemName")
                 .setPositiveButton("Создать чарник") { _, _ ->
                     if (isAdded && view != null) {
-                        saveCharacter(sheet)
+                        saveCharacter(character)
                     }
                 }
                 .setNegativeButton("Отмена") { _, _ ->
@@ -561,13 +565,13 @@ class CharacterSheetsFragment : Fragment() {
         }
     }
     
-    private fun saveCharacter(sheet: CharacterSheet) {
+    private fun saveCharacter(character: com.fts.ttbros.data.model.Character) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                sheetRepository.saveSheet(sheet)
+                characterRepository.createCharacter(character)
                 if (isAdded && view != null) {
                     view?.let {
-                        Snackbar.make(it, "Командный чарник создан! Теперь он доступен в разделе 'Персонажи' -> 'Мой чарник'", Snackbar.LENGTH_LONG).show()
+                        Snackbar.make(it, "Чарник создан! Теперь он доступен в разделе 'Персонажи'", Snackbar.LENGTH_LONG).show()
                     }
                     loadSheets()
                 }

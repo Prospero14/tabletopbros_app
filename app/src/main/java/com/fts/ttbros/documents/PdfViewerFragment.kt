@@ -53,13 +53,31 @@ class PdfViewerFragment : Fragment() {
     }
 
     private fun openPdf(path: String) {
+        if (!isAdded || view == null) {
+            android.util.Log.w("PdfViewerFragment", "Fragment not attached, cannot open PDF")
+            return
+        }
+        
         viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val file = File(path)
-                if (!file.exists()) {
+                if (!file.exists() || !file.canRead()) {
                     withContext(Dispatchers.Main) {
-                        binding.errorTextView.visibility = View.VISIBLE
-                        binding.errorTextView.text = "File not found"
+                        if (isAdded && view != null) {
+                            binding.errorTextView.visibility = View.VISIBLE
+                            binding.errorTextView.text = "Файл не найден или недоступен"
+                        }
+                    }
+                    return@launch
+                }
+
+                // Проверяем размер файла
+                if (file.length() == 0L) {
+                    withContext(Dispatchers.Main) {
+                        if (isAdded && view != null) {
+                            binding.errorTextView.visibility = View.VISIBLE
+                            binding.errorTextView.text = "Файл пуст"
+                        }
                     }
                     return@launch
                 }
@@ -68,17 +86,42 @@ class PdfViewerFragment : Fragment() {
                 pdfRenderer = PdfRenderer(fileDescriptor!!)
 
                 withContext(Dispatchers.Main) {
-                    if (pdfRenderer != null) {
-                        binding.pdfRecyclerView.layoutManager = LinearLayoutManager(requireContext())
-                        binding.pdfRecyclerView.adapter = PdfPageAdapter(pdfRenderer!!)
+                    if (isAdded && view != null && pdfRenderer != null) {
+                        try {
+                            binding.pdfRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+                            binding.pdfRecyclerView.adapter = PdfPageAdapter(pdfRenderer!!)
+                            binding.errorTextView.visibility = View.GONE
+                        } catch (e: Exception) {
+                            android.util.Log.e("PdfViewerFragment", "Error setting up RecyclerView: ${e.message}", e)
+                            binding.errorTextView.visibility = View.VISIBLE
+                            binding.errorTextView.text = "Ошибка отображения PDF: ${e.message}"
+                        }
                     }
                 }
 
-            } catch (e: Exception) {
-                e.printStackTrace()
+            } catch (e: SecurityException) {
+                android.util.Log.e("PdfViewerFragment", "SecurityException opening PDF: ${e.message}", e)
                 withContext(Dispatchers.Main) {
-                    binding.errorTextView.visibility = View.VISIBLE
-                    binding.errorTextView.text = "Error opening PDF: ${e.message}"
+                    if (isAdded && view != null) {
+                        binding.errorTextView.visibility = View.VISIBLE
+                        binding.errorTextView.text = "Нет доступа к файлу"
+                    }
+                }
+            } catch (e: OutOfMemoryError) {
+                android.util.Log.e("PdfViewerFragment", "OutOfMemoryError opening PDF: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    if (isAdded && view != null) {
+                        binding.errorTextView.visibility = View.VISIBLE
+                        binding.errorTextView.text = "Файл слишком большой для открытия"
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("PdfViewerFragment", "Error opening PDF: ${e.message}", e)
+                withContext(Dispatchers.Main) {
+                    if (isAdded && view != null) {
+                        binding.errorTextView.visibility = View.VISIBLE
+                        binding.errorTextView.text = "Ошибка открытия PDF: ${e.message}"
+                    }
                 }
             }
         }
@@ -112,26 +155,53 @@ class PdfViewerFragment : Fragment() {
             // Render asynchronously
             viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Default) {
                 try {
+                    // Check if fragment is still attached
+                    if (!isAdded || view == null) return@launch
+                    
                     // Check if renderer is still open
                     if (renderer.pageCount <= position) return@launch
                     
-                    val page = synchronized(renderer) {
-                        renderer.openPage(position)
+                    val page = try {
+                        synchronized(renderer) {
+                            renderer.openPage(position)
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("PdfViewerFragment", "Error opening page $position: ${e.message}", e)
+                        return@launch
                     }
                     
                     val width = resources.displayMetrics.widthPixels
                     val scale = width.toFloat() / page.width
                     val height = (page.height * scale).toInt()
                     
-                    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                    page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                    val bitmap = try {
+                        Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                    } catch (e: OutOfMemoryError) {
+                        android.util.Log.e("PdfViewerFragment", "OutOfMemoryError creating bitmap for page $position", e)
+                        page.close()
+                        return@launch
+                    }
+                    
+                    try {
+                        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                    } catch (e: Exception) {
+                        android.util.Log.e("PdfViewerFragment", "Error rendering page $position: ${e.message}", e)
+                        bitmap.recycle()
+                        page.close()
+                        return@launch
+                    }
+                    
                     page.close()
                     
                     withContext(Dispatchers.Main) {
-                        holder.imageView.setImageBitmap(bitmap)
+                        if (isAdded && view != null) {
+                            holder.imageView.setImageBitmap(bitmap)
+                        } else {
+                            bitmap.recycle()
+                        }
                     }
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    android.util.Log.e("PdfViewerFragment", "Error in onBindViewHolder for page $position: ${e.message}", e)
                 }
             }
         }
