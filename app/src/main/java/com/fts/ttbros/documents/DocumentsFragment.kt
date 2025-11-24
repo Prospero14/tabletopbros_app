@@ -50,6 +50,7 @@ class DocumentsFragment : Fragment() {
     private var allSheets: List<com.fts.ttbros.data.model.CharacterSheet> = emptyList()
     private var playerMaterials: List<Document> = emptyList() // Материалы для игроков (мастер)
     private var masterMaterials: List<Document> = emptyList() // Материалы от мастера (игрок)
+    private var isUploadingMaterial: Boolean = false
 
     private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { showUploadDialog(it) }
@@ -87,6 +88,7 @@ class DocumentsFragment : Fragment() {
             when (selectedTab) {
                 0 -> {
                     // Загрузка документа
+                    isUploadingMaterial = false
                     filePickerLauncher.launch("application/pdf")
                 }
                 1 -> {
@@ -101,7 +103,9 @@ class DocumentsFragment : Fragment() {
                 2 -> {
                     // Добавление материала для игроков (только для мастера)
                     if (isMaster) {
-                        filePickerLauncher.launch("application/pdf")
+                        isUploadingMaterial = true
+                        // Support both PDF and JPG for materials
+                        filePickerLauncher.launch("*/*")
                     }
                 }
             }
@@ -287,8 +291,10 @@ class DocumentsFragment : Fragment() {
             return
         }
         
-        val selectedTab = binding.tabLayout.selectedTabPosition
-        val isMaterial = selectedTab == 2 && isMaster // Материал для игроков
+        // Use the tracked flag instead of current tab position
+        val isMaterial = isUploadingMaterial
+        // Reset the flag
+        isUploadingMaterial = false
         
         binding.progressBar.isVisible = true
         viewLifecycleOwner.lifecycleScope.launch {
@@ -301,8 +307,12 @@ class DocumentsFragment : Fragment() {
                     Snackbar.make(binding.root, if (isMaterial) "Материал загружен" else "Документ загружен", Snackbar.LENGTH_SHORT).show()
                 }
                 
-                // Если это материал, предлагаем отправить в чат
+                // Если это материал, предлагаем отправить в чат и переключаемся на вкладку материалов
                 if (isMaterial && document != null) {
+                    // Переключаемся на вкладку "Материалы для игроков" (таб 2 для мастера)
+                    if (isMaster && binding.tabLayout.tabCount > 2) {
+                        binding.tabLayout.getTabAt(2)?.select()
+                    }
                     showSendToChatDialog(document)
                 }
             } catch (e: Exception) {
@@ -324,11 +334,16 @@ class DocumentsFragment : Fragment() {
         
         MaterialAlertDialogBuilder(context)
             .setTitle("Отправить в общий чат?")
-            .setMessage("Хотите отправить материал '${document.title}' в общий чат?")
+            .setMessage("Хотите отправить материал '${document.title}' в общий чат?\n\nМатериал сохранён в разделе 'Материалы для игроков' и может быть отправлен позже.")
             .setPositiveButton("Отправить") { _, _ ->
                 sendMaterialToChat(document)
             }
-            .setNegativeButton("Позже", null)
+            .setNegativeButton("Позже") { _, _ ->
+                // Материал уже сохранён в материалах для игроков, просто показываем сообщение
+                if (isAdded && view != null) {
+                    Snackbar.make(binding.root, "Материал сохранён в 'Материалы для игроков'. Вы можете отправить его позже.", Snackbar.LENGTH_LONG).show()
+                }
+            }
             .show()
     }
     

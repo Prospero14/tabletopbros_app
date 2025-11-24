@@ -3,6 +3,7 @@ package com.fts.ttbros.data.repository
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import android.webkit.MimeTypeMap
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -64,8 +65,9 @@ class YandexDiskRepository {
             val uploadUrl = getUploadUrl(remotePath)
             Log.d("YandexDisk", "Upload URL obtained")
             
-            // 4. Загрузить файл
-            uploadFileToUrl(uploadUrl, fileUri, context)
+            // 4. Загрузить файл (определяем MIME тип по расширению)
+            val mimeType = detectMimeTypeFromFileName(fileName)
+            uploadFileToUrl(uploadUrl, fileUri, context, mimeType)
             Log.d("YandexDisk", "File uploaded successfully")
             
             // 5. Опубликовать файл и получить публичную ссылку
@@ -214,7 +216,7 @@ class YandexDiskRepository {
     /**
      * Загрузить файл по полученному URL
      */
-    private fun uploadFileToUrl(uploadUrl: String, fileUri: Uri, context: Context) {
+    private fun uploadFileToUrl(uploadUrl: String, fileUri: Uri, context: Context, mimeType: String? = null) {
         // Копируем файл из URI в временный файл
         val tempFile = File(context.cacheDir, "temp_upload_${System.currentTimeMillis()}")
         context.contentResolver.openInputStream(fileUri)?.use { input ->
@@ -224,7 +226,9 @@ class YandexDiskRepository {
         }
         
         try {
-            val requestBody = tempFile.asRequestBody("application/octet-stream".toMediaType())
+            // Определяем MIME тип по расширению файла или используем переданный
+            val detectedMimeType = mimeType ?: detectMimeType(fileUri, context)
+            val requestBody = tempFile.asRequestBody(detectedMimeType.toMediaType())
             val request = Request.Builder()
                 .url(uploadUrl)
                 .put(requestBody)
@@ -373,5 +377,39 @@ class YandexDiskRepository {
             Log.e("YandexDisk", "Delete error: ${e.message}", e)
             throw e
         }
+    }
+    
+    /**
+     * Определить MIME тип по имени файла
+     */
+    private fun detectMimeTypeFromFileName(fileName: String): String {
+        val extension = fileName.substringAfterLast('.', "").lowercase()
+        return when (extension) {
+            "pdf" -> "application/pdf"
+            "jpg", "jpeg" -> "image/jpeg"
+            "png" -> "image/png"
+            "gif" -> "image/gif"
+            "webp" -> "image/webp"
+            else -> {
+                // Пытаемся определить через MimeTypeMap
+                val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+                mimeType ?: "application/octet-stream"
+            }
+        }
+    }
+    
+    /**
+     * Определить MIME тип по URI
+     */
+    private fun detectMimeType(fileUri: Uri, context: Context): String {
+        // Сначала пытаемся получить из ContentResolver
+        val mimeType = context.contentResolver.getType(fileUri)
+        if (!mimeType.isNullOrBlank()) {
+            return mimeType
+        }
+        
+        // Если не получилось, определяем по имени файла
+        val fileName = fileUri.lastPathSegment ?: ""
+        return detectMimeTypeFromFileName(fileName)
     }
 }
