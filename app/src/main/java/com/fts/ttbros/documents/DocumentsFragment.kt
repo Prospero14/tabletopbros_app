@@ -15,6 +15,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.fts.ttbros.R
+import com.fts.ttbros.chat.data.ChatType
 import com.fts.ttbros.data.model.Document
 import com.fts.ttbros.data.model.UserRole
 import com.fts.ttbros.data.repository.DocumentRepository
@@ -309,7 +310,7 @@ class DocumentsFragment : Fragment() {
                     attachmentId = document.id,
                     timestamp = com.google.firebase.Timestamp.now()
                 )
-                chatRepository.sendMessage(teamId, com.fts.ttbros.chat.data.ChatType.TEAM, message)
+                chatRepository.sendMessage(teamId, ChatType.TEAM, message)
                 if (isAdded && view != null) {
                     Snackbar.make(binding.root, "Материал отправлен в чат", Snackbar.LENGTH_SHORT).show()
                 }
