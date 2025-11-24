@@ -194,8 +194,9 @@ class CharacterEditorFragment : Fragment() {
     private fun loadCharacter() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                if (characterId != null) {
-                    val char = repository.getCharacter(characterId!!)
+                val charId = characterId
+                if (charId != null) {
+                    val char = repository.getCharacter(charId)
                     if (char != null) {
                         currentCharacter = char
                         system = char.system
@@ -225,8 +226,9 @@ class CharacterEditorFragment : Fragment() {
     private fun loadBuilderAndCreateCharacter() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                if (builderId != null) {
-                    val builder = sheetRepository.getSheet(builderId!!)
+                val bId = builderId
+                if (bId != null) {
+                    val builder = sheetRepository.getSheet(bId)
                     if (builder != null) {
                         system = builder.system
                         
@@ -322,9 +324,10 @@ class CharacterEditorFragment : Fragment() {
                 android.util.Log.d("CharEditor", "Saving character with formData: $formData")
                 android.util.Log.d("CharEditor", "Disciplines before save: ${formData["disciplines"]}")
                 
-                if (characterId != null) {
+                val charId = characterId
+                if (charId != null) {
                     // Update
-                    repository.updateCharacter(characterId!!, mapOf(
+                    repository.updateCharacter(charId, mapOf(
                         "name" to name,
                         "clan" to clan,
                         "concept" to concept,

@@ -268,8 +268,15 @@ class CharactersFragment : Fragment() {
     ) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
+                // teamId is already validated in shareCharacter, but add safety check
+                val teamId = profile.teamId
+                if (teamId.isNullOrBlank()) {
+                    Snackbar.make(binding.root, "No team selected", Snackbar.LENGTH_LONG).show()
+                    return@launch
+                }
+                
                 chatRepository.sendMessage(
-                    profile.teamId!!,
+                    teamId,
                     chatType,
                     com.fts.ttbros.chat.model.ChatMessage(
                         senderId = profile.uid,

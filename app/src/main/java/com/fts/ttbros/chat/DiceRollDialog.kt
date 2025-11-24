@@ -177,7 +177,8 @@ class DiceRollDialog(
 
             sendButton.setOnClickListener {
                 try {
-                    if (lastRollResult != null) {
+                    val rollResult = lastRollResult
+                    if (rollResult != null) {
                         val sendOptions = DiceRollSendOptions(
                             sendToTeam = if (::sendToTeamCheckbox.isInitialized) sendToTeamCheckbox.isChecked else false,
                             sendToMaster = if (::sendToMasterCheckbox.isInitialized) sendToMasterCheckbox.isChecked && !isMaster else false
@@ -185,7 +186,7 @@ class DiceRollDialog(
                         
                         // Проверяем, что хотя бы один чекбокс выбран
                         if (sendOptions.sendToTeam || sendOptions.sendToMaster) {
-                            onRollResult(lastRollResult!!, sendOptions)
+                            onRollResult(rollResult, sendOptions)
                             dismiss()
                         } else {
                             // Показываем сообщение, что нужно выбрать хотя бы один чат

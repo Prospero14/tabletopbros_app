@@ -10,7 +10,6 @@ data class ChatMessage(
     val imageUrl: String? = null,
     val type: String = "text", // "text", "character"
     val attachmentId: String? = null,
-    val attachmentUrl: String? = null,
     val timestamp: Timestamp? = null,
     val isPinned: Boolean = false,
     val pinnedBy: String? = null,

@@ -190,9 +190,13 @@ class TeamsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val user = userRepository.currentProfile() ?: return@launch
-                // We need actual user object for createTeam, but repository uses auth.currentUser internally usually
-                // Assuming teamRepository.createTeam uses auth.currentUser
-                val team = teamRepository.createTeam(Firebase.auth.currentUser!!, system)
+                val currentUser = Firebase.auth.currentUser
+                if (currentUser == null) {
+                    Snackbar.make(requireView(), "User not authenticated", Snackbar.LENGTH_LONG).show()
+                    return@launch
+                }
+                
+                val team = teamRepository.createTeam(currentUser, system)
                 val finalTeamName = teamName.ifBlank { "Team ${team.code}" }
                 userRepository.addTeam(team.id, team.code, UserRole.MASTER, team.system, finalTeamName)
                 
