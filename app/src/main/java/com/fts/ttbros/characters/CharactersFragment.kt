@@ -78,7 +78,7 @@ class CharactersFragment : Fragment() {
         
         setupTabs()
         loadCharacters()
-        loadBuilders()
+        loadTeamCharacters()
     }
     
     private fun setupTabs() {
@@ -109,8 +109,8 @@ class CharactersFragment : Fragment() {
                     override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
                         val tabPosition = tab?.position ?: 0
                         if (tabPosition == binding.tabLayout.tabCount - 1) {
-                            // Last tab is "Мой билдер"
-                            loadBuilders()
+                            // Last tab is "Мой чарник"
+                            loadTeamCharacters()
                         } else {
                             filterList(teamSystem)
                         }
@@ -120,14 +120,14 @@ class CharactersFragment : Fragment() {
                 })
             } catch (e: Exception) {
                 android.util.Log.e("CharactersFragment", "Error setting up tabs: ${e.message}", e)
-                // Fallback: just show "All" tab and "Мой билдер"
+                // Fallback: just show "All" tab and "Мой чарник"
                 binding.tabLayout.addTab(binding.tabLayout.newTab().setText("All"))
-                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Мой билдер"))
+                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Мой чарник"))
                 binding.tabLayout.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
                     override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
                         val tabPosition = tab?.position ?: 0
                         if (tabPosition == binding.tabLayout.tabCount - 1) {
-                            loadBuilders()
+                            loadTeamCharacters()
                         } else {
                             filterList(null)
                         }
@@ -159,11 +159,11 @@ class CharactersFragment : Fragment() {
         binding.emptyView.text = "Нет персонажей. Создайте первого!"
     }
     
-    private fun showBuilders() {
+    private fun showTeamCharacters() {
         binding.charactersRecyclerView.adapter = buildersAdapter as RecyclerView.Adapter<RecyclerView.ViewHolder>
         buildersAdapter.submitList(allBuilders)
         binding.emptyView.isVisible = allBuilders.isEmpty()
-        binding.emptyView.text = "Нет билдеров. Загрузите PDF лист персонажа в разделе 'Листы персонажей'"
+        binding.emptyView.text = "Нет командных чарников. Загрузите PDF лист персонажа в разделе 'Листы персонажей'"
     }
 
     private fun loadCharacters() {
@@ -188,18 +188,19 @@ class CharactersFragment : Fragment() {
         }
     }
     
-    private fun loadBuilders() {
+    private fun loadTeamCharacters() {
         lifecycleScope.launch {
             try {
                 val userId = Firebase.auth.currentUser?.uid ?: return@launch
-                allBuilders = sheetRepository.getUserSheets(userId).filter { it.isTemplate }
+                // Загружаем командные чарники (isTemplate = false)
+                allBuilders = sheetRepository.getUserSheets(userId).filter { !it.isTemplate }
                 
                 val selectedTabPosition = binding.tabLayout.selectedTabPosition
                 if (selectedTabPosition == binding.tabLayout.tabCount - 1) {
-                    showBuilders()
+                    showTeamCharacters()
                 }
             } catch (e: Exception) {
-                android.util.Log.e("CharactersFragment", "Error loading builders: ${e.message}", e)
+                android.util.Log.e("CharactersFragment", "Error loading team characters: ${e.message}", e)
             }
         }
     }

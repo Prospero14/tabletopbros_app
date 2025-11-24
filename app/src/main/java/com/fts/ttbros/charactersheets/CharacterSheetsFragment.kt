@@ -34,6 +34,7 @@ class CharacterSheetsFragment : Fragment() {
     private val auth by lazy { Firebase.auth }
     private val yandexDisk = com.fts.ttbros.data.repository.YandexDiskRepository()
     private val sheetRepository = CharacterSheetRepository()
+    private val userRepository = com.fts.ttbros.data.repository.UserRepository()
     private lateinit var adapter: CharacterSheetsAdapter
     
     private val pickPdfLauncher = registerForActivityResult(
@@ -183,24 +184,37 @@ class CharacterSheetsFragment : Fragment() {
                     return@launch
                 }
                 
-                // Create character sheet template (builder)
+                // Получаем систему команды для названия
+                val profile = userRepository.currentProfile()
+                val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
+                val teamSystem = currentTeam?.teamSystem ?: (parsedData["system"] as? String ?: "unknown")
+                
+                // Формируем название системы для отображения
+                val systemName = when (teamSystem) {
+                    "vtm_5e" -> "VTM"
+                    "dnd_5e" -> "D&D"
+                    "viedzmin_2e" -> "Viedzmin 2e"
+                    else -> teamSystem
+                }
+                
+                // Create character sheet (командный чарник, не билдер)
                 val sheet = CharacterSheet(
                     userId = userId,
-                    characterName = parsedData["name"] as? String ?: "Безымянный персонаж",
-                    system = parsedData["system"] as? String ?: "unknown",
+                    characterName = "командный чарник \"$systemName\"",
+                    system = teamSystem,
                     pdfUrl = pdfUrl,
                     parsedData = parsedData,
                     attributes = (parsedData["attributes"] as? Map<*, *>)?.mapKeys { it.key.toString() }?.mapValues { (it.value as? Number)?.toInt() ?: 0 } ?: emptyMap(),
                     skills = (parsedData["skills"] as? Map<*, *>)?.mapKeys { it.key.toString() }?.mapValues { (it.value as? Number)?.toInt() ?: 0 } ?: emptyMap(),
                     stats = (parsedData["stats"] as? Map<*, *>)?.mapKeys { it.key.toString() }?.mapValues { it.value ?: "" } ?: emptyMap(),
-                    isTemplate = true // Это билдер (шаблон)
+                    isTemplate = false // Это командный чарник, не билдер
                 )
                 
-                // Показать диалог подтверждения создания билдера
+                // Показать диалог подтверждения создания чарника
                 // Используем Main диспетчер для показа диалога в UI потоке
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (isAdded && view != null && context != null) {
-                        showCreateBuilderConfirmationDialog(sheet)
+                        showCreateCharacterConfirmationDialog(sheet)
                     }
                 }
             } catch (e: Exception) {
@@ -481,7 +495,7 @@ class CharacterSheetsFragment : Fragment() {
         }
     }
     
-    private fun showCreateBuilderConfirmationDialog(sheet: CharacterSheet) {
+    private fun showCreateCharacterConfirmationDialog(sheet: CharacterSheet) {
         val context = context ?: return
         if (!isAdded || view == null) {
             android.util.Log.w("CharacterSheetsFragment", "Fragment not attached, cannot show dialog")
@@ -500,17 +514,17 @@ class CharacterSheetsFragment : Fragment() {
         
         try {
             MaterialAlertDialogBuilder(context)
-                .setTitle("Создать билдер?")
-                .setMessage("PDF успешно распарсен. Хотите создать билдер персонажа из этого листа?\n\nИмя: ${sheet.characterName}\nСистема: ${sheet.system}")
-                .setPositiveButton("Создать билдер") { _, _ ->
+                .setTitle("Создать командный чарник?")
+                .setMessage("PDF успешно распарсен. Хотите создать командный чарник из этого листа?\n\nНазвание: ${sheet.characterName}\nСистема: ${sheet.system}")
+                .setPositiveButton("Создать чарник") { _, _ ->
                     if (isAdded && view != null) {
-                        saveBuilder(sheet)
+                        saveCharacter(sheet)
                     }
                 }
                 .setNegativeButton("Отмена") { _, _ ->
                     if (isAdded && view != null) {
                         view?.let {
-                            Snackbar.make(it, "Билдер не создан", Snackbar.LENGTH_SHORT).show()
+                            Snackbar.make(it, "Чарник не создан", Snackbar.LENGTH_SHORT).show()
                         }
                     }
                 }
@@ -529,21 +543,21 @@ class CharacterSheetsFragment : Fragment() {
         }
     }
     
-    private fun saveBuilder(sheet: CharacterSheet) {
+    private fun saveCharacter(sheet: CharacterSheet) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 sheetRepository.saveSheet(sheet)
                 if (isAdded && view != null) {
                     view?.let {
-                        Snackbar.make(it, "Билдер создан! Теперь вы можете создать персонажа из него в разделе 'Персонажи' -> 'Мой билдер'", Snackbar.LENGTH_LONG).show()
+                        Snackbar.make(it, "Командный чарник создан! Теперь он доступен в разделе 'Персонажи' -> 'Мой чарник'", Snackbar.LENGTH_LONG).show()
                     }
                     loadSheets()
                 }
             } catch (e: Exception) {
-                android.util.Log.e("CharacterSheetsFragment", "Error saving builder: ${e.message}", e)
+                android.util.Log.e("CharacterSheetsFragment", "Error saving character: ${e.message}", e)
                 if (isAdded && view != null) {
                     view?.let {
-                        Snackbar.make(it, "Ошибка сохранения билдера: ${e.message}", Snackbar.LENGTH_LONG).show()
+                        Snackbar.make(it, "Ошибка сохранения чарника: ${e.message}", Snackbar.LENGTH_LONG).show()
                     }
                 }
             }
