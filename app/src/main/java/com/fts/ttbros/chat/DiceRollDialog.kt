@@ -63,10 +63,10 @@ class DiceRollDialog(
             sendToLabelTextView = view.findViewById(com.fts.ttbros.R.id.sendToLabelTextView)
             
             // Проверяем что все view найдены
-            if (!::diceTypeSpinner.isInitialized || !::quantityEditText.isInitialized || 
-                !::resultTextView.isInitialized || !::rollButton.isInitialized || 
-                !::sendButton.isInitialized || !::sendToTeamCheckbox.isInitialized || 
-                !::sendToMasterCheckbox.isInitialized || !::sendToLabelTextView.isInitialized) {
+            if (diceTypeSpinner == null || quantityEditText == null || 
+                resultTextView == null || rollButton == null || 
+                sendButton == null || sendToTeamCheckbox == null || 
+                sendToMasterCheckbox == null || sendToLabelTextView == null) {
                 android.util.Log.e("DiceRollDialog", "Failed to find all views")
                 return MaterialAlertDialogBuilder(context)
                     .setTitle("Ошибка")
@@ -99,7 +99,7 @@ class DiceRollDialog(
                 android.util.Log.e("DiceRollDialog", "Error setting dialog window size: ${e.message}", e)
             }
 
-            dialog
+            return dialog
         } catch (e: Exception) {
             android.util.Log.e("DiceRollDialog", "Error creating dialog: ${e.message}", e)
             MaterialAlertDialogBuilder(context ?: activity ?: return super.onCreateDialog(savedInstanceState))

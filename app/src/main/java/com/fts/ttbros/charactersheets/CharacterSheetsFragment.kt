@@ -197,8 +197,11 @@ class CharacterSheetsFragment : Fragment() {
                 )
                 
                 // Показать диалог подтверждения создания билдера
-                if (isAdded && view != null) {
-                    showCreateBuilderConfirmationDialog(sheet)
+                // Используем Main диспетчер для показа диалога в UI потоке
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    if (isAdded && view != null && context != null) {
+                        showCreateBuilderConfirmationDialog(sheet)
+                    }
                 }
             } catch (e: Exception) {
                 android.util.Log.e("CharacterSheetsFragment", "Error uploading PDF: ${e.message}", e)
@@ -485,6 +488,16 @@ class CharacterSheetsFragment : Fragment() {
             return
         }
         
+        // Проверяем что fragmentManager доступен
+        val fragmentManager = parentFragmentManager
+        if (fragmentManager.isStateSaved) {
+            android.util.Log.w("CharacterSheetsFragment", "FragmentManager state is saved, cannot show dialog")
+            view?.let {
+                Snackbar.make(it, "Не удалось открыть диалог", Snackbar.LENGTH_SHORT).show()
+            }
+            return
+        }
+        
         try {
             MaterialAlertDialogBuilder(context)
                 .setTitle("Создать билдер?")
@@ -503,6 +516,11 @@ class CharacterSheetsFragment : Fragment() {
                 }
                 .setCancelable(false)
                 .show()
+        } catch (e: IllegalStateException) {
+            android.util.Log.e("CharacterSheetsFragment", "IllegalStateException showing dialog: ${e.message}", e)
+            view?.let {
+                Snackbar.make(it, "Не удалось открыть диалог. Попробуйте еще раз.", Snackbar.LENGTH_SHORT).show()
+            }
         } catch (e: Exception) {
             android.util.Log.e("CharacterSheetsFragment", "Error showing dialog: ${e.message}", e)
             view?.let {

@@ -5,7 +5,10 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="6dp">
+    android:padding="6dp"
+    android:longClickable="true"
+    android:focusable="true"
+    android:clickable="true">
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -47,6 +50,9 @@
         android:layout_height="wrap_content"
         android:elevation="0dp"
         android:maxWidth="260dp"
+        android:longClickable="true"
+        android:focusable="true"
+        android:clickable="true"
         app:cardCornerRadius="12dp"
         app:strokeWidth="0dp">
 

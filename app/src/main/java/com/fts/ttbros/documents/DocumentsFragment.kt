@@ -96,9 +96,14 @@ class DocumentsFragment : Fragment() {
                 binding.addDocumentFab.isVisible = isMaster
                 
                 documentRepository.getDocuments(profile.teamId!!).collect { docs ->
-                    adapter.submitList(docs)
-                    binding.emptyView.isVisible = docs.isEmpty()
-                    checkDownloads(docs)
+                    // Фильтруем документы, исключая листы персонажей (они хранятся в character_sheets)
+                    val filteredDocs = docs.filter { doc ->
+                        // Исключаем документы из папки character_sheets
+                        !doc.downloadUrl.contains("/character_sheets/")
+                    }
+                    adapter.submitList(filteredDocs)
+                    binding.emptyView.isVisible = filteredDocs.isEmpty()
+                    checkDownloads(filteredDocs)
                 }
             } catch (e: Exception) {
                 Snackbar.make(binding.root, "Error loading documents: ${e.message}", Snackbar.LENGTH_LONG).show()
@@ -244,16 +249,24 @@ class DocumentsFragment : Fragment() {
     }
     
     private fun openDocument(file: File) {
+        val context = context
+        if (context == null || !isAdded || view == null) {
+            android.util.Log.w("DocumentsFragment", "Fragment not attached, cannot open document")
+            return
+        }
+        
         try {
             // Проверка что файл существует и доступен
             if (!file.exists() || !file.canRead()) {
-                Toast.makeText(requireContext(), "File not accessible", Toast.LENGTH_SHORT).show()
+                android.util.Log.w("DocumentsFragment", "File not accessible: ${file.absolutePath}")
+                Toast.makeText(context, "File not accessible", Toast.LENGTH_SHORT).show()
                 return
             }
             
-            // Проверка что фрагмент прикреплен и view существует
-            if (!isAdded || view == null) {
-                android.util.Log.w("DocumentsFragment", "Fragment not attached, cannot open document")
+            // Проверка что файл не пустой
+            if (file.length() == 0L) {
+                android.util.Log.w("DocumentsFragment", "File is empty: ${file.absolutePath}")
+                Toast.makeText(context, "File is empty", Toast.LENGTH_SHORT).show()
                 return
             }
             
@@ -261,18 +274,28 @@ class DocumentsFragment : Fragment() {
                 putString("filePath", file.absolutePath)
             }
             
+            // Проверка что навигация доступна
             try {
-                findNavController().navigate(R.id.action_documentsFragment_to_pdfViewerFragment, bundle)
+                val navController = findNavController()
+                if (navController.currentDestination?.id == R.id.documentsFragment) {
+                    navController.navigate(R.id.action_documentsFragment_to_pdfViewerFragment, bundle)
+                } else {
+                    android.util.Log.w("DocumentsFragment", "Navigation not available, current destination: ${navController.currentDestination?.id}")
+                    Toast.makeText(context, "Navigation not available", Toast.LENGTH_SHORT).show()
+                }
             } catch (e: IllegalStateException) {
+                android.util.Log.e("DocumentsFragment", "Navigation error (IllegalStateException): ${e.message}", e)
+                Toast.makeText(context, "Error opening PDF viewer: ${e.message}", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
                 android.util.Log.e("DocumentsFragment", "Navigation error: ${e.message}", e)
-                Toast.makeText(requireContext(), "Error opening PDF viewer", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Error opening PDF viewer", Toast.LENGTH_SHORT).show()
             }
+        } catch (e: SecurityException) {
+            android.util.Log.e("DocumentsFragment", "SecurityException opening document: ${e.message}", e)
+            Toast.makeText(context, "No permission to access file", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             android.util.Log.e("DocumentsFragment", "Error opening document: ${e.message}", e)
-            val context = context
-            if (context != null) {
-                Toast.makeText(context, "Error opening PDF: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
+            Toast.makeText(context, "Error opening PDF: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
