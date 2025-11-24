@@ -15,7 +15,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.fts.ttbros.R
-import com.fts.ttbros.chat.data.ChatType
+import com.fts.ttbros.chat.model.ChatType
 import com.fts.ttbros.data.model.Document
 import com.fts.ttbros.data.model.UserRole
 import com.fts.ttbros.data.repository.DocumentRepository
@@ -186,19 +186,19 @@ class DocumentsFragment : Fragment() {
                 }
                 
                 documentRepository.getDocuments(teamId).collect { docs ->
-                    // Фильтруем документы, исключая листы персонажей (они хранятся в character_sheets)
+                    // Фильтруем документы по категориям:
+                    // 1. Общие документы - только те, что НЕ в специальных папках
                     allDocuments = docs.filter { doc ->
-                        // Исключаем документы из папки character_sheets и материалы
                         !doc.downloadUrl.contains("/character_sheets/") && 
                         !doc.downloadUrl.contains("/player_materials/")
                     }
                     
-                    // Фильтруем материалы для игроков (только те, что загружены мастером)
+                    // 2. Материалы для игроков - только те, что загрузил текущий мастер
                     playerMaterials = docs.filter { doc ->
                         doc.downloadUrl.contains("/player_materials/") && doc.uploadedBy == currentUserId
                     }
                     
-                    // Фильтруем материалы от мастера (для игроков - те, что они добавили из чата)
+                    // 3. Материалы от мастера - для игроков (загруженные мастером, но не текущим пользователем)
                     masterMaterials = docs.filter { doc ->
                         doc.downloadUrl.contains("/player_materials/") && doc.uploadedBy != currentUserId
                     }
@@ -305,9 +305,10 @@ class DocumentsFragment : Fragment() {
                 val message = com.fts.ttbros.chat.model.ChatMessage(
                     senderId = currentUserId,
                     senderName = currentUserName,
-                    text = "📎 ${document.title}\n${document.downloadUrl}",
+                    text = "📎 ${document.title}",
                     type = "material",
                     attachmentId = document.id,
+                    attachmentUrl = document.downloadUrl,
                     timestamp = com.google.firebase.Timestamp.now()
                 )
                 chatRepository.sendMessage(teamId, ChatType.TEAM, message)

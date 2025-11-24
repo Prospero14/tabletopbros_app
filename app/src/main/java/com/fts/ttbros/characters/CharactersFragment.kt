@@ -80,8 +80,8 @@ class CharactersFragment : Fragment() {
                 val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
                 val teamSystem = currentTeam?.teamSystem
                 
-                // Tab 1: "Все" - все чарники
-                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Все"))
+                // Tab 1: "Чарники" - все чарники
+                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Чарники"))
                 
                 // Tab 2: "[System]" - чарники с фильтром по системе команды
                 if (!teamSystem.isNullOrBlank()) {
@@ -104,7 +104,7 @@ class CharactersFragment : Fragment() {
             } catch (e: Exception) {
                 android.util.Log.e("CharactersFragment", "Error setting up tabs: ${e.message}", e)
                 // Fallback
-                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Все"))
+                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Чарники"))
                 binding.tabLayout.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
                     override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
                         filterList(null)

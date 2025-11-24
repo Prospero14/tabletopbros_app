@@ -105,8 +105,20 @@ class CharacterSheetsFragment : Fragment() {
     }
     
     private fun uploadAndParsePdf(uri: Uri) {
-        val userId = auth.currentUser?.uid ?: return
-        val context = context ?: return
+        val userId = auth.currentUser?.uid
+        if (userId == null) {
+            android.util.Log.e("CharacterSheetsFragment", "User not authenticated")
+            view?.let {
+                Snackbar.make(it, "Ошибка: пользователь не авторизован", Snackbar.LENGTH_LONG).show()
+            }
+            return
+        }
+        
+        val context = context
+        if (context == null) {
+            android.util.Log.e("CharacterSheetsFragment", "Context is null")
+            return
+        }
         
         if (!isAdded || view == null) {
             android.util.Log.w("CharacterSheetsFragment", "Fragment not attached, cannot upload")
