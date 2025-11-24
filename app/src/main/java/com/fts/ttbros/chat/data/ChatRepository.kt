@@ -40,12 +40,10 @@ class ChatRepository(
                         timestamp = doc.getTimestamp(FIELD_TIMESTAMP) ?: Timestamp.now(),
                         isPinned = doc.getBoolean(FIELD_IS_PINNED) ?: false,
                         pinnedBy = doc.getString(FIELD_PINNED_BY),
-                        pinnedAt = doc.getLong(FIELD_PINNED_AT)
+                        pinnedAt = doc.getLong(FIELD_PINNED_AT),
+                        importedBy = (doc.get(FIELD_IMPORTED_BY) as? List<String>) ?: emptyList()
                     )
-                }?.sortedWith(compareBy<ChatMessage>(
-                    { !it.isPinned }, // Pinned first
-                    { if (it.isPinned) -(it.pinnedAt ?: 0L) else (it.timestamp?.toDate()?.time ?: 0L) } // Pinned: Newest first. Unpinned: Oldest first (Standard chat).
-                )).orEmpty()
+                }
                 onEvent(messages)
             }
     }
@@ -94,6 +92,11 @@ class ChatRepository(
         messageRef.update(updates).await()
     }
 
+    suspend fun markAsImported(teamId: String, chatType: ChatType, messageId: String, userId: String) {
+        val messageRef = messagesCollection(teamId, chatType).document(messageId)
+        messageRef.update(FIELD_IMPORTED_BY, FieldValue.arrayUnion(userId)).await()
+    }
+
     companion object {
         private const val COLLECTION_TEAMS = "teams"
         private const val COLLECTION_CHATS = "chats"
@@ -108,6 +111,7 @@ class ChatRepository(
         private const val FIELD_IS_PINNED = "isPinned"
         private const val FIELD_PINNED_BY = "pinnedBy"
         private const val FIELD_PINNED_AT = "pinnedAt"
+        private const val FIELD_IMPORTED_BY = "importedBy"
     }
 }
 

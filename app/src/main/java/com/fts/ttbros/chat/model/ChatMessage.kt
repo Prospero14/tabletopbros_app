@@ -13,7 +13,8 @@ data class ChatMessage(
     val timestamp: Timestamp? = null,
     val isPinned: Boolean = false,
     val pinnedBy: String? = null,
-    val pinnedAt: Long? = null
+    val pinnedAt: Long? = null,
+    val importedBy: List<String> = emptyList()
 ) {
     val formattedTime: String
         get() = timestamp?.toDate()?.toString().orEmpty()

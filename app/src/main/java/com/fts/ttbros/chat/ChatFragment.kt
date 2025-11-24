@@ -40,6 +40,8 @@ class ChatFragment : Fragment() {
     private lateinit var messageEditText: TextInputEditText
     private lateinit var sendButton: MaterialButton
     private lateinit var createPollButton: MaterialButton
+    private lateinit var pinnedMessageContainer: androidx.cardview.widget.CardView
+    private lateinit var pinnedMessageText: TextView
     
     private val chatRepository = ChatRepository()
     private val userRepository = UserRepository()
@@ -88,11 +90,13 @@ class ChatFragment : Fragment() {
         messageEditText = view.findViewById(R.id.messageEditText)
         sendButton = view.findViewById(R.id.sendButton)
         createPollButton = view.findViewById(R.id.createPollButton)
+        pinnedMessageContainer = view.findViewById(R.id.pinnedMessageContainer)
+        pinnedMessageText = view.findViewById(R.id.pinnedMessageText)
         
         adapter = ChatAdapter(
             currentUserId = auth.currentUser?.uid.orEmpty(),
-            onImportCharacter = { senderId, characterId ->
-                importCharacter(senderId, characterId)
+            onImportCharacter = { senderId, characterId, messageId ->
+                importCharacter(senderId, characterId, messageId)
             },
             onPinMessage = { messageId ->
                 handlePinMessage(messageId)
@@ -181,6 +185,8 @@ class ChatFragment : Fragment() {
         }
     }
 
+
+
     private fun subscribeToMessages(profile: UserProfile) {
         val teamId = profile.teamId ?: return
         listenerRegistration?.remove()
@@ -188,8 +194,29 @@ class ChatFragment : Fragment() {
             teamId,
             chatType,
             onEvent = { messages ->
+                // Handle pinned messages
+                val pinnedMessages = messages.filter { it.isPinned }
+                val latestPinned = pinnedMessages.maxByOrNull { it.pinnedAt ?: 0L }
+                
+                if (latestPinned != null) {
+                    pinnedMessageContainer.isVisible = true
+                    pinnedMessageText.text = latestPinned.text
+                    pinnedMessageContainer.setOnClickListener {
+                        val position = messages.indexOfFirst { it.id == latestPinned.id }
+                        if (position != -1) {
+                            messagesRecyclerView.scrollToPosition(position)
+                        }
+                    }
+                } else {
+                    pinnedMessageContainer.isVisible = false
+                }
+
                 adapter.submitList(messages) {
                     if (messages.isNotEmpty()) {
+                        // Only scroll to bottom if we are already near bottom or it's initial load
+                        // For now, simple behavior: scroll to bottom on new messages
+                        // But we need to be careful not to disrupt scrolling if user is reading up
+                        // simple implementation:
                         messagesRecyclerView.scrollToPosition(messages.lastIndex)
                     }
                 }
@@ -588,11 +615,18 @@ class ChatFragment : Fragment() {
         }
     }
 
-    private fun importCharacter(senderId: String, characterId: String) {
+    private fun importCharacter(senderId: String, characterId: String, messageId: String) {
+        val profile = userProfile ?: return
+        val teamId = profile.teamId ?: return
+        
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val characterRepo = com.fts.ttbros.data.repository.CharacterRepository()
                 characterRepo.copyCharacter(senderId, characterId)
+                
+                // Mark as imported
+                chatRepository.markAsImported(teamId, chatType, messageId, profile.uid)
+                
                 view?.let {
                     Snackbar.make(it, "Character imported successfully!", Snackbar.LENGTH_SHORT).show()
                 }

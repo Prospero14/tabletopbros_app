@@ -22,3 +22,7 @@ local.properties
 /execute_git_commands.ps1
 /GIT_COMMIT_INSTRUCTIONS.md
 build_release.bat
+app/release/app-release.apk
+app/release/baselineProfiles/0/app-release.dm
+app/release/baselineProfiles/1/app-release.dm
+app/release/output-metadata.json

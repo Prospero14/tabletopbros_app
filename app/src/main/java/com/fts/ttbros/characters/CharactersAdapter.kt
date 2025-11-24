@@ -10,7 +10,8 @@ import com.fts.ttbros.databinding.ItemCharacterBinding
 
 class CharactersAdapter(
     private val onCharacterClick: (Character) -> Unit,
-    private val onShareClick: (Character) -> Unit
+    private val onShareClick: (Character) -> Unit,
+    private val onDeleteClick: (Character) -> Unit
 ) : ListAdapter<Character, CharactersAdapter.CharacterViewHolder>(CharacterDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CharacterViewHolder {
@@ -35,6 +36,15 @@ class CharactersAdapter(
                 val position = bindingAdapterPosition
                 if (position != RecyclerView.NO_POSITION) {
                     onCharacterClick(getItem(position))
+                }
+            }
+            binding.root.setOnLongClickListener {
+                val position = bindingAdapterPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    onDeleteClick(getItem(position))
+                    true
+                } else {
+                    false
                 }
             }
         }

@@ -18,27 +18,6 @@ import kotlinx.coroutines.launch
 
 class CharactersFragment : Fragment() {
 
-    private var _binding: FragmentCharactersBinding? = null
-    private val binding get() = _binding ?: throw IllegalStateException("Binding is null. Fragment view may have been destroyed.")
-    private val repository = CharacterRepository()
-    private val userRepository = com.fts.ttbros.data.repository.UserRepository()
-    private val chatRepository = com.fts.ttbros.chat.data.ChatRepository()
-    
-    private val adapter = CharactersAdapter(
-        onCharacterClick = { character ->
-            try {
-                val bundle = Bundle().apply {
-                    putString("characterId", character.id)
-                    putString("system", character.system)
-                }
-                findNavController().navigate(R.id.action_charactersFragment_to_characterEditorFragment, bundle)
-            } catch (e: Exception) {
-                android.util.Log.e("CharactersFragment", "Navigation error: ${e.message}", e)
-                Snackbar.make(binding.root, "Error opening character editor", Snackbar.LENGTH_SHORT).show()
-            }
-        },
-        onShareClick = { character ->
-            shareCharacter(character)
         }
     )
     
@@ -60,7 +39,7 @@ class CharactersFragment : Fragment() {
         binding.charactersRecyclerView.adapter = adapter
 
         binding.addCharacterFab.setOnClickListener {
-            showSystemSelectionDialog()
+            checkSystemAndAddCharacter()
         }
         
         setupTabs()
@@ -107,6 +86,37 @@ class CharactersFragment : Fragment() {
             }
         }
     }
+    
+    private fun checkSystemAndAddCharacter() {
+        lifecycleScope.launch {
+            val profile = userRepository.currentProfile()
+            if (profile == null) {
+                showSystemSelectionDialog()
+                return@launch
+            }
+            
+            val currentTeam = profile.teams.find { it.teamId == profile.currentTeamId }
+            val system = currentTeam?.teamSystem
+            
+            if (!system.isNullOrBlank()) {
+                openCharacterEditor(system)
+            } else {
+                showSystemSelectionDialog()
+            }
+        }
+    }
+    
+    private fun openCharacterEditor(system: String) {
+        try {
+            val bundle = Bundle().apply {
+                putString("characterId", null)
+                putString("system", system)
+            }
+            findNavController().navigate(R.id.action_charactersFragment_to_characterEditorFragment, bundle)
+        } catch (e: Exception) {
+            android.util.Log.e("CharactersFragment", "Navigation error: ${e.message}", e)
+            Snackbar.make(binding.root, "Error opening character editor", Snackbar.LENGTH_SHORT).show()
+        }
 
     private fun showSystemSelectionDialog() {
         val systems = arrayOf(
@@ -182,6 +192,29 @@ class CharactersFragment : Fragment() {
                 Snackbar.make(binding.root, "Character shared to ${chatType.name.lowercase().replace("_", " ")}", Snackbar.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Snackbar.make(binding.root, "Error sharing character: ${e.message}", Snackbar.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    private fun showDeleteCharacterDialog(character: com.fts.ttbros.data.model.Character) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Delete Character")
+            .setMessage("Are you sure you want to delete '${character.name}'? This action cannot be undone.")
+            .setPositiveButton("Delete") { _, _ ->
+                deleteCharacter(character.id)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    private fun deleteCharacter(characterId: String) {
+        lifecycleScope.launch {
+            try {
+                characterRepository.deleteCharacter(characterId)
+                Snackbar.make(binding.root, "Character deleted", Snackbar.LENGTH_SHORT).show()
+                loadCharacters()
+            } catch (e: Exception) {
+                Snackbar.make(binding.root, "Error deleting character: ${e.message}", Snackbar.LENGTH_SHORT).show()
             }
         }
     }

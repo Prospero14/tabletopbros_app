@@ -20,7 +20,7 @@ import java.text.DateFormat
 
 class ChatAdapter(
     private val currentUserId: String,
-    private val onImportCharacter: (String, String) -> Unit, // senderId, characterId
+    private val onImportCharacter: (String, String, String) -> Unit, // senderId, characterId, messageId
     private val onPinMessage: ((String) -> Unit)? = null,
     private val onUnpinMessage: ((String) -> Unit)? = null,
     private val onPollClick: ((String) -> Unit)? = null // pollId
@@ -104,12 +104,22 @@ class ChatAdapter(
             
             // Handle character share
             if (message.type == "character" && !message.attachmentId.isNullOrBlank()) {
-                messageTextView.text = "📄 ${message.text}\n(Tap to Import)"
-                messageTextView.setOnClickListener {
-                    onImportCharacter(message.senderId, message.attachmentId)
+                val isImported = message.importedBy.contains(currentUserId)
+                if (isImported) {
+                    messageTextView.text = "📄 ${message.text}\n(Imported)"
+                    messageTextView.setOnClickListener {
+                        android.widget.Toast.makeText(context, "You have already imported this character", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    messageTextView.setTextColor(ContextCompat.getColor(context, R.color.gray_600))
+                    messageTextView.setTypeface(null, android.graphics.Typeface.NORMAL)
+                } else {
+                    messageTextView.text = "📄 ${message.text}\n(Tap to Import)"
+                    messageTextView.setOnClickListener {
+                        onImportCharacter(message.senderId, message.attachmentId, message.id)
+                    }
+                    messageTextView.setTextColor(ContextCompat.getColor(context, R.color.teal_700))
+                    messageTextView.setTypeface(null, android.graphics.Typeface.BOLD)
                 }
-                messageTextView.setTextColor(ContextCompat.getColor(context, R.color.teal_700))
-                messageTextView.setTypeface(null, android.graphics.Typeface.BOLD)
             } else if (message.type == "poll") {
                 // Handle poll - visually distinguish from regular messages
                 val actionText = if (!message.attachmentId.isNullOrBlank()) "\n📊 Tap to Vote" else "\n(Error: No ID)"

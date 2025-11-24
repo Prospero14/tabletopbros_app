@@ -1,48 +1,51 @@
 package com.fts.ttbros.documents
 
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.fts.ttbros.R
+import com.fts.ttbros.data.model.Document
+import com.fts.ttbros.data.model.UserRole
+import com.fts.ttbros.data.repository.DocumentRepository
+import com.fts.ttbros.data.repository.UserRepository
 import com.fts.ttbros.databinding.FragmentDocumentsBinding
 import com.fts.ttbros.databinding.ItemDocumentBinding
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-
-data class RuleBook(
-    val id: String,
-    val title: String,
-    val fileName: String,
-    val url: String,
-    var isDownloaded: Boolean = false
-)
+import java.io.FileOutputStream
+import java.net.URL
 
 class DocumentsFragment : Fragment() {
 
     private var _binding: FragmentDocumentsBinding? = null
     private val binding get() = _binding!!
     
-    // TODO: Replace these empty strings with direct links to your PDF files
-    private val documents = listOf(
-        RuleBook("1", "Dungeons & Dragons 5e Player's Handbook", "dnd_5e_phb.pdf", "https://drive.google.com/uc?export=download&id=1wR9VH195dnIYlphMr63d5fdsns4o5xSn"),
-        RuleBook("2", "Vampire: The Masquerade 5e Corebook", "vtm_5e_core.pdf", "https://drive.google.com/uc?export=download&id=1MUU2c_MSMEQ5yA_JBiIIdBdaQa8sLAX4"),
-        // RuleBook("3", "The Witcher TRPG", "witcher_trpg.pdf", "https://drive.google.com/uc?export=download&id=1rSQuKUko9dqBPf7GtqMTtDeadubZZ7di"),
-        RuleBook("4", "VTM 5e Character Sheet", "vtm_5e_sheet.pdf", "https://drive.google.com/uc?export=download&id=1LInpHrBwqPO6Cfluj4ZmetARUsMuqNGm"),
-        RuleBook("5", "DND 5e Character Sheet", "dnd_5e_sheet.pdf", "https://drive.google.com/uc?export=download&id=1Y18OaGV5pkY0Z7pF7NVmFOGzsPt1Wq2Q"),
-        //RuleBook("6", "Witcher Map", "witcher_map.pdf", "https://drive.google.com/uc?export=download&id=1a12ynj-atTsgU-rE0cY0QzR8dNKoPXi0"),
-        //RuleBook("7", "Witcher Character Sheet", "witcher_sheet.pdf", "https://drive.google.com/uc?export=download&id=15FSjt8QnGeWAWQc-hSfa7cAO3zBFk0cR")
-    )
-    
+    private val documentRepository = DocumentRepository()
+    private val userRepository = UserRepository()
     private lateinit var adapter: DocumentsAdapter
+    private var currentTeamId: String? = null
+    private var isMaster: Boolean = false
+    private var currentUserId: String = ""
+    private var currentUserName: String = ""
+
+    private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let { showUploadDialog(it) }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -55,113 +58,187 @@ class DocumentsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         
-        adapter = DocumentsAdapter(documents) { book ->
-            onBookClicked(book)
-        }
+        adapter = DocumentsAdapter(
+            onClick = { doc -> onDocumentClicked(doc) },
+            onLongClick = { doc -> if (isMaster) showDeleteDialog(doc) }
+        )
         
         binding.documentsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.documentsRecyclerView.adapter = adapter
         
-        binding.deleteDocsButton.setOnClickListener {
-            showDeleteConfirmationDialog()
+        // Hide delete all button as we moved to individual delete
+        binding.deleteDocsButton.isVisible = false
+        
+        binding.addDocumentFab.setOnClickListener {
+            filePickerLauncher.launch("application/pdf")
         }
         
-        checkDownloads()
+        loadData()
     }
     
-    private fun showDeleteConfirmationDialog() {
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Удалить все документы?")
-            .setMessage("Вы точно хотите удалить все сохраненные документы?")
-            .setPositiveButton("Удалить") { _, _ ->
-                deleteAllDocuments()
+    private fun loadData() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val profile = userRepository.currentProfile()
+                if (profile == null || profile.teamId.isNullOrBlank()) {
+                    binding.emptyView.text = "Join a team to view documents"
+                    binding.emptyView.isVisible = true
+                    binding.addDocumentFab.isVisible = false
+                    return@launch
+                }
+                
+                currentTeamId = profile.teamId
+                currentUserId = profile.uid
+                currentUserName = profile.displayName
+                isMaster = profile.role == UserRole.MASTER
+                
+                binding.addDocumentFab.isVisible = isMaster
+                
+                documentRepository.getDocuments(profile.teamId!!).collect { docs ->
+                    adapter.submitList(docs)
+                    binding.emptyView.isVisible = docs.isEmpty()
+                    checkDownloads(docs)
+                }
+            } catch (e: Exception) {
+                Snackbar.make(binding.root, "Error loading documents: ${e.message}", Snackbar.LENGTH_LONG).show()
             }
-            .setNegativeButton("Отмена", null)
+        }
+    }
+    
+    private fun showUploadDialog(uri: Uri) {
+        val context = context ?: return
+        val view = LayoutInflater.from(context).inflate(R.layout.dialog_add_note, null) // Reusing layout or create new
+        // Ideally create a new layout for document upload, but for now let's use a simple input
+        val input = TextInputEditText(context)
+        input.hint = "Document Title"
+        
+        // Try to get filename from URI
+        var fileName = "document.pdf"
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (cursor.moveToFirst() && nameIndex != -1) {
+                fileName = cursor.getString(nameIndex)
+                input.setText(fileName.substringBeforeLast("."))
+            }
+        }
+
+        MaterialAlertDialogBuilder(context)
+            .setTitle("Upload Document")
+            .setView(input)
+            .setPositiveButton("Upload") { _, _ ->
+                val title = input.text?.toString()?.trim() ?: fileName
+                uploadDocument(uri, title, fileName)
+            }
+            .setNegativeButton("Cancel", null)
             .show()
     }
     
-    private fun deleteAllDocuments() {
-        val docsDir = File(requireContext().filesDir, "documents")
-        if (docsDir.exists()) {
-            docsDir.deleteRecursively()
-            docsDir.mkdirs() // Recreate empty directory
-        }
+    private fun uploadDocument(uri: Uri, title: String, fileName: String) {
+        val teamId = currentTeamId ?: return
         
-        documents.forEach { it.isDownloaded = false }
-        adapter.notifyDataSetChanged()
-        Toast.makeText(requireContext(), "Все документы удалены", Toast.LENGTH_SHORT).show()
+        binding.progressBar.isVisible = true
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                documentRepository.uploadDocument(
+                    teamId, uri, title, fileName, currentUserId, currentUserName
+                )
+                Snackbar.make(binding.root, "Document uploaded", Snackbar.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Snackbar.make(binding.root, "Upload failed: ${e.message}", Snackbar.LENGTH_LONG).show()
+            } finally {
+                binding.progressBar.isVisible = false
+            }
+        }
     }
     
-    private fun checkDownloads() {
+    private fun showDeleteDialog(doc: Document) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle("Delete Document")
+            .setMessage("Delete '${doc.title}'?")
+            .setPositiveButton("Delete") { _, _ ->
+                deleteDocument(doc)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+    
+    private fun deleteDocument(doc: Document) {
+        val teamId = currentTeamId ?: return
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                documentRepository.deleteDocument(teamId, doc.id, doc.downloadUrl)
+                Snackbar.make(binding.root, "Document deleted", Snackbar.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Snackbar.make(binding.root, "Delete failed: ${e.message}", Snackbar.LENGTH_SHORT).show()
+            }
+        }
+    }
+    
+    private fun checkDownloads(docs: List<Document>) {
         val docsDir = File(requireContext().filesDir, "documents")
         if (!docsDir.exists()) docsDir.mkdirs()
         
-        documents.forEach { book ->
-            val file = File(docsDir, book.fileName)
-            book.isDownloaded = file.exists()
+        val downloadedIds = mutableSetOf<String>()
+        docs.forEach { doc ->
+            // Use ID or Filename to check. Using ID is safer for uniqueness, but filename is needed for extension.
+            // Let's use id_filename format
+            val file = File(docsDir, "${doc.id}_${doc.fileName}")
+            if (file.exists()) {
+                downloadedIds.add(doc.id)
+            }
         }
-        adapter.notifyDataSetChanged()
+        adapter.setDownloaded(downloadedIds)
     }
     
-    private fun onBookClicked(book: RuleBook) {
-        if (book.isDownloaded) {
-            openDocument(book)
-        } else {
-            downloadDocument(book)
-        }
-    }
-    
-    private fun downloadDocument(book: RuleBook) {
-        Toast.makeText(requireContext(), "Скачивание ${book.title}...", Toast.LENGTH_SHORT).show()
+    private fun onDocumentClicked(doc: Document) {
+        val docsDir = File(requireContext().filesDir, "documents")
+        val file = File(docsDir, "${doc.id}_${doc.fileName}")
         
-        lifecycleScope.launch {
+        if (file.exists()) {
+            openDocument(file)
+        } else {
+            downloadDocument(doc, file)
+        }
+    }
+    
+    private fun downloadDocument(doc: Document, targetFile: File) {
+        Toast.makeText(requireContext(), "Downloading ${doc.title}...", Toast.LENGTH_SHORT).show()
+        binding.progressBar.isVisible = true
+        
+        viewLifecycleOwner.lifecycleScope.launch {
             withContext(Dispatchers.IO) {
                 try {
-                    val docsDir = File(requireContext().filesDir, "documents")
-                    if (!docsDir.exists()) docsDir.mkdirs()
-                    val file = File(docsDir, book.fileName)
-                    
-                    // Real download logic
-                    java.net.URL(book.url).openStream().use { input ->
-                        java.io.FileOutputStream(file).use { output ->
+                    URL(doc.downloadUrl).openStream().use { input ->
+                        FileOutputStream(targetFile).use { output ->
                             input.copyTo(output)
                         }
                     }
-                    
                     withContext(Dispatchers.Main) {
-                        checkDownloads()
-                        Toast.makeText(requireContext(), "Скачано в: ${file.absolutePath}", Toast.LENGTH_LONG).show()
+                        binding.progressBar.isVisible = false
+                        adapter.markAsDownloaded(doc.id)
+                        Toast.makeText(requireContext(), "Downloaded", Toast.LENGTH_SHORT).show()
+                        openDocument(targetFile)
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(requireContext(), "Ошибка скачивания: ${e.message}", Toast.LENGTH_LONG).show()
+                        binding.progressBar.isVisible = false
+                        Toast.makeText(requireContext(), "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
                     }
                 }
             }
         }
     }
     
-    private fun openDocument(book: RuleBook) {
+    private fun openDocument(file: File) {
         try {
-            val docsDir = File(requireContext().filesDir, "documents")
-            val file = File(docsDir, book.fileName)
-            
-            if (file.exists()) {
-                val bundle = Bundle().apply {
-                    putString("filePath", file.absolutePath)
-                }
-                try {
-                    findNavController().navigate(R.id.action_documentsFragment_to_pdfViewerFragment, bundle)
-                } catch (e: Exception) {
-                    android.util.Log.e("DocumentsFragment", "Navigation error: ${e.message}", e)
-                    Toast.makeText(requireContext(), "Error opening PDF viewer", Toast.LENGTH_SHORT).show()
-                }
-            } else {
-                Toast.makeText(requireContext(), "Файл не найден", Toast.LENGTH_SHORT).show()
+            val bundle = Bundle().apply {
+                putString("filePath", file.absolutePath)
             }
+            findNavController().navigate(R.id.action_documentsFragment_to_pdfViewerFragment, bundle)
         } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Не удалось открыть файл: ${e.message}", Toast.LENGTH_SHORT).show()
+            android.util.Log.e("DocumentsFragment", "Navigation error: ${e.message}", e)
+            Toast.makeText(requireContext(), "Error opening PDF viewer", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -172,9 +249,28 @@ class DocumentsFragment : Fragment() {
 }
 
 class DocumentsAdapter(
-    private val items: List<RuleBook>,
-    private val onClick: (RuleBook) -> Unit
+    private val onClick: (Document) -> Unit,
+    private val onLongClick: (Document) -> Unit
 ) : RecyclerView.Adapter<DocumentsAdapter.ViewHolder>() {
+
+    private var items: List<Document> = emptyList()
+    private val downloadedIds = mutableSetOf<String>()
+
+    fun submitList(newItems: List<Document>) {
+        items = newItems
+        notifyDataSetChanged()
+    }
+    
+    fun setDownloaded(ids: Set<String>) {
+        downloadedIds.clear()
+        downloadedIds.addAll(ids)
+        notifyDataSetChanged()
+    }
+    
+    fun markAsDownloaded(id: String) {
+        downloadedIds.add(id)
+        notifyDataSetChanged()
+    }
 
     class ViewHolder(val binding: ItemDocumentBinding) : RecyclerView.ViewHolder(binding.root)
 
@@ -187,17 +283,28 @@ class DocumentsAdapter(
         val item = items[position]
         holder.binding.titleTextView.text = item.title
         
-        if (item.isDownloaded) {
-            holder.binding.statusTextView.text = "Скачано"
+        val isDownloaded = downloadedIds.contains(item.id)
+        
+        if (isDownloaded) {
+            holder.binding.statusTextView.text = "Downloaded"
             holder.binding.actionImageView.setImageResource(R.drawable.ic_check_circle)
-            holder.binding.actionImageView.visibility = View.VISIBLE
         } else {
-            holder.binding.statusTextView.text = "Нажмите для скачивания"
+            holder.binding.statusTextView.text = "Tap to download (${formatSize(item.sizeBytes)})"
             holder.binding.actionImageView.setImageResource(android.R.drawable.stat_sys_download)
-            holder.binding.actionImageView.visibility = View.VISIBLE
         }
         
         holder.itemView.setOnClickListener { onClick(item) }
+        holder.itemView.setOnLongClickListener { 
+            onLongClick(item)
+            true 
+        }
+    }
+    
+    private fun formatSize(bytes: Long): String {
+        if (bytes <= 0) return ""
+        val kb = bytes / 1024
+        if (kb < 1024) return "$kb KB"
+        return "${kb / 1024} MB"
     }
 
     override fun getItemCount() = items.size
