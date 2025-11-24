@@ -46,7 +46,7 @@ class MainActivity : AppCompatActivity() {
     private val userRepository = UserRepository()
     private val teamRepository = TeamRepository()
 
-    private val yandexDisk = com.fts.ttbros.data.repository.YandexDiskRepository() // ДОБАВИТЬ ЭТУ СТРОКУ
+    private val yandexDisk = com.fts.ttbros.data.repository.YandexDiskRepository()
     private lateinit var gestureDetector: GestureDetector
     private var isNavigating = false // Защита от множественных навигаций
 
@@ -185,6 +185,12 @@ class MainActivity : AppCompatActivity() {
             binding.drawerLayout.closeDrawer(GravityCompat.END)
             showAvatarMenu()
         }
+    }
+    
+    private fun showAvatarMenu() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Аватар")
+            .setItems(arrayOf("Выбрать из галереи", "Удалить")) { _, which ->
                 when (which) {
                     0 -> pickImageFromGallery()
                     1 -> removeAvatar()
@@ -194,8 +200,9 @@ class MainActivity : AppCompatActivity() {
             .setBackground(androidx.core.content.ContextCompat.getDrawable(this, R.drawable.bg_cloud_dialog))
             .show()
     }
-private fun setupSwipeGesture() {
-    gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+    
+    private fun setupSwipeGesture() {
+        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
         private val SWIPE_THRESHOLD = 100
         private val SWIPE_VELOCITY_THRESHOLD = 100
 
@@ -228,79 +235,80 @@ private fun setupSwipeGesture() {
             return false
         }
     })
-}
-override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-    gestureDetector.onTouchEvent(ev)
-    return super.dispatchTouchEvent(ev)
-}
+    }
+    
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        gestureDetector.onTouchEvent(ev)
+        return super.dispatchTouchEvent(ev)
+    }
 
-private fun navigateToNextMenuItem() {
-    // Проверка что не идёт другая навигация
-    if (isNavigating) return
-    
-    val currentDestination = navController.currentDestination?.id ?: return
-    val currentIndex = menuOrder.indexOf(currentDestination)
-    
-    if (currentIndex != -1 && currentIndex < menuOrder.size - 1) {
-        val nextDestination = menuOrder[currentIndex + 1]
+    private fun navigateToNextMenuItem() {
+        // Проверка что не идёт другая навигация
+        if (isNavigating) return
         
-        // Установить флаг навигации
-        isNavigating = true
+        val currentDestination = navController.currentDestination?.id ?: return
+        val currentIndex = menuOrder.indexOf(currentDestination)
         
-        try {
-            val navOptions = NavOptions.Builder()
-                .setEnterAnim(R.anim.slide_in_right)
-                .setExitAnim(R.anim.slide_out_left)
-                .setPopEnterAnim(R.anim.slide_in_left)
-                .setPopExitAnim(R.anim.slide_out_right)
-                .build()
-            navController.navigate(nextDestination, null, navOptions)
+        if (currentIndex != -1 && currentIndex < menuOrder.size - 1) {
+            val nextDestination = menuOrder[currentIndex + 1]
             
-            // Сбросить флаг через небольшую задержку
-            binding.root.postDelayed({
-                isNavigating = false
-            }, 500) // 500ms задержка перед следующим свайпом
+            // Установить флаг навигации
+            isNavigating = true
             
-        } catch (e: Exception) {
-            android.util.Log.e("MainActivity", "Swipe navigation error: ${e.message}", e)
-            isNavigating = false // Сбросить флаг при ошибке
+            try {
+                val navOptions = NavOptions.Builder()
+                    .setEnterAnim(R.anim.slide_in_right)
+                    .setExitAnim(R.anim.slide_out_left)
+                    .setPopEnterAnim(R.anim.slide_in_left)
+                    .setPopExitAnim(R.anim.slide_out_right)
+                    .build()
+                navController.navigate(nextDestination, null, navOptions)
+                
+                // Сбросить флаг через небольшую задержку
+                binding.root.postDelayed({
+                    isNavigating = false
+                }, 500) // 500ms задержка перед следующим свайпом
+                
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Swipe navigation error: ${e.message}", e)
+                isNavigating = false // Сбросить флаг при ошибке
+            }
         }
     }
-}
 
-private fun navigateToPreviousMenuItem() {
-    // Проверка что не идёт другая навигация
-    if (isNavigating) return
-    
-    val currentDestination = navController.currentDestination?.id ?: return
-    val currentIndex = menuOrder.indexOf(currentDestination)
-    
-    if (currentIndex > 0) {
-        val previousDestination = menuOrder[currentIndex - 1]
+    private fun navigateToPreviousMenuItem() {
+        // Проверка что не идёт другая навигация
+        if (isNavigating) return
         
-        // Установить флаг навигации
-        isNavigating = true
+        val currentDestination = navController.currentDestination?.id ?: return
+        val currentIndex = menuOrder.indexOf(currentDestination)
         
-        try {
-            val navOptions = NavOptions.Builder()
-                .setEnterAnim(R.anim.slide_in_left)
-                .setExitAnim(R.anim.slide_out_right)
-                .setPopEnterAnim(R.anim.slide_in_right)
-                .setPopExitAnim(R.anim.slide_out_left)
-                .build()
-            navController.navigate(previousDestination, null, navOptions)
+        if (currentIndex > 0) {
+            val previousDestination = menuOrder[currentIndex - 1]
             
-            // Сбросить флаг через небольшую задержку
-            binding.root.postDelayed({
+            // Установить флаг навигации
+            isNavigating = true
+            
+            try {
+                val navOptions = NavOptions.Builder()
+                    .setEnterAnim(R.anim.slide_in_left)
+                    .setExitAnim(R.anim.slide_out_right)
+                    .setPopEnterAnim(R.anim.slide_in_right)
+                    .setPopExitAnim(R.anim.slide_out_left)
+                    .build()
+                navController.navigate(previousDestination, null, navOptions)
+                
+                // Сбросить флаг через небольшую задержку
+                binding.root.postDelayed({
+                    isNavigating = false
+                }, 500)
+                
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Swipe navigation error: ${e.message}", e)
                 isNavigating = false
-            }, 500)
-            
-        } catch (e: Exception) {
-            android.util.Log.e("MainActivity", "Swipe navigation error: ${e.message}", e)
-            isNavigating = false
+            }
         }
     }
-}
 
 private fun pickImageFromGallery() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
