@@ -181,7 +181,7 @@ class ChatFragment : Fragment() {
             messageInputContainer.isVisible = true
             sendButton.isEnabled = canSend
             messageEditText.isEnabled = canSend
-            createPollButton.isEnabled = canSend
+            menuButton.isEnabled = canSend
         }
     }
 
