@@ -232,7 +232,7 @@ class YandexDiskRepository {
     }
     
     /**
-     * Опубликовать файл и получить публичную ссылку
+     * Опубликовать файл и получить прямую ссылку для скачивания
      */
     private fun publishFile(remotePath: String): String {
         // 1. Опубликовать файл
@@ -243,12 +243,13 @@ class YandexDiskRepository {
             .build()
         
         val publishResponse = client.newCall(publishRequest).execute()
-        if (!publishResponse.isSuccessful) {
+        if (!publishResponse.isSuccessful && publishResponse.code != 409) {
+            // 409 = уже опубликован, это нормально
             throw Exception("Failed to publish file: ${publishResponse.code}")
         }
         publishResponse.close()
         
-        // 2. Получить публичную ссылку
+        // 2. Получить информацию о файле
         val getRequest = Request.Builder()
             .url("$baseUrl/resources?path=${Uri.encode(remotePath)}")
             .header("Authorization", "OAuth $oauthToken")
@@ -263,8 +264,16 @@ class YandexDiskRepository {
         val body = getResponse.body?.string() ?: throw Exception("Empty response")
         getResponse.close()
         
-        val json = gson.fromJson(body, Map::class.java)
-        return json["public_url"] as? String ?: throw Exception("No public URL in response")
+        val json = gson.fromJson(body, Map::class.java) as Map<*, *>
+        
+        // Для изображений возвращаем прямую ссылку на файл
+        // Для документов возвращаем публичную ссылку
+        val fileUrl = json["file"] as? String
+        val publicUrl = json["public_url"] as? String
+        
+        // Если есть прямая ссылка (file), используем её (для Glide)
+        // Иначе используем публичную ссылку (для документов)
+        return fileUrl ?: publicUrl ?: throw Exception("No download URL in response")
     }
     
     /**
