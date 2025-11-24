@@ -136,7 +136,16 @@ class ChatFragment : Fragment() {
 
         sendButton.setOnClickListener { sendMessage() }
         createPollButton.setOnClickListener { showCreatePollDialog() }
-        diceRollButton.setOnClickListener { showDiceRollDialog() }
+        diceRollButton.setOnClickListener {
+            try {
+                showDiceRollDialog()
+            } catch (e: Exception) {
+                android.util.Log.e("ChatFragment", "Error on dice roll button click: ${e.message}", e)
+                view?.let {
+                    Snackbar.make(it, "Ошибка: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                }
+            }
+        }
         observeProfile()
     }
 
@@ -619,25 +628,47 @@ class ChatFragment : Fragment() {
     }
 
     private fun showDiceRollDialog() {
-        if (!isAdded) {
-            android.util.Log.w("ChatFragment", "Fragment not added, cannot show dice roll dialog")
+        if (!isAdded || view == null) {
+            android.util.Log.w("ChatFragment", "Fragment not added or view is null, cannot show dice roll dialog")
             return
         }
         val profile = userProfile ?: run {
             android.util.Log.w("ChatFragment", "User profile is null, cannot show dice roll dialog")
+            view?.let {
+                Snackbar.make(it, "Профиль пользователя не загружен", Snackbar.LENGTH_SHORT).show()
+            }
             return
         }
         val teamId = profile.teamId ?: run {
             android.util.Log.w("ChatFragment", "Team ID is null, cannot show dice roll dialog")
+            view?.let {
+                Snackbar.make(it, "Команда не выбрана", Snackbar.LENGTH_SHORT).show()
+            }
             return
         }
 
         try {
             val isMaster = profile.role == UserRole.MASTER
             val dialog = DiceRollDialog(isMaster) { rollResult, sendOptions ->
-                sendDiceRollResult(rollResult, sendOptions, teamId, profile)
+                if (isAdded && view != null) {
+                    sendDiceRollResult(rollResult, sendOptions, teamId, profile)
+                }
             }
-            dialog.show(parentFragmentManager, "DiceRollDialog")
+            // Проверяем что fragmentManager доступен
+            val fragmentManager = parentFragmentManager
+            if (fragmentManager.isStateSaved) {
+                android.util.Log.w("ChatFragment", "FragmentManager state is saved, cannot show dialog")
+                view?.let {
+                    Snackbar.make(it, "Не удалось открыть диалог", Snackbar.LENGTH_SHORT).show()
+                }
+                return
+            }
+            dialog.show(fragmentManager, "DiceRollDialog")
+        } catch (e: IllegalStateException) {
+            android.util.Log.e("ChatFragment", "IllegalStateException showing dice roll dialog: ${e.message}", e)
+            view?.let {
+                Snackbar.make(it, "Не удалось открыть диалог. Попробуйте еще раз.", Snackbar.LENGTH_SHORT).show()
+            }
         } catch (e: Exception) {
             android.util.Log.e("ChatFragment", "Error showing dice roll dialog: ${e.message}", e)
             view?.let {

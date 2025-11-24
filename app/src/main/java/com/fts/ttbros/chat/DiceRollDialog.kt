@@ -38,9 +38,19 @@ class DiceRollDialog(
     private var lastRollResult: String? = null
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
-        val builder = MaterialAlertDialogBuilder(requireContext())
-        val inflater = requireActivity().layoutInflater
-        val view = inflater.inflate(com.fts.ttbros.R.layout.dialog_dice_roll, null)
+        val context = context
+        val activity = activity
+        
+        if (context == null || activity == null) {
+            // Если контекст недоступен, возвращаем пустой диалог
+            // Это не должно произойти, но на всякий случай
+            android.util.Log.e("DiceRollDialog", "Context or Activity is null in onCreateDialog")
+            return super.onCreateDialog(savedInstanceState)
+        }
+        
+        val builder = MaterialAlertDialogBuilder(context)
+        val inflater = activity.layoutInflater
+        val view = inflate.inflate(com.fts.ttbros.R.layout.dialog_dice_roll, null)
 
         diceTypeSpinner = view.findViewById(com.fts.ttbros.R.id.diceTypeSpinner)
         quantityEditText = view.findViewById(com.fts.ttbros.R.id.quantityEditText)
@@ -74,11 +84,12 @@ class DiceRollDialog(
     }
 
     private fun setupDiceSpinner() {
+        val context = context ?: return
         val diceTypes = listOf(
             "d2", "d4", "d6", "d8", "d10", "d12", "d20", "d100"
         )
         val adapter = ArrayAdapter(
-            requireContext(),
+            context,
             android.R.layout.simple_spinner_item,
             diceTypes
         )
@@ -104,11 +115,14 @@ class DiceRollDialog(
                     dismiss()
                 } else {
                     // Показываем сообщение, что нужно выбрать хотя бы один чат
-                    android.widget.Toast.makeText(
-                        requireContext(),
-                        "Выберите хотя бы один чат для отправки",
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
+                    val context = context
+                    if (context != null) {
+                        android.widget.Toast.makeText(
+                            context,
+                            "Выберите хотя бы один чат для отправки",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    }
                 }
             }
         }

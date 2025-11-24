@@ -107,13 +107,30 @@ class CharacterSheetsFragment : Fragment() {
         
         viewLifecycleOwner.lifecycleScope.launch {
             try {
+                // Проверяем что фрагмент все еще прикреплен перед началом операций
+                if (!isAdded || view == null) {
+                    android.util.Log.w("CharacterSheetsFragment", "Fragment not attached at start of upload")
+                    return@launch
+                }
+                
                 loadingView.isVisible = true
                 view?.let {
                     Snackbar.make(it, "Проверка PDF...", Snackbar.LENGTH_SHORT).show()
                 }
                 
                 // Сначала проверяем, что это действительно лист персонажа (до загрузки в Yandex.Disk)
-                val validationResult = validateCharacterSheet(uri, context)
+                val validationResult = try {
+                    validateCharacterSheet(uri, context)
+                } catch (e: Exception) {
+                    android.util.Log.e("CharacterSheetsFragment", "Error validating PDF: ${e.message}", e)
+                    if (isAdded && view != null) {
+                        view?.let {
+                            Snackbar.make(it, "Ошибка проверки файла: ${e.message}", Snackbar.LENGTH_LONG).show()
+                        }
+                        loadingView.isVisible = false
+                    }
+                    return@launch
+                }
                 if (!validationResult.isValid) {
                     if (isAdded && view != null) {
                         view?.let {
@@ -216,9 +233,15 @@ class CharacterSheetsFragment : Fragment() {
             inputStream?.use { stream ->
                 validatePdfContent(stream)
             } ?: ValidationResult(false, "Не удалось прочитать файл")
+        } catch (e: SecurityException) {
+            android.util.Log.e("CharacterSheetsFragment", "SecurityException validating PDF: ${e.message}", e)
+            ValidationResult(false, "Нет доступа к файлу. Проверьте разрешения.")
+        } catch (e: java.io.FileNotFoundException) {
+            android.util.Log.e("CharacterSheetsFragment", "FileNotFoundException validating PDF: ${e.message}", e)
+            ValidationResult(false, "Файл не найден")
         } catch (e: Exception) {
             android.util.Log.e("CharacterSheetsFragment", "Error validating PDF: ${e.message}", e)
-            ValidationResult(false, "Ошибка проверки файла: ${e.message}")
+            ValidationResult(false, "Ошибка проверки файла: ${e.message ?: "Неизвестная ошибка"}")
         }
     }
     
