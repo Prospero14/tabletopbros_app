@@ -98,4 +98,9 @@
             app:nullable="true" />
     </fragment>
 
+    <fragment
+        android:id="@+id/characterSheetsFragment"
+        android:name="com.fts.ttbros.charactersheets.CharacterSheetsFragment"
+        android:label="Листы персонажей" />
+
 </navigation>

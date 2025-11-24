@@ -59,7 +59,8 @@ class MainActivity : AppCompatActivity() {
         R.id.notesFragment,
         R.id.calendarFragment,
         R.id.documentsFragment,
-        R.id.charactersFragment
+        R.id.charactersFragment,
+        R.id.characterSheetsFragment
     )
     private val auth by lazy { Firebase.auth }
     private var userProfile: UserProfile? = null
@@ -85,7 +86,8 @@ class MainActivity : AppCompatActivity() {
                 R.id.notesFragment,
                 R.id.calendarFragment,
                 R.id.documentsFragment,
-                R.id.charactersFragment
+                R.id.charactersFragment,
+                R.id.characterSheetsFragment
             ),
             binding.drawerLayout
         )

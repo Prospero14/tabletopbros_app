@@ -95,6 +95,10 @@ dependencies {
     
     // JSON parsing
     implementation("com.google.code.gson:gson:2.10.1")
+    
+    // PDF parsing and viewing
+    implementation("com.github.barteksc:android-pdf-viewer:3.2.0-beta.1")
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

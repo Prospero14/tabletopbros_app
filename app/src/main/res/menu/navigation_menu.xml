@@ -34,6 +34,10 @@
             android:id="@+id/documentsFragment"
             android:icon="@android:drawable/ic_menu_agenda"
             android:title="Документы" />
+        <item
+            android:id="@+id/characterSheetsFragment"
+            android:icon="@android:drawable/ic_menu_view"
+            android:title="Листы персонажей" />
     </group>
 
     <item

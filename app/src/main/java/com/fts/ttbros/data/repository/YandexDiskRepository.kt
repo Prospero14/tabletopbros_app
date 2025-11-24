@@ -232,6 +232,35 @@ class YandexDiskRepository {
     }
     
     /**
+     * Загрузить PDF файл по полученному URL с правильным MIME типом
+     */
+    private fun uploadPdfFileToUrl(uploadUrl: String, pdfUri: Uri, context: Context) {
+        // Копируем файл из URI в временный файл
+        val tempFile = File(context.cacheDir, "temp_pdf_upload_${System.currentTimeMillis()}.pdf")
+        context.contentResolver.openInputStream(pdfUri)?.use { input ->
+            FileOutputStream(tempFile).use { output ->
+                input.copyTo(output)
+            }
+        }
+        
+        try {
+            val requestBody = tempFile.asRequestBody("application/pdf".toMediaType())
+            val request = Request.Builder()
+                .url(uploadUrl)
+                .put(requestBody)
+                .build()
+            
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                throw Exception("PDF upload failed: ${response.code} ${response.message}")
+            }
+            response.close()
+        } finally {
+            tempFile.delete()
+        }
+    }
+    
+    /**
      * Опубликовать файл и получить прямую ссылку для скачивания
      */
     private fun publishFile(remotePath: String): String {
@@ -274,6 +303,44 @@ class YandexDiskRepository {
         // Если есть прямая ссылка (file), используем её (для Glide)
         // Иначе используем публичную ссылку (для документов)
         return fileUrl ?: publicUrl ?: throw Exception("No download URL in response")
+    }
+    
+    /**
+     * Загрузить PDF лист персонажа на Яндекс.Диск
+     */
+    suspend fun uploadCharacterSheet(
+        userId: String,
+        pdfUri: Uri,
+        context: Context
+    ): String = withContext(Dispatchers.IO) {
+        try {
+            // 1. Создать путь на Яндекс.Диске
+            val fileName = "character_sheet_${userId}_${System.currentTimeMillis()}.pdf"
+            val remotePath = "/TTBros/character_sheets/$userId/$fileName"
+            Log.d("YandexDisk", "Uploading character sheet to: $remotePath")
+            
+            // 2. Создать папки если не существуют
+            createFolderIfNeeded("/TTBros")
+            createFolderIfNeeded("/TTBros/character_sheets")
+            createFolderIfNeeded("/TTBros/character_sheets/$userId")
+            
+            // 3. Получить URL для загрузки
+            val uploadUrl = getUploadUrl(remotePath)
+            Log.d("YandexDisk", "Upload URL obtained")
+            
+            // 4. Загрузить файл с правильным MIME типом для PDF
+            uploadPdfFileToUrl(uploadUrl, pdfUri, context)
+            Log.d("YandexDisk", "Character sheet uploaded successfully")
+            
+            // 5. Опубликовать файл и получить публичную ссылку
+            val publicUrl = publishFile(remotePath)
+            Log.d("YandexDisk", "Public character sheet URL: $publicUrl")
+            
+            publicUrl
+        } catch (e: Exception) {
+            Log.e("YandexDisk", "Character sheet upload error: ${e.message}", e)
+            throw e
+        }
     }
     
     /**
