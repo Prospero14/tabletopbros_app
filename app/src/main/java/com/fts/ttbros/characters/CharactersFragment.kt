@@ -235,7 +235,7 @@ class CharactersFragment : Fragment() {
     private fun deleteCharacter(characterId: String) {
         lifecycleScope.launch {
             try {
-                characterRepository.deleteCharacter(characterId)
+                repository.deleteCharacter(characterId)
                 Snackbar.make(binding.root, "Character deleted", Snackbar.LENGTH_SHORT).show()
                 loadCharacters()
             } catch (e: Exception) {
