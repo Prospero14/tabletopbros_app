@@ -71,6 +71,92 @@ class YandexDiskRepository {
     }
     
     /**
+     * Загрузить аватарку пользователя на Яндекс.Диск
+     */
+    suspend fun uploadAvatar(
+        userId: String,
+        imageUri: Uri,
+        context: Context
+    ): String = withContext(Dispatchers.IO) {
+        try {
+            // 1. Создать путь на Яндекс.Диске
+            val fileName = "avatar_${userId}_${System.currentTimeMillis()}.jpg"
+            val remotePath = "/TTBros/avatars/$fileName"
+            Log.d("YandexDisk", "Uploading avatar to: $remotePath")
+            
+            // 2. Создать папки если не существуют
+            createFolderIfNeeded("/TTBros")
+            createFolderIfNeeded("/TTBros/avatars")
+            
+            // 3. Оптимизировать изображение
+            val optimizedFile = optimizeImage(imageUri, context)
+            
+            // 4. Получить URL для загрузки
+            val uploadUrl = getUploadUrl(remotePath)
+            Log.d("YandexDisk", "Upload URL obtained")
+            
+            // 5. Загрузить файл
+            uploadOptimizedFile(uploadUrl, optimizedFile)
+            Log.d("YandexDisk", "Avatar uploaded successfully")
+            
+            // 6. Опубликовать файл и получить публичную ссылку
+            val publicUrl = publishFile(remotePath)
+            Log.d("YandexDisk", "Public avatar URL: $publicUrl")
+            
+            // 7. Удалить временный файл
+            optimizedFile.delete()
+            
+            publicUrl
+        } catch (e: Exception) {
+            Log.e("YandexDisk", "Avatar upload error: ${e.message}", e)
+            throw e
+        }
+    }
+    
+    /**
+     * Оптимизировать изображение для аватарки
+     */
+    private fun optimizeImage(imageUri: Uri, context: Context): File {
+        val inputStream = context.contentResolver.openInputStream(imageUri)
+        val bitmap = android.graphics.BitmapFactory.decodeStream(inputStream)
+        inputStream?.close()
+        
+        // Создать квадратную миниатюру 512x512
+        val dimension = Math.min(bitmap.width, bitmap.height)
+        val thumbnail = android.media.ThumbnailUtils.extractThumbnail(bitmap, dimension, dimension)
+        val resized = android.graphics.Bitmap.createScaledBitmap(thumbnail, 512, 512, true)
+        
+        // Сохранить в JPEG с компрессией
+        val tempFile = File(context.cacheDir, "avatar_temp_${System.currentTimeMillis()}.jpg")
+        FileOutputStream(tempFile).use { output ->
+            resized.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, output)
+        }
+        
+        bitmap.recycle()
+        thumbnail.recycle()
+        resized.recycle()
+        
+        return tempFile
+    }
+    
+    /**
+     * Загрузить оптимизированный файл
+     */
+    private fun uploadOptimizedFile(uploadUrl: String, file: File) {
+        val requestBody = file.asRequestBody("image/jpeg".toMediaType())
+        val request = Request.Builder()
+            .url(uploadUrl)
+            .put(requestBody)
+            .build()
+        
+        val response = client.newCall(request).execute()
+        if (!response.isSuccessful) {
+            throw Exception("File upload failed: ${response.code} ${response.message}")
+        }
+        response.close()
+    }
+    
+    /**
      * Создать папку на Яндекс.Диске если не существует
      */
     private fun createFolderIfNeeded(path: String) {

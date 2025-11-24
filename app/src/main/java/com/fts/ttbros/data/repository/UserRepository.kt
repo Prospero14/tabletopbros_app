@@ -118,6 +118,12 @@ class UserRepository(
         usersCollection.document(firebaseUser.uid).update(updates).await()
     }
 
+    suspend fun updateAvatarUrl(avatarUrl: String?) {
+        val firebaseUser = auth.currentUser ?: return
+        val updates = mapOf("avatarUrl" to avatarUrl)
+        usersCollection.document(firebaseUser.uid).update(updates).await()
+    }
+
     fun signOut() {
         auth.signOut()
     }
@@ -126,6 +132,7 @@ class UserRepository(
         val uid: String = "",
         val email: String = "",
         val displayName: String = "",
+        val avatarUrl: String? = null,
         val teamId: String? = null,
         val teamCode: String? = null,
         val teamSystem: String? = null,
@@ -150,6 +157,7 @@ class UserRepository(
                 uid = uid,
                 email = email,
                 displayName = displayName,
+                avatarUrl = avatarUrl,
                 teamId = teamId,
                 teamCode = teamCode,
                 teamSystem = teamSystem,
@@ -164,6 +172,7 @@ class UserRepository(
                 uid = profile.uid,
                 email = profile.email,
                 displayName = profile.displayName,
+                avatarUrl = profile.avatarUrl,
                 teamId = profile.teamId,
                 teamCode = profile.teamCode,
                 teamSystem = profile.teamSystem,

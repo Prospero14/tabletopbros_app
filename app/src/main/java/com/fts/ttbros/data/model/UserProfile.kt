@@ -4,6 +4,7 @@ data class UserProfile(
     val uid: String = "",
     val email: String = "",
     val displayName: String = "",
+    val avatarUrl: String? = null, // URL аватарки на Яндекс.Диске
     val teamId: String? = null, // Deprecated: Use currentTeamId or teams list
     val teamCode: String? = null, // Deprecated
     val teamSystem: String? = null, // Deprecated
