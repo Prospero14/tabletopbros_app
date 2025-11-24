@@ -567,9 +567,18 @@ class CharacterSheetsFragment : Fragment() {
                 sheetRepository.saveSheet(sheet)
                 if (isAdded && view != null) {
                     view?.let {
-                        Snackbar.make(it, "Лист персонажа сохранён! Теперь он доступен в разделе 'Документы' -> 'Листы персонажей'", Snackbar.LENGTH_LONG).show()
+                        Snackbar.make(it, "Лист персонажа сохранён! Теперь он доступен в разделе 'Документы' -> 'Загруженные листы персонажей'", Snackbar.LENGTH_LONG).show()
                     }
-                    loadSheets()
+                    // Возвращаемся назад в DocumentsFragment после сохранения
+                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        if (isAdded && view != null) {
+                            try {
+                                findNavController().navigateUp()
+                            } catch (e: Exception) {
+                                android.util.Log.e("CharacterSheetsFragment", "Navigation error: ${e.message}", e)
+                            }
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 android.util.Log.e("CharacterSheetsFragment", "Error saving sheet: ${e.message}", e)

@@ -38,18 +38,27 @@ class YandexDiskRepository {
         teamId: String,
         fileName: String,
         fileUri: Uri,
-        context: Context
+        context: Context,
+        isMaterial: Boolean = false
     ): String = withContext(Dispatchers.IO) {
         try {
             // 1. Создать путь на Яндекс.Диске
-            val remotePath = "/TTBros/teams/$teamId/documents/$fileName"
+            val remotePath = if (isMaterial) {
+                "/TTBros/teams/$teamId/player_materials/$fileName"
+            } else {
+                "/TTBros/teams/$teamId/documents/$fileName"
+            }
             Log.d("YandexDisk", "Uploading to: $remotePath")
             
             // 2. Создать папки если не существуют
             createFolderIfNeeded("/TTBros")
             createFolderIfNeeded("/TTBros/teams")
             createFolderIfNeeded("/TTBros/teams/$teamId")
-            createFolderIfNeeded("/TTBros/teams/$teamId/documents")
+            if (isMaterial) {
+                createFolderIfNeeded("/TTBros/teams/$teamId/player_materials")
+            } else {
+                createFolderIfNeeded("/TTBros/teams/$teamId/documents")
+            }
             
             // 3. Получить URL для загрузки
             val uploadUrl = getUploadUrl(remotePath)

@@ -19,6 +19,8 @@ import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 import com.fts.ttbros.GroupActivity
 import com.fts.ttbros.R
 import com.fts.ttbros.chat.data.ChatRepository
@@ -106,6 +108,9 @@ class ChatFragment : Fragment() {
             },
             onPollClick = { pollId ->
                 showPollDetailsDialog(pollId)
+            },
+            onAddMaterial = { message ->
+                handleAddMaterial(message)
             }
         )
         val layoutManager = LinearLayoutManager(requireContext()).apply {
@@ -603,6 +608,90 @@ class ChatFragment : Fragment() {
                 }
             }
         }
+    }
+    
+    private fun handleAddMaterial(message: ChatMessage) {
+        val profile = userProfile ?: return
+        val teamId = profile.teamId ?: return
+        val attachmentId = message.attachmentId ?: return
+        
+        // Показываем диалог подтверждения
+        val context = context ?: return
+        if (!isAdded || view == null) return
+        
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
+            .setTitle("Добавить материал?")
+            .setMessage("Хотите добавить этот материал в раздел 'Материалы от мастера'?")
+            .setPositiveButton("Добавить") { _, _ ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        // Получаем документ по attachmentId из Firestore
+                        val documentRepository = com.fts.ttbros.data.repository.DocumentRepository()
+                        val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        val docSnapshot = firestore.collection("teams")
+                            .document(teamId)
+                            .collection("documents")
+                            .document(attachmentId)
+                            .get()
+                            .await()
+                        
+                        if (docSnapshot.exists()) {
+                            val targetDocument = docSnapshot.toObject(com.fts.ttbros.data.model.Document::class.java)
+                                ?.copy(id = docSnapshot.id)
+                            
+                            if (targetDocument != null) {
+                                // Скачиваем файл и загружаем заново как материал для текущего пользователя
+                                val downloadUrl = targetDocument.downloadUrl
+                                val fileName = targetDocument.fileName
+                                val title = targetDocument.title
+                                
+                                // Скачиваем файл во временный файл
+                                val tempFile = java.io.File(requireContext().cacheDir, "temp_material_${System.currentTimeMillis()}.pdf")
+                                java.net.URL(downloadUrl).openStream().use { input ->
+                                    java.io.FileOutputStream(tempFile).use { output ->
+                                        input.copyTo(output)
+                                    }
+                                }
+                                
+                                // Загружаем как материал
+                                val uri = android.net.Uri.fromFile(tempFile)
+                                documentRepository.uploadDocument(
+                                    teamId = teamId,
+                                    uri = uri,
+                                    title = title,
+                                    fileName = fileName,
+                                    userId = profile.uid,
+                                    userName = profile.displayName,
+                                    context = requireContext(),
+                                    isMaterial = true
+                                )
+                                
+                                // Удаляем временный файл
+                                tempFile.delete()
+                                
+                                view?.let {
+                                    Snackbar.make(it, "Материал добавлен в 'Материалы от мастера'", Snackbar.LENGTH_SHORT).show()
+                                }
+                            } else {
+                                view?.let {
+                                    Snackbar.make(it, "Документ не найден", Snackbar.LENGTH_SHORT).show()
+                                }
+                            }
+                        } else {
+                            view?.let {
+                                Snackbar.make(it, "Документ не найден", Snackbar.LENGTH_SHORT).show()
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("ChatFragment", "Error adding material: ${e.message}", e)
+                        view?.let {
+                            Snackbar.make(it, "Ошибка добавления материала: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
     }
     
     private fun handlePinPoll(pollId: String) {

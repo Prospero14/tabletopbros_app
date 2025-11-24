@@ -23,7 +23,8 @@ class ChatAdapter(
     private val onImportCharacter: (String, String, String) -> Unit, // senderId, characterId, messageId
     private val onPinMessage: ((String) -> Unit)? = null,
     private val onUnpinMessage: ((String) -> Unit)? = null,
-    private val onPollClick: ((String) -> Unit)? = null // pollId
+    private val onPollClick: ((String) -> Unit)? = null, // pollId
+    private val onAddMaterial: ((ChatMessage) -> Unit)? = null // material message
 ) : ListAdapter<ChatMessage, ChatAdapter.MessageViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
@@ -154,12 +155,18 @@ class ChatAdapter(
             // Show pinned indicator
             pinnedIcon.isVisible = message.isPinned
 
-            // Add long click listener for pin/unpin on both card and container
+            // Add long click listener for pin/unpin and material addition
             val longClickListener = View.OnLongClickListener { view ->
-                if (message.isPinned) {
-                    onUnpinMessage?.invoke(message.id)
+                // Если сообщение содержит материал, показываем опцию добавления
+                if (message.type == "material" && message.attachmentId != null) {
+                    onAddMaterial?.invoke(message)
                 } else {
-                    onPinMessage?.invoke(message.id)
+                    // Иначе обрабатываем как обычно (pin/unpin)
+                    if (message.isPinned) {
+                        onUnpinMessage?.invoke(message.id)
+                    } else {
+                        onPinMessage?.invoke(message.id)
+                    }
                 }
                 true
             }

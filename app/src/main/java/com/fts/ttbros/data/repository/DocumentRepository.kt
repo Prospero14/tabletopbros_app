@@ -40,8 +40,9 @@ class DocumentRepository {
         fileName: String,
         userId: String,
         userName: String,
-        context: Context
-    ) {
+        context: Context,
+        isMaterial: Boolean = false
+    ): Document? {
         try {
             android.util.Log.d("DocumentRepository", "Starting upload to Yandex.Disk")
             
@@ -50,7 +51,8 @@ class DocumentRepository {
                 teamId = teamId,
                 fileName = fileName,
                 fileUri = uri,
-                context = context
+                context = context,
+                isMaterial = isMaterial
             )
             
             android.util.Log.d("DocumentRepository", "File uploaded, URL: $downloadUrl")
@@ -73,13 +75,26 @@ class DocumentRepository {
                 "sizeBytes" to size
             )
             
-            db.collection("teams")
+            val docRef = db.collection("teams")
                 .document(teamId)
                 .collection("documents")
                 .add(docMap)
                 .await()
                 
             android.util.Log.d("DocumentRepository", "Document metadata saved to Firestore")
+            
+            // 4. Return Document object
+            return Document(
+                id = docRef.id,
+                teamId = teamId,
+                title = title,
+                fileName = fileName,
+                downloadUrl = downloadUrl,
+                uploadedBy = userId,
+                uploadedByName = userName,
+                timestamp = Timestamp.now(),
+                sizeBytes = size
+            )
         } catch (e: Exception) {
             android.util.Log.e("DocumentRepository", "Upload error: ${e.message}", e)
             throw e

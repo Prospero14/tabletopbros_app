@@ -47,6 +47,8 @@ class DocumentsFragment : Fragment() {
     private var currentUserName: String = ""
     private var allDocuments: List<Document> = emptyList()
     private var allSheets: List<com.fts.ttbros.data.model.CharacterSheet> = emptyList()
+    private var playerMaterials: List<Document> = emptyList() // Материалы для игроков (мастер)
+    private var masterMaterials: List<Document> = emptyList() // Материалы от мастера (игрок)
 
     private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { showUploadDialog(it) }
@@ -81,16 +83,25 @@ class DocumentsFragment : Fragment() {
         
         binding.addDocumentFab.setOnClickListener {
             val selectedTab = binding.tabLayout.selectedTabPosition
-            if (selectedTab == 0) {
-                // Загрузка документа
-                filePickerLauncher.launch("application/pdf")
-            } else {
-                // Загрузка листа персонажа - навигация в CharacterSheetsFragment
-                try {
-                    findNavController().navigate(R.id.action_documentsFragment_to_characterSheetsFragment)
-                } catch (e: Exception) {
-                    android.util.Log.e("DocumentsFragment", "Navigation error: ${e.message}", e)
-                    Snackbar.make(binding.root, "Ошибка открытия загрузки листа", Snackbar.LENGTH_SHORT).show()
+            when (selectedTab) {
+                0 -> {
+                    // Загрузка документа
+                    filePickerLauncher.launch("application/pdf")
+                }
+                1 -> {
+                    // Загрузка листа персонажа - навигация в CharacterSheetsFragment
+                    try {
+                        findNavController().navigate(R.id.action_documentsFragment_to_characterSheetsFragment)
+                    } catch (e: Exception) {
+                        android.util.Log.e("DocumentsFragment", "Navigation error: ${e.message}", e)
+                        Snackbar.make(binding.root, "Ошибка открытия загрузки листа", Snackbar.LENGTH_SHORT).show()
+                    }
+                }
+                2 -> {
+                    // Добавление материала для игроков (только для мастера)
+                    if (isMaster) {
+                        filePickerLauncher.launch("application/pdf")
+                    }
                 }
             }
         }
@@ -101,23 +112,46 @@ class DocumentsFragment : Fragment() {
     
     private fun setupTabs() {
         binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Документы"))
-        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Листы персонажей"))
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Загруженные листы персонажей"))
+        
+        // Добавляем вкладки для материалов в зависимости от роли пользователя
+        if (isMaster) {
+            binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Материалы для игроков"))
+        } else {
+            binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Материалы от мастера"))
+        }
         
         binding.tabLayout.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
                 val tabPosition = tab?.position ?: 0
-                if (tabPosition == 0) {
-                    // Документы
-                    binding.documentsRecyclerView.adapter = adapter
-                    adapter.submitList(allDocuments)
-                    binding.emptyView.isVisible = allDocuments.isEmpty()
-                    binding.addDocumentFab.isVisible = isMaster
-                } else {
-                    // Листы персонажей
-                    binding.documentsRecyclerView.adapter = sheetsAdapter
-                    sheetsAdapter.submitList(allSheets)
-                    binding.emptyView.isVisible = allSheets.isEmpty()
-                    binding.addDocumentFab.isVisible = true // Показываем FAB для загрузки листов
+                when (tabPosition) {
+                    0 -> {
+                        // Документы
+                        binding.documentsRecyclerView.adapter = adapter
+                        adapter.submitList(allDocuments)
+                        binding.emptyView.isVisible = allDocuments.isEmpty()
+                        binding.addDocumentFab.isVisible = isMaster
+                    }
+                    1 -> {
+                        // Загруженные листы персонажей
+                        binding.documentsRecyclerView.adapter = sheetsAdapter
+                        sheetsAdapter.submitList(allSheets)
+                        binding.emptyView.isVisible = allSheets.isEmpty()
+                        binding.addDocumentFab.isVisible = true // Показываем FAB для загрузки листов
+                    }
+                    2 -> {
+                        // Материалы для игроков (мастер) или Материалы от мастера (игрок)
+                        binding.documentsRecyclerView.adapter = adapter
+                        if (isMaster) {
+                            adapter.submitList(playerMaterials)
+                            binding.emptyView.isVisible = playerMaterials.isEmpty()
+                            binding.addDocumentFab.isVisible = true // Показываем FAB для добавления материалов
+                        } else {
+                            adapter.submitList(masterMaterials)
+                            binding.emptyView.isVisible = masterMaterials.isEmpty()
+                            binding.addDocumentFab.isVisible = false // Игроки не могут добавлять материалы
+                        }
+                    }
                 }
             }
             override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
@@ -153,8 +187,19 @@ class DocumentsFragment : Fragment() {
                 documentRepository.getDocuments(teamId).collect { docs ->
                     // Фильтруем документы, исключая листы персонажей (они хранятся в character_sheets)
                     allDocuments = docs.filter { doc ->
-                        // Исключаем документы из папки character_sheets
-                        !doc.downloadUrl.contains("/character_sheets/")
+                        // Исключаем документы из папки character_sheets и материалы
+                        !doc.downloadUrl.contains("/character_sheets/") && 
+                        !doc.downloadUrl.contains("/player_materials/")
+                    }
+                    
+                    // Фильтруем материалы для игроков (только те, что загружены мастером)
+                    playerMaterials = docs.filter { doc ->
+                        doc.downloadUrl.contains("/player_materials/") && doc.uploadedBy == currentUserId
+                    }
+                    
+                    // Фильтруем материалы от мастера (для игроков - те, что они добавили из чата)
+                    masterMaterials = docs.filter { doc ->
+                        doc.downloadUrl.contains("/player_materials/") && doc.uploadedBy != currentUserId
                     }
                     
                     // Загружаем листы персонажей
@@ -162,13 +207,20 @@ class DocumentsFragment : Fragment() {
                     
                     // Обновляем отображаемый список в зависимости от выбранной вкладки
                     val selectedTab = binding.tabLayout.selectedTabPosition
-                    if (selectedTab == 0) {
-                        adapter.submitList(allDocuments)
-                        binding.emptyView.isVisible = allDocuments.isEmpty()
-                        checkDownloads(allDocuments)
-                    } else {
-                        sheetsAdapter.submitList(allSheets)
-                        binding.emptyView.isVisible = allSheets.isEmpty()
+                    when (selectedTab) {
+                        0 -> {
+                            adapter.submitList(allDocuments)
+                            binding.emptyView.isVisible = allDocuments.isEmpty()
+                            checkDownloads(allDocuments)
+                        }
+                        1 -> {
+                            sheetsAdapter.submitList(allSheets)
+                            binding.emptyView.isVisible = allSheets.isEmpty()
+                        }
+                        2 -> {
+                            adapter.submitList(if (isMaster) playerMaterials else masterMaterials)
+                            binding.emptyView.isVisible = if (isMaster) playerMaterials.isEmpty() else masterMaterials.isEmpty()
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -207,18 +259,65 @@ class DocumentsFragment : Fragment() {
     
     private fun uploadDocument(uri: Uri, title: String, fileName: String) {
         val teamId = currentTeamId ?: return
+        val selectedTab = binding.tabLayout.selectedTabPosition
+        val isMaterial = selectedTab == 2 && isMaster // Материал для игроков
         
         binding.progressBar.isVisible = true
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                documentRepository.uploadDocument(
-                    teamId, uri, title, fileName, currentUserId, currentUserName, requireContext()
+                val document = documentRepository.uploadDocument(
+                    teamId, uri, title, fileName, currentUserId, currentUserName, requireContext(), isMaterial
                 )
-                Snackbar.make(binding.root, "Document uploaded", Snackbar.LENGTH_SHORT).show()
+                Snackbar.make(binding.root, if (isMaterial) "Материал загружен" else "Документ загружен", Snackbar.LENGTH_SHORT).show()
+                
+                // Если это материал, предлагаем отправить в чат
+                if (isMaterial && document != null) {
+                    showSendToChatDialog(document)
+                }
             } catch (e: Exception) {
-                Snackbar.make(binding.root, "Upload failed: ${e.message}", Snackbar.LENGTH_LONG).show()
+                Snackbar.make(binding.root, "Ошибка загрузки: ${e.message}", Snackbar.LENGTH_LONG).show()
             } finally {
                 binding.progressBar.isVisible = false
+            }
+        }
+    }
+    
+    private fun showSendToChatDialog(document: Document) {
+        val context = context ?: return
+        if (!isAdded || view == null) return
+        
+        MaterialAlertDialogBuilder(context)
+            .setTitle("Отправить в общий чат?")
+            .setMessage("Хотите отправить материал '${document.title}' в общий чат?")
+            .setPositiveButton("Отправить") { _, _ ->
+                sendMaterialToChat(document)
+            }
+            .setNegativeButton("Позже", null)
+            .show()
+    }
+    
+    private fun sendMaterialToChat(document: Document) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val chatRepository = com.fts.ttbros.chat.data.ChatRepository()
+                val teamId = currentTeamId ?: return@launch
+                val message = com.fts.ttbros.chat.model.ChatMessage(
+                    senderId = currentUserId,
+                    senderName = currentUserName,
+                    text = "📎 ${document.title}\n${document.downloadUrl}",
+                    type = "material",
+                    attachmentId = document.id,
+                    timestamp = com.google.firebase.Timestamp.now()
+                )
+                chatRepository.sendMessage(teamId, com.fts.ttbros.chat.data.ChatType.TEAM, message)
+                if (isAdded && view != null) {
+                    Snackbar.make(binding.root, "Материал отправлен в чат", Snackbar.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("DocumentsFragment", "Error sending material to chat: ${e.message}", e)
+                if (isAdded && view != null) {
+                    Snackbar.make(binding.root, "Ошибка отправки: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                }
             }
         }
     }

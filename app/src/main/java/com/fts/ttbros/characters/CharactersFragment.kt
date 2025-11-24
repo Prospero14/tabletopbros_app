@@ -168,7 +168,7 @@ class CharactersFragment : Fragment() {
             val system = currentTeam?.teamSystem
             
             val popup = android.widget.PopupMenu(requireContext(), binding.addCharacterFab)
-            popup.menu.add(0, 1, 0, "Чарники")
+            popup.menu.add(0, 1, 0, "Классический лист персонажа")
             
             if (!system.isNullOrBlank()) {
                 val systemName = when (system) {
@@ -177,7 +177,7 @@ class CharactersFragment : Fragment() {
                     "viedzmin_2e" -> "Viedzmin"
                     else -> system
                 }
-                popup.menu.add(0, 2, 1, "$systemName Билдер")
+                popup.menu.add(0, 2, 1, "Загруженный лист персонажа")
             }
             
             popup.setOnMenuItemClickListener { item ->
