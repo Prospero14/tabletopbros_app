@@ -192,12 +192,14 @@ class DocumentsFragment : Fragment() {
     }
     
     private fun onDocumentClicked(doc: Document) {
-        // Яндекс.Диск возвращает публичную ссылку, открываем в браузере
-        try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(doc.downloadUrl))
-            startActivity(intent)
-        } catch (e: Exception) {
-            Toast.makeText(requireContext(), "Ошибка открытия документа: ${e.message}", Toast.LENGTH_LONG).show()
+        val docsDir = File(requireContext().filesDir, "documents")
+        docsDir.mkdirs() // Создать папку если не существует
+        val file = File(docsDir, "${doc.id}_${doc.fileName}")
+        
+        if (file.exists()) {
+            openDocument(file)
+        } else {
+            downloadDocument(doc, file)
         }
     }
     
