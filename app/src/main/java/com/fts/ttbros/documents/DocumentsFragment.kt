@@ -140,7 +140,7 @@ class DocumentsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 documentRepository.uploadDocument(
-                    teamId, uri, title, fileName, currentUserId, currentUserName
+                    teamId, uri, title, fileName, currentUserId, currentUserName, requireContext()
                 )
                 Snackbar.make(binding.root, "Document uploaded", Snackbar.LENGTH_SHORT).show()
             } catch (e: Exception) {

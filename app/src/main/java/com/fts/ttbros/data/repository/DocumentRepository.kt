@@ -1,21 +1,19 @@
 package com.fts.ttbros.data.repository
 
+import android.content.Context
 import android.net.Uri
 import com.fts.ttbros.data.model.Document
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import com.google.firebase.ktx.Firebase
-import com.google.firebase.storage.ktx.storage
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
-import java.util.UUID
 
 class DocumentRepository {
     private val db = FirebaseFirestore.getInstance()
-    private val storage = Firebase.storage
+    private val yandexDisk = YandexDiskRepository()
 
     fun getDocuments(teamId: String): Flow<List<Document>> = callbackFlow {
         val listener = db.collection("teams")
@@ -41,34 +39,51 @@ class DocumentRepository {
         title: String,
         fileName: String,
         userId: String,
-        userName: String
+        userName: String,
+        context: Context
     ) {
-        // 1. Upload to Storage
-        val storageRef = storage.reference
-            .child("teams/$teamId/documents/${UUID.randomUUID()}_$fileName")
-        
-        storageRef.putFile(uri).await()
-        val downloadUrl = storageRef.downloadUrl.await().toString()
-        val metadata = storageRef.metadata.await()
-        val size = metadata.sizeBytes
+        try {
+            android.util.Log.d("DocumentRepository", "Starting upload to Yandex.Disk")
+            
+            // 1. Upload to Yandex.Disk and get public URL
+            val downloadUrl = yandexDisk.uploadFile(
+                teamId = teamId,
+                fileName = fileName,
+                fileUri = uri,
+                context = context
+            )
+            
+            android.util.Log.d("DocumentRepository", "File uploaded, URL: $downloadUrl")
+            
+            // 2. Get file size
+            val size = context.contentResolver
+                .openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0L
+            
+            android.util.Log.d("DocumentRepository", "File size: $size bytes")
 
-        // 2. Save to Firestore - convert to HashMap to avoid serialization issues
-        val docMap = hashMapOf(
-            "teamId" to teamId,
-            "title" to title,
-            "fileName" to fileName,
-            "downloadUrl" to downloadUrl,
-            "uploadedBy" to userId,
-            "uploadedByName" to userName,
-            "timestamp" to Timestamp.now(),
-            "sizeBytes" to size
-        )
-        
-        db.collection("teams")
-            .document(teamId)
-            .collection("documents")
-            .add(docMap)
-            .await()
+            // 3. Save to Firestore
+            val docMap = hashMapOf(
+                "teamId" to teamId,
+                "title" to title,
+                "fileName" to fileName,
+                "downloadUrl" to downloadUrl,
+                "uploadedBy" to userId,
+                "uploadedByName" to userName,
+                "timestamp" to Timestamp.now(),
+                "sizeBytes" to size
+            )
+            
+            db.collection("teams")
+                .document(teamId)
+                .collection("documents")
+                .add(docMap)
+                .await()
+                
+            android.util.Log.d("DocumentRepository", "Document metadata saved to Firestore")
+        } catch (e: Exception) {
+            android.util.Log.e("DocumentRepository", "Upload error: ${e.message}", e)
+            throw e
+        }
     }
 
     suspend fun deleteDocument(teamId: String, documentId: String, downloadUrl: String) {
@@ -80,12 +95,14 @@ class DocumentRepository {
             .delete()
             .await()
 
-        // 2. Delete from Storage (try/catch as it might fail or file might be missing)
+        // 2. Delete from Yandex.Disk
         try {
-            val storageRef = Firebase.storage.getReferenceFromUrl(downloadUrl)
-            storageRef.delete().await()
+            // Extract path from public URL or construct it
+            // For now, we'll skip deletion from Yandex.Disk as we need to track the path
+            // TODO: Store remote path in Firestore for proper deletion
+            android.util.Log.w("DocumentRepository", "Yandex.Disk file deletion not implemented yet")
         } catch (e: Exception) {
-            // Ignore storage delete errors (e.g. file not found)
+            android.util.Log.e("DocumentRepository", "Yandex.Disk delete error: ${e.message}", e)
         }
     }
 }
