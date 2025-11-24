@@ -1,5 +1,7 @@
 package com.fts.ttbros
 
+import android.view.GestureDetector
+import android.view.MotionEvent
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -44,6 +46,19 @@ class MainActivity : AppCompatActivity() {
     private val teamRepository = TeamRepository()
 
     private val yandexDisk = com.fts.ttbros.data.repository.YandexDiskRepository() // ДОБАВИТЬ ЭТУ СТРОКУ
+    private lateinit var gestureDetector: GestureDetector
+
+    // Порядок пунктов меню для свайпа
+    private val menuOrder = listOf(
+        R.id.teamsFragment,
+        R.id.teamChatFragment,
+        R.id.announcementChatFragment,
+        R.id.masterPlayerChatFragment,
+        R.id.notesFragment,
+        R.id.calendarFragment,
+        R.id.documentsFragment,
+        R.id.charactersFragment
+    )
     private val auth by lazy { Firebase.auth }
     private var userProfile: UserProfile? = null
 
@@ -144,9 +159,10 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        
+
         setupHeader()
         setupFooter()
+        setupSwipeGesture()
     }
 
     private fun setupFooter() {
@@ -166,7 +182,80 @@ class MainActivity : AppCompatActivity() {
             showAvatarMenu()
         }
     }
-    
+    private fun setupSwipeGesture() {
+        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+            private val SWIPE_THRESHOLD = 100
+            private val SWIPE_VELOCITY_THRESHOLD = 100
+
+            override fun onFling(
+                e1: MotionEvent?,
+                e2: MotionEvent,
+                velocityX: Float,
+                velocityY: Float
+            ): Boolean {
+                if (e1 == null) return false
+
+                val diffX = e2.x - e1.x
+                val diffY = e2.y - e1.y
+
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
+                        if (diffX > 0) {
+                            // Свайп вправо - следующий пункт меню
+                            navigateToNextMenuItem()
+                        }else {
+                            // Свайп влево - предыдущий пункт
+                            navigateToPreviousMenuItem()
+                        }
+                        return true
+                    }
+                }
+                return false
+            }
+        })
+    }
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        gestureDetector.onTouchEvent(ev)
+        return super.dispatchTouchEvent(ev)
+    }
+    private fun navigateToNextMenuItem() {
+        val currentDestination = navController.currentDestination?.id ?: return
+        val currentIndex = menuOrder.indexOf(currentDestination)
+
+        if (currentIndex != -1 && currentIndex < menuOrder.size - 1) {
+            val nextDestination = menuOrder[currentIndex + 1]
+            try {
+                val navOptions = NavOptions.Builder()
+                    .setEnterAnim(R.anim.slide_in_right)
+                    .setExitAnim(R.anim.slide_out_left)
+                    .setPopEnterAnim(R.anim.slide_in_left)
+                    .setPopExitAnim(R.anim.slide_out_right)
+                    .build()
+                navController.navigate(nextDestination, null, navOptions)
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Swipe navigation error: ${e.message}", e)
+            }
+        }
+    }
+    private fun navigateToPreviousMenuItem() {
+        val currentDestination = navController.currentDestination?.id ?: return
+        val currentIndex = menuOrder.indexOf(currentDestination)
+
+        if (currentIndex > 0) {
+            val previousDestination = menuOrder[currentIndex - 1]
+            try {
+                val navOptions = NavOptions.Builder()
+                    .setEnterAnim(R.anim.slide_in_left)
+                    .setExitAnim(R.anim.slide_out_right)
+                    .setPopEnterAnim(R.anim.slide_in_right)
+                    .setPopExitAnim(R.anim.slide_out_left)
+                    .build()
+                navController.navigate(previousDestination, null, navOptions)
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Swipe navigation error: ${e.message}", e)
+            }
+        }
+    }
     private fun showAvatarMenu() {
         MaterialAlertDialogBuilder(this)
             .setTitle("Аватар")
