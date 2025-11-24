@@ -27,7 +27,9 @@ class DiceRollDialog(
 ) : DialogFragment() {
 
     private lateinit var diceTypeSpinner: Spinner
-    private lateinit var quantityEditText: EditText
+    private lateinit var tvQuantity: TextView
+    private lateinit var btnIncrease: android.widget.ImageButton
+    private lateinit var btnDecrease: android.widget.ImageButton
     private lateinit var resultTextView: TextView
     private lateinit var rollButton: Button
     private lateinit var sendButton: Button
@@ -36,6 +38,7 @@ class DiceRollDialog(
     private lateinit var sendToLabelTextView: TextView
 
     private var lastRollResult: String? = null
+    private var currentQuantity: Int = 1
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {
         val context = context
@@ -54,7 +57,13 @@ class DiceRollDialog(
             val view = inflater.inflate(com.fts.ttbros.R.layout.dialog_dice_roll, null)
 
             diceTypeSpinner = view.findViewById(com.fts.ttbros.R.id.diceTypeSpinner)
-            quantityEditText = view.findViewById(com.fts.ttbros.R.id.quantityEditText)
+            tvQuantity = view.findViewById(com.fts.ttbros.R.id.tvQuantity)
+            btnIncrease = view.findViewById(com.fts.ttbros.R.id.btnIncrease)
+            btnDecrease = view.findViewById(com.fts.ttbros.R.id.btnDecrease)
+            
+            // Устанавливаем начальное значение количества
+            currentQuantity = 1
+            tvQuantity.text = currentQuantity.toString()
             resultTextView = view.findViewById(com.fts.ttbros.R.id.resultTextView)
             rollButton = view.findViewById(com.fts.ttbros.R.id.rollButton)
             sendButton = view.findViewById(com.fts.ttbros.R.id.sendButton)
@@ -63,7 +72,8 @@ class DiceRollDialog(
             sendToLabelTextView = view.findViewById(com.fts.ttbros.R.id.sendToLabelTextView)
             
             // Проверяем что все view найдены
-            if (diceTypeSpinner == null || quantityEditText == null || 
+            if (diceTypeSpinner == null || tvQuantity == null || 
+                btnIncrease == null || btnDecrease == null ||
                 resultTextView == null || rollButton == null || 
                 sendButton == null || sendToTeamCheckbox == null || 
                 sendToMasterCheckbox == null || sendToLabelTextView == null) {
@@ -132,7 +142,22 @@ class DiceRollDialog(
 
     private fun setupButtons() {
         try {
-            if (!::rollButton.isInitialized || !::sendButton.isInitialized) return
+            if (!::rollButton.isInitialized || !::sendButton.isInitialized ||
+                !::btnIncrease.isInitialized || !::btnDecrease.isInitialized || !::tvQuantity.isInitialized) return
+            
+            btnIncrease.setOnClickListener {
+                if (currentQuantity < 25) {
+                    currentQuantity++
+                    tvQuantity.text = currentQuantity.toString()
+                }
+            }
+            
+            btnDecrease.setOnClickListener {
+                if (currentQuantity > 1) {
+                    currentQuantity--
+                    tvQuantity.text = currentQuantity.toString()
+                }
+            }
             
             rollButton.setOnClickListener {
                 try {
@@ -198,7 +223,7 @@ class DiceRollDialog(
 
     private fun rollDice() {
         try {
-            if (!::diceTypeSpinner.isInitialized || !::quantityEditText.isInitialized || 
+            if (!::diceTypeSpinner.isInitialized || !::tvQuantity.isInitialized || 
                 !::resultTextView.isInitialized || !::sendButton.isInitialized) {
                 android.util.Log.e("DiceRollDialog", "Views not initialized in rollDice")
                 return
@@ -217,11 +242,21 @@ class DiceRollDialog(
                 else -> 6
             }
 
-            val quantityText = quantityEditText.text?.toString()?.trim() ?: "1"
-            val quantity = if (quantityText.isBlank()) {
-                1
-            } else {
-                quantityText.toIntOrNull()?.coerceIn(1, 100) ?: 1
+            // Используем currentQuantity напрямую, но также проверяем текст на всякий случай
+            val quantityText = tvQuantity.text?.toString()?.trim() ?: "1"
+            val quantity = quantityText.toIntOrNull()?.coerceIn(1, 25) ?: currentQuantity.coerceIn(1, 25)
+            
+            // Дополнительная проверка: не позволяем бросить больше 25 кубов
+            if (quantity > 25) {
+                val context = context
+                if (context != null) {
+                    android.widget.Toast.makeText(
+                        context,
+                        "Максимальное количество кубов: 25",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
+                }
+                return
             }
 
             // Бросаем кубики

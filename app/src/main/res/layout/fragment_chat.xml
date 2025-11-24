@@ -149,7 +149,7 @@
             android:insetLeft="0dp"
             android:insetRight="0dp"
             android:padding="12dp"
-            app:icon="@drawable/ic_send"
+            app:icon="@drawable/ic_send_custom"
             app:iconTint="@color/primary"
             app:iconGravity="textStart"
             android:contentDescription="@string/chat_send" />
