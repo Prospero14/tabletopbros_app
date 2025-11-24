@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Тип кубика:"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:layout_marginBottom="8dp" />
+
+    <Spinner
+        android:id="@+id/diceTypeSpinner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Количество:"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:layout_marginBottom="8dp" />
+
+    <EditText
+        android:id="@+id/quantityEditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="1"
+        android:inputType="number"
+        android:text="1"
+        android:layout_marginBottom="16dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/rollButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Бросить"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Результат:"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/resultTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="—"
+        android:textAppearance="?attr/textAppearanceHeadline6"
+        android:gravity="center"
+        android:padding="16dp"
+        android:background="?attr/colorSurfaceVariant"
+        android:layout_marginBottom="16dp"
+        android:minHeight="64dp" />
+
+    <TextView
+        android:id="@+id/sendToLabelTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Отправить в:"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:layout_marginBottom="8dp"
+        android:visibility="gone" />
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/sendToTeamCheckbox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Общий чат"
+        android:checked="true"
+        android:visibility="gone" />
+
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/sendToMasterCheckbox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Мастеру"
+        android:checked="true"
+        android:visibility="gone"
+        android:layout_marginBottom="16dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/sendButton"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Отправить"
+        android:visibility="gone" />
+
+</LinearLayout>
+

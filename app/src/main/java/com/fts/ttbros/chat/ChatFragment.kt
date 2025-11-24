@@ -40,6 +40,7 @@ class ChatFragment : Fragment() {
     private lateinit var messageEditText: TextInputEditText
     private lateinit var sendButton: MaterialButton
     private lateinit var createPollButton: MaterialButton
+    private lateinit var diceRollButton: MaterialButton
     private lateinit var pinnedMessageContainer: androidx.cardview.widget.CardView
     private lateinit var pinnedMessageText: TextView
     
@@ -90,6 +91,7 @@ class ChatFragment : Fragment() {
         messageEditText = view.findViewById(R.id.messageEditText)
         sendButton = view.findViewById(R.id.sendButton)
         createPollButton = view.findViewById(R.id.createPollButton)
+        diceRollButton = view.findViewById(R.id.diceRollButton)
         pinnedMessageContainer = view.findViewById(R.id.pinnedMessageContainer)
         pinnedMessageText = view.findViewById(R.id.pinnedMessageText)
         
@@ -134,6 +136,7 @@ class ChatFragment : Fragment() {
 
         sendButton.setOnClickListener { sendMessage() }
         createPollButton.setOnClickListener { showCreatePollDialog() }
+        diceRollButton.setOnClickListener { showDiceRollDialog() }
         observeProfile()
     }
 
@@ -608,6 +611,86 @@ class ChatFragment : Fragment() {
                     )
                 )
             } catch (error: Exception) {
+                view?.let {
+                    Snackbar.make(it, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    private fun showDiceRollDialog() {
+        if (!isAdded) {
+            android.util.Log.w("ChatFragment", "Fragment not added, cannot show dice roll dialog")
+            return
+        }
+        val profile = userProfile ?: run {
+            android.util.Log.w("ChatFragment", "User profile is null, cannot show dice roll dialog")
+            return
+        }
+        val teamId = profile.teamId ?: run {
+            android.util.Log.w("ChatFragment", "Team ID is null, cannot show dice roll dialog")
+            return
+        }
+
+        try {
+            val isMaster = profile.role == UserRole.MASTER
+            val dialog = DiceRollDialog(isMaster) { rollResult, sendOptions ->
+                sendDiceRollResult(rollResult, sendOptions, teamId, profile)
+            }
+            dialog.show(parentFragmentManager, "DiceRollDialog")
+        } catch (e: Exception) {
+            android.util.Log.e("ChatFragment", "Error showing dice roll dialog: ${e.message}", e)
+            view?.let {
+                Snackbar.make(it, "Ошибка открытия диалога: ${e.message}", Snackbar.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun sendDiceRollResult(
+        rollResult: String,
+        sendOptions: DiceRollSendOptions,
+        teamId: String,
+        profile: UserProfile
+    ) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                var sentCount = 0
+                
+                // Отправляем в общий чат (TEAM), если выбрано
+                if (sendOptions.sendToTeam) {
+                    chatRepository.sendMessage(
+                        teamId,
+                        ChatType.TEAM,
+                        ChatMessage(
+                            senderId = profile.uid,
+                            senderName = profile.displayName.ifBlank { profile.email },
+                            text = rollResult
+                        )
+                    )
+                    sentCount++
+                }
+
+                // Отправляем мастеру (MASTER_PLAYER), если выбрано
+                if (sendOptions.sendToMaster && profile.role != UserRole.MASTER) {
+                    chatRepository.sendMessage(
+                        teamId,
+                        ChatType.MASTER_PLAYER,
+                        ChatMessage(
+                            senderId = profile.uid,
+                            senderName = profile.displayName.ifBlank { profile.email },
+                            text = rollResult
+                        )
+                    )
+                    sentCount++
+                }
+
+                if (sentCount > 0) {
+                    view?.let {
+                        Snackbar.make(it, "Результат броска отправлен", Snackbar.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (error: Exception) {
+                android.util.Log.e("ChatFragment", "Error sending dice roll result: ${error.message}", error)
                 view?.let {
                     Snackbar.make(it, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
                 }

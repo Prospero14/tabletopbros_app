@@ -109,11 +109,38 @@ class CharacterSheetsFragment : Fragment() {
             try {
                 loadingView.isVisible = true
                 view?.let {
-                    Snackbar.make(it, "Загрузка PDF", Snackbar.LENGTH_SHORT).show()
+                    Snackbar.make(it, "Проверка PDF...", Snackbar.LENGTH_SHORT).show()
                 }
                 
-                // Upload PDF to Yandex.Disk
-                val pdfUrl = yandexDisk.uploadCharacterSheet(userId, uri, context)
+                // Сначала проверяем, что это действительно лист персонажа (до загрузки в Yandex.Disk)
+                val validationResult = validateCharacterSheet(uri, context)
+                if (!validationResult.isValid) {
+                    if (isAdded && view != null) {
+                        view?.let {
+                            Snackbar.make(it, validationResult.errorMessage ?: "Этот файл не является листом персонажа", Snackbar.LENGTH_LONG).show()
+                        }
+                        loadingView.isVisible = false
+                    }
+                    return@launch
+                }
+                
+                // Проверка что фрагмент все еще прикреплен
+                if (!isAdded || view == null) {
+                    android.util.Log.w("CharacterSheetsFragment", "Fragment detached during validation")
+                    return@launch
+                }
+                
+                view?.let {
+                    Snackbar.make(it, "Загрузка PDF...", Snackbar.LENGTH_SHORT).show()
+                }
+                
+                // Upload PDF to Yandex.Disk (только если валидация прошла)
+                val pdfUrl = try {
+                    yandexDisk.uploadCharacterSheet(userId, uri, context)
+                } catch (e: Exception) {
+                    android.util.Log.e("CharacterSheetsFragment", "Error uploading to Yandex.Disk: ${e.message}", e)
+                    throw e
+                }
                 
                 // Проверка что фрагмент все еще прикреплен
                 if (!isAdded || view == null) {
@@ -126,7 +153,12 @@ class CharacterSheetsFragment : Fragment() {
                 }
                 
                 // Parse PDF
-                val parsedData = parsePdf(uri, context)
+                val parsedData = try {
+                    parsePdf(uri, context)
+                } catch (e: Exception) {
+                    android.util.Log.e("CharacterSheetsFragment", "Error parsing PDF: ${e.message}", e)
+                    throw e
+                }
                 
                 // Проверка что фрагмент все еще прикреплен
                 if (!isAdded || view == null) {
@@ -166,6 +198,110 @@ class CharacterSheetsFragment : Fragment() {
         }
     }
     
+    /**
+     * Результат валидации листа персонажа
+     */
+    private data class ValidationResult(
+        val isValid: Boolean,
+        val errorMessage: String? = null
+    )
+    
+    /**
+     * Проверяет, что загруженный PDF является листом персонажа
+     * Проверяет наличие характерных ключевых слов и полей
+     */
+    private suspend fun validateCharacterSheet(uri: Uri, context: Context): ValidationResult {
+        return try {
+            val inputStream = context.contentResolver.openInputStream(uri)
+            inputStream?.use { stream ->
+                validatePdfContent(stream)
+            } ?: ValidationResult(false, "Не удалось прочитать файл")
+        } catch (e: Exception) {
+            android.util.Log.e("CharacterSheetsFragment", "Error validating PDF: ${e.message}", e)
+            ValidationResult(false, "Ошибка проверки файла: ${e.message}")
+        }
+    }
+    
+    /**
+     * Проверяет содержимое PDF на наличие характерных для листов персонажей элементов
+     */
+    private fun validatePdfContent(inputStream: InputStream): ValidationResult {
+        var document: com.tom_roush.pdfbox.pdmodel.PDDocument? = null
+        return try {
+            // Читаем текст из PDF
+            document = com.tom_roush.pdfbox.pdmodel.PDDocument.load(inputStream)
+            val stripper = com.tom_roush.pdfbox.text.PDFTextStripper()
+            val text = stripper.getText(document).lowercase()
+            document.close()
+            document = null
+            
+            // Ключевые слова для проверки листа персонажа
+            val requiredKeywords = listOf(
+                // Общие для всех систем
+                "character", "персонаж", "name", "имя",
+                // D&D 5e
+                "level", "class", "race", "hp", "hit points", "armor class", "ac",
+                "strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma",
+                "сила", "ловкость", "выносливость", "интеллект", "мудрость", "харизма",
+                // VTM 5e
+                "clan", "generation", "disciplines", "humanity", "blood potency",
+                "attributes", "skills", "abilities",
+                // Общие поля
+                "attributes", "skills", "stats", "abilities", "характеристики", "навыки"
+            )
+            
+            // Проверяем наличие хотя бы нескольких ключевых слов
+            val foundKeywords = requiredKeywords.count { keyword ->
+                text.contains(keyword, ignoreCase = true)
+            }
+            
+            // Минимум 3 ключевых слова должны быть найдены
+            if (foundKeywords < 3) {
+                return ValidationResult(
+                    false,
+                    "Файл не похож на лист персонажа. Не найдено достаточно характерных полей (найдено: $foundKeywords из ${requiredKeywords.size})"
+                )
+            }
+            
+            // Дополнительная проверка: должны быть найдены атрибуты или характеристики
+            val hasAttributes = text.contains("strength", ignoreCase = true) ||
+                    text.contains("dexterity", ignoreCase = true) ||
+                    text.contains("сила", ignoreCase = true) ||
+                    text.contains("ловкость", ignoreCase = true) ||
+                    text.contains("attributes", ignoreCase = true) ||
+                    text.contains("характеристики", ignoreCase = true)
+            
+            if (!hasAttributes) {
+                return ValidationResult(
+                    false,
+                    "В файле не найдены характеристики персонажа. Убедитесь, что это лист персонажа."
+                )
+            }
+            
+            // Проверка на наличие имени персонажа или похожих полей
+            val hasNameField = text.contains("name", ignoreCase = true) ||
+                    text.contains("имя", ignoreCase = true) ||
+                    text.contains("character name", ignoreCase = true)
+            
+            if (!hasNameField) {
+                return ValidationResult(
+                    false,
+                    "В файле не найдено поле имени персонажа."
+                )
+            }
+            
+            ValidationResult(true)
+        } catch (e: Exception) {
+            android.util.Log.e("CharacterSheetsFragment", "Error validating PDF content: ${e.message}", e)
+            try {
+                document?.close()
+            } catch (closeException: Exception) {
+                android.util.Log.e("CharacterSheetsFragment", "Error closing PDF document: ${closeException.message}", closeException)
+            }
+            ValidationResult(false, "Ошибка при проверке файла: ${e.message}")
+        }
+    }
+    
     private suspend fun parsePdf(uri: Uri, context: Context): Map<String, Any> {
         // Basic PDF parsing - this is a simplified version
         // In production, you'd want more sophisticated parsing
@@ -184,12 +320,14 @@ class CharacterSheetsFragment : Fragment() {
         // This is a basic implementation
         // For production, you'd want to use a proper PDF parsing library
         // and extract structured data based on the character sheet format
+        var document: com.tom_roush.pdfbox.pdmodel.PDDocument? = null
         return try {
             // Try to read text from PDF using PDFBox
-            val document = com.tom_roush.pdfbox.pdmodel.PDDocument.load(inputStream)
+            document = com.tom_roush.pdfbox.pdmodel.PDDocument.load(inputStream)
             val stripper = com.tom_roush.pdfbox.text.PDFTextStripper()
             val text = stripper.getText(document)
             document.close()
+            document = null
             
             // Basic parsing - extract name and basic info
             // This is a simplified version - you'd want more sophisticated parsing
@@ -231,6 +369,12 @@ class CharacterSheetsFragment : Fragment() {
             parsedData
         } catch (e: Exception) {
             android.util.Log.e("CharacterSheetsFragment", "Error parsing PDF content: ${e.message}", e)
+            // Ensure document is closed even if error occurs
+            try {
+                document?.close()
+            } catch (closeException: Exception) {
+                android.util.Log.e("CharacterSheetsFragment", "Error closing PDF document: ${closeException.message}", closeException)
+            }
             mapOf(
                 "name" to "Безымянный персонаж",
                 "system" to "unknown",
@@ -266,21 +410,35 @@ class CharacterSheetsFragment : Fragment() {
     
     private fun showCreateBuilderConfirmationDialog(sheet: CharacterSheet) {
         val context = context ?: return
-        if (!isAdded) return
+        if (!isAdded || view == null) {
+            android.util.Log.w("CharacterSheetsFragment", "Fragment not attached, cannot show dialog")
+            return
+        }
         
-        MaterialAlertDialogBuilder(context)
-            .setTitle("Создать билдер?")
-            .setMessage("PDF успешно распарсен. Хотите создать билдер персонажа из этого листа?\n\nИмя: ${sheet.characterName}\nСистема: ${sheet.system}")
-            .setPositiveButton("Создать билдер") { _, _ ->
-                saveBuilder(sheet)
-            }
-            .setNegativeButton("Отмена") { _, _ ->
-                view?.let {
-                    Snackbar.make(it, "Билдер не создан", Snackbar.LENGTH_SHORT).show()
+        try {
+            MaterialAlertDialogBuilder(context)
+                .setTitle("Создать билдер?")
+                .setMessage("PDF успешно распарсен. Хотите создать билдер персонажа из этого листа?\n\nИмя: ${sheet.characterName}\nСистема: ${sheet.system}")
+                .setPositiveButton("Создать билдер") { _, _ ->
+                    if (isAdded && view != null) {
+                        saveBuilder(sheet)
+                    }
                 }
+                .setNegativeButton("Отмена") { _, _ ->
+                    if (isAdded && view != null) {
+                        view?.let {
+                            Snackbar.make(it, "Билдер не создан", Snackbar.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                .setCancelable(false)
+                .show()
+        } catch (e: Exception) {
+            android.util.Log.e("CharacterSheetsFragment", "Error showing dialog: ${e.message}", e)
+            view?.let {
+                Snackbar.make(it, "Ошибка отображения диалога: ${e.message}", Snackbar.LENGTH_LONG).show()
             }
-            .setCancelable(false)
-            .show()
+        }
     }
     
     private fun saveBuilder(sheet: CharacterSheet) {
