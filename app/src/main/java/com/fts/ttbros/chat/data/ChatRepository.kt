@@ -44,7 +44,7 @@ class ChatRepository(
                         importedBy = (doc.get(FIELD_IMPORTED_BY) as? List<String>) ?: emptyList()
                     )
                 }
-                onEvent(messages)
+                onEvent(messages ?: emptyList())
             }
     }
 

@@ -18,6 +18,30 @@ import kotlinx.coroutines.launch
 
 class CharactersFragment : Fragment() {
 
+    private var _binding: FragmentCharactersBinding? = null
+    private val binding get() = _binding ?: throw IllegalStateException("Binding is null. Fragment view may have been destroyed.")
+    private val repository = CharacterRepository()
+    private val userRepository = com.fts.ttbros.data.repository.UserRepository()
+    private val chatRepository = com.fts.ttbros.chat.data.ChatRepository()
+    
+    private val adapter = CharactersAdapter(
+        onCharacterClick = { character ->
+            try {
+                val bundle = Bundle().apply {
+                    putString("characterId", character.id)
+                    putString("system", character.system)
+                }
+                findNavController().navigate(R.id.action_charactersFragment_to_characterEditorFragment, bundle)
+            } catch (e: Exception) {
+                android.util.Log.e("CharactersFragment", "Navigation error: ${e.message}", e)
+                Snackbar.make(binding.root, "Error opening character editor", Snackbar.LENGTH_SHORT).show()
+            }
+        },
+        onShareClick = { character ->
+            shareCharacter(character)
+        },
+        onDeleteClick = { character ->
+            showDeleteCharacterDialog(character)
         }
     )
     
@@ -117,6 +141,7 @@ class CharactersFragment : Fragment() {
             android.util.Log.e("CharactersFragment", "Navigation error: ${e.message}", e)
             Snackbar.make(binding.root, "Error opening character editor", Snackbar.LENGTH_SHORT).show()
         }
+    }
 
     private fun showSystemSelectionDialog() {
         val systems = arrayOf(
