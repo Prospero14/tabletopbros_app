@@ -168,7 +168,7 @@ class MainActivity : AppCompatActivity() {
 
         setupHeader()
         setupFooter()
-        setupSwipeGesture()
+        // setupSwipeGesture() // Отключено из-за крашей
         
         // Создать каналы уведомлений
         NotificationHelper.createNotificationChannels(this)
@@ -246,7 +246,8 @@ class MainActivity : AppCompatActivity() {
     }
     
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        gestureDetector.onTouchEvent(ev)
+        // Жесты отключены из-за крашей
+        // gestureDetector.onTouchEvent(ev)
         return super.dispatchTouchEvent(ev)
     }
 
