@@ -12,6 +12,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.auth.ktx.auth
@@ -96,6 +97,13 @@ class CharacterSheetsFragment : Fragment() {
     
     private fun uploadAndParsePdf(uri: Uri) {
         val userId = auth.currentUser?.uid ?: return
+        val context = context ?: return
+        
+        if (!isAdded || view == null) {
+            android.util.Log.w("CharacterSheetsFragment", "Fragment not attached, cannot upload")
+            return
+        }
+        
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 loadingView.isVisible = true
@@ -104,16 +112,28 @@ class CharacterSheetsFragment : Fragment() {
                 }
                 
                 // Upload PDF to Yandex.Disk
-                val pdfUrl = yandexDisk.uploadCharacterSheet(userId, uri, requireContext())
+                val pdfUrl = yandexDisk.uploadCharacterSheet(userId, uri, context)
+                
+                // Проверка что фрагмент все еще прикреплен
+                if (!isAdded || view == null) {
+                    android.util.Log.w("CharacterSheetsFragment", "Fragment detached during upload")
+                    return@launch
+                }
                 
                 view?.let {
                     Snackbar.make(it, "Парсинг PDF...", Snackbar.LENGTH_SHORT).show()
                 }
                 
                 // Parse PDF
-                val parsedData = parsePdf(uri)
+                val parsedData = parsePdf(uri, context)
                 
-                // Create character sheet
+                // Проверка что фрагмент все еще прикреплен
+                if (!isAdded || view == null) {
+                    android.util.Log.w("CharacterSheetsFragment", "Fragment detached during parsing")
+                    return@launch
+                }
+                
+                // Create character sheet template (builder)
                 val sheet = CharacterSheet(
                     userId = userId,
                     characterName = parsedData["name"] as? String ?: "Безымянный персонаж",
@@ -122,33 +142,34 @@ class CharacterSheetsFragment : Fragment() {
                     parsedData = parsedData,
                     attributes = (parsedData["attributes"] as? Map<*, *>)?.mapKeys { it.key.toString() }?.mapValues { (it.value as? Number)?.toInt() ?: 0 } ?: emptyMap(),
                     skills = (parsedData["skills"] as? Map<*, *>)?.mapKeys { it.key.toString() }?.mapValues { (it.value as? Number)?.toInt() ?: 0 } ?: emptyMap(),
-                    stats = (parsedData["stats"] as? Map<*, *>)?.mapKeys { it.key.toString() }?.mapValues { it.value ?: "" } ?: emptyMap()
+                    stats = (parsedData["stats"] as? Map<*, *>)?.mapKeys { it.key.toString() }?.mapValues { it.value ?: "" } ?: emptyMap(),
+                    isTemplate = true // Это билдер (шаблон)
                 )
                 
-                // Save to Firestore
-                sheetRepository.saveSheet(sheet)
-                
-                view?.let {
-                    Snackbar.make(it, "Лист персонажа загружен!", Snackbar.LENGTH_SHORT).show()
+                // Показать диалог подтверждения создания билдера
+                if (isAdded && view != null) {
+                    showCreateBuilderConfirmationDialog(sheet)
                 }
-                
-                loadSheets()
             } catch (e: Exception) {
                 android.util.Log.e("CharacterSheetsFragment", "Error uploading PDF: ${e.message}", e)
-                view?.let {
-                    Snackbar.make(it, "Ошибка загрузки: ${e.message}", Snackbar.LENGTH_LONG).show()
+                if (isAdded && view != null) {
+                    view?.let {
+                        Snackbar.make(it, "Ошибка загрузки: ${e.message}", Snackbar.LENGTH_LONG).show()
+                    }
                 }
             } finally {
-                loadingView.isVisible = false
+                if (isAdded && view != null) {
+                    loadingView.isVisible = false
+                }
             }
         }
     }
     
-    private suspend fun parsePdf(uri: Uri): Map<String, Any> {
+    private suspend fun parsePdf(uri: Uri, context: Context): Map<String, Any> {
         // Basic PDF parsing - this is a simplified version
         // In production, you'd want more sophisticated parsing
         return try {
-            val inputStream = requireContext().contentResolver.openInputStream(uri)
+            val inputStream = context.contentResolver.openInputStream(uri)
             inputStream?.use { stream ->
                 parsePdfContent(stream)
             } ?: emptyMap()
@@ -237,6 +258,46 @@ class CharacterSheetsFragment : Fragment() {
             } catch (e: Exception) {
                 view?.let {
                     Snackbar.make(it, "Ошибка удаления: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    
+    private fun showCreateBuilderConfirmationDialog(sheet: CharacterSheet) {
+        val context = context ?: return
+        if (!isAdded) return
+        
+        MaterialAlertDialogBuilder(context)
+            .setTitle("Создать билдер?")
+            .setMessage("PDF успешно распарсен. Хотите создать билдер персонажа из этого листа?\n\nИмя: ${sheet.characterName}\nСистема: ${sheet.system}")
+            .setPositiveButton("Создать билдер") { _, _ ->
+                saveBuilder(sheet)
+            }
+            .setNegativeButton("Отмена") { _, _ ->
+                view?.let {
+                    Snackbar.make(it, "Билдер не создан", Snackbar.LENGTH_SHORT).show()
+                }
+            }
+            .setCancelable(false)
+            .show()
+    }
+    
+    private fun saveBuilder(sheet: CharacterSheet) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                sheetRepository.saveSheet(sheet)
+                if (isAdded && view != null) {
+                    view?.let {
+                        Snackbar.make(it, "Билдер создан! Теперь вы можете создать персонажа из него в разделе 'Персонажи' -> 'Мой билдер'", Snackbar.LENGTH_LONG).show()
+                    }
+                    loadSheets()
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("CharacterSheetsFragment", "Error saving builder: ${e.message}", e)
+                if (isAdded && view != null) {
+                    view?.let {
+                        Snackbar.make(it, "Ошибка сохранения билдера: ${e.message}", Snackbar.LENGTH_LONG).show()
+                    }
                 }
             }
         }

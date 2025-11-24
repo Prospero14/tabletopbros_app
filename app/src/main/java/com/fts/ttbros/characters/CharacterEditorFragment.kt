@@ -16,7 +16,9 @@ import com.fts.ttbros.characters.templates.VtmTemplate
 import com.fts.ttbros.characters.templates.ViedzminTemplate
 import com.fts.ttbros.characters.templates.DndTemplate
 import com.fts.ttbros.data.model.Character
+import com.fts.ttbros.data.model.CharacterSheet
 import com.fts.ttbros.data.repository.CharacterRepository
+import com.fts.ttbros.data.repository.CharacterSheetRepository
 import com.fts.ttbros.databinding.FragmentCharacterEditorBinding
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
@@ -27,8 +29,10 @@ class CharacterEditorFragment : Fragment() {
     private val binding get() = _binding ?: throw IllegalStateException("Binding is null. Fragment view may have been destroyed.")
     
     private val repository = CharacterRepository()
+    private val sheetRepository = CharacterSheetRepository()
     private var characterId: String? = null
     private var system: String? = null
+    private var builderId: String? = null
     private var currentCharacter: Character? = null
     
     // Default to Russian as requested
@@ -99,6 +103,7 @@ class CharacterEditorFragment : Fragment() {
         arguments?.let {
             characterId = it.getString("characterId")
             system = it.getString("system")
+            builderId = it.getString("builderId")
         }
     }
 
@@ -167,6 +172,8 @@ class CharacterEditorFragment : Fragment() {
 
         if (characterId != null) {
             loadCharacter()
+        } else if (builderId != null) {
+            loadBuilderAndCreateCharacter()
         } else {
             renderForm()
         }
@@ -211,6 +218,59 @@ class CharacterEditorFragment : Fragment() {
                 }
             } catch (e: Exception) {
                 showError("Error loading character: ${e.message}")
+            }
+        }
+    }
+    
+    private fun loadBuilderAndCreateCharacter() {
+        lifecycleScope.launch {
+            try {
+                if (builderId != null) {
+                    val builder = sheetRepository.getSheet(builderId!!)
+                    if (builder != null) {
+                        system = builder.system
+                        
+                        // Заполняем форму данными из билдера
+                        formData["name"] = builder.characterName
+                        
+                        // Копируем атрибуты из билдера
+                        builder.attributes.forEach { (key, value) ->
+                            formData[key] = value
+                        }
+                        
+                        // Копируем навыки из билдера
+                        builder.skills.forEach { (key, value) ->
+                            formData["skill_$key"] = value
+                        }
+                        
+                        // Копируем другие статистики из билдера
+                        builder.stats.forEach { (key, value) ->
+                            formData[key] = value
+                        }
+                        
+                        // Копируем parsedData если есть
+                        builder.parsedData.forEach { (key, value) ->
+                            if (!formData.containsKey(key)) {
+                                formData[key] = value
+                            }
+                        }
+                        
+                        renderForm()
+                        Snackbar.make(binding.root, "Персонаж создан из билдера '${builder.characterName}'", Snackbar.LENGTH_LONG).show()
+                    } else {
+                        showError("Билдер не найден")
+                        try {
+                            if (!findNavController().navigateUp()) {
+                                activity?.onBackPressed()
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("CharacterEditorFragment", "Navigation error: ${e.message}", e)
+                            activity?.onBackPressed()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                showError("Ошибка загрузки билдера: ${e.message}")
             }
         }
     }

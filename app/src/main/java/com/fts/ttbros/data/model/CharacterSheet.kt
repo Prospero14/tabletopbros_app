@@ -13,6 +13,7 @@ data class CharacterSheet(
     val skills: Map<String, Int> = emptyMap(), // Character skills
     val stats: Map<String, Any> = emptyMap(), // Other stats (HP, AC, etc.)
     val notes: String = "",
+    val isTemplate: Boolean = false, // true = билдер (шаблон), false = персонаж
     val createdAt: Timestamp? = null,
     val updatedAt: Timestamp? = null
 )

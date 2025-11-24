@@ -204,7 +204,14 @@ class DocumentsFragment : Fragment() {
     }
     
     private fun downloadDocument(doc: Document, targetFile: File) {
-        Toast.makeText(requireContext(), "Downloading ${doc.title}...", Toast.LENGTH_SHORT).show()
+        val context = context ?: return
+        Toast.makeText(context, "Downloading ${doc.title}...", Toast.LENGTH_SHORT).show()
+        
+        if (!isAdded || view == null) {
+            android.util.Log.w("DocumentsFragment", "Fragment not attached, cannot download")
+            return
+        }
+        
         binding.progressBar.isVisible = true
         
         viewLifecycleOwner.lifecycleScope.launch {
@@ -216,16 +223,20 @@ class DocumentsFragment : Fragment() {
                         }
                     }
                     withContext(Dispatchers.Main) {
-                        binding.progressBar.isVisible = false
-                        adapter.markAsDownloaded(doc.id)
-                        Toast.makeText(requireContext(), "Downloaded", Toast.LENGTH_SHORT).show()
-                        openDocument(targetFile)
+                        if (isAdded && view != null) {
+                            binding.progressBar.isVisible = false
+                            adapter.markAsDownloaded(doc.id)
+                            Toast.makeText(context, "Downloaded", Toast.LENGTH_SHORT).show()
+                            openDocument(targetFile)
+                        }
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
                     withContext(Dispatchers.Main) {
-                        binding.progressBar.isVisible = false
-                        Toast.makeText(requireContext(), "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
+                        if (isAdded && view != null) {
+                            binding.progressBar.isVisible = false
+                            Toast.makeText(context, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
                     }
                 }
             }
@@ -234,13 +245,34 @@ class DocumentsFragment : Fragment() {
     
     private fun openDocument(file: File) {
         try {
+            // Проверка что файл существует и доступен
+            if (!file.exists() || !file.canRead()) {
+                Toast.makeText(requireContext(), "File not accessible", Toast.LENGTH_SHORT).show()
+                return
+            }
+            
+            // Проверка что фрагмент прикреплен и view существует
+            if (!isAdded || view == null) {
+                android.util.Log.w("DocumentsFragment", "Fragment not attached, cannot open document")
+                return
+            }
+            
             val bundle = Bundle().apply {
                 putString("filePath", file.absolutePath)
             }
-            findNavController().navigate(R.id.action_documentsFragment_to_pdfViewerFragment, bundle)
+            
+            try {
+                findNavController().navigate(R.id.action_documentsFragment_to_pdfViewerFragment, bundle)
+            } catch (e: IllegalStateException) {
+                android.util.Log.e("DocumentsFragment", "Navigation error: ${e.message}", e)
+                Toast.makeText(requireContext(), "Error opening PDF viewer", Toast.LENGTH_SHORT).show()
+            }
         } catch (e: Exception) {
-            android.util.Log.e("DocumentsFragment", "Navigation error: ${e.message}", e)
-            Toast.makeText(requireContext(), "Error opening PDF viewer", Toast.LENGTH_SHORT).show()
+            android.util.Log.e("DocumentsFragment", "Error opening document: ${e.message}", e)
+            val context = context
+            if (context != null) {
+                Toast.makeText(context, "Error opening PDF: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
