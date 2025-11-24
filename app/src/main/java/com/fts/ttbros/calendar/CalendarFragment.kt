@@ -154,7 +154,7 @@ class CalendarFragment : Fragment() {
     }
 
     private fun showCreateEventDialog() {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val profile = userRepository.currentProfile() ?: return@launch
             val teamId = profile.currentTeamId ?: profile.teamId ?: return@launch
             val userName = profile.displayName
@@ -168,7 +168,7 @@ class CalendarFragment : Fragment() {
     }
     
     private fun showEditEventDialog(event: Event) {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val profile = userRepository.currentProfile() ?: return@launch
             
             // Only creator or master can edit? Let's allow creator for now.
@@ -207,7 +207,7 @@ class CalendarFragment : Fragment() {
     }
 
     private fun createEvent(teamId: String, userName: String, title: String, description: String, dateTime: Long) {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val profile = userRepository.currentProfile() ?: return@launch
                 val event = Event(
@@ -234,7 +234,7 @@ class CalendarFragment : Fragment() {
     }
     
     private fun updateEvent(event: Event) {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
                 // Отменить старые уведомления перед обновлением
                 EventNotificationScheduler.cancelEventNotifications(requireContext(), event.id)

@@ -53,24 +53,34 @@ class PdfViewerFragment : Fragment() {
     }
 
     private fun openPdf(path: String) {
-        try {
-            val file = File(path)
-            if (!file.exists()) {
-                binding.errorTextView.visibility = View.VISIBLE
-                binding.errorTextView.text = "File not found"
-                return
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val file = File(path)
+                if (!file.exists()) {
+                    withContext(Dispatchers.Main) {
+                        binding.errorTextView.visibility = View.VISIBLE
+                        binding.errorTextView.text = "File not found"
+                    }
+                    return@launch
+                }
+
+                fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+                pdfRenderer = PdfRenderer(fileDescriptor!!)
+
+                withContext(Dispatchers.Main) {
+                    if (pdfRenderer != null) {
+                        binding.pdfRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+                        binding.pdfRecyclerView.adapter = PdfPageAdapter(pdfRenderer!!)
+                    }
+                }
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    binding.errorTextView.visibility = View.VISIBLE
+                    binding.errorTextView.text = "Error opening PDF: ${e.message}"
+                }
             }
-
-            fileDescriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-            pdfRenderer = PdfRenderer(fileDescriptor!!)
-
-            binding.pdfRecyclerView.layoutManager = LinearLayoutManager(requireContext())
-            binding.pdfRecyclerView.adapter = PdfPageAdapter(pdfRenderer!!)
-
-        } catch (e: Exception) {
-            e.printStackTrace()
-            binding.errorTextView.visibility = View.VISIBLE
-            binding.errorTextView.text = "Error opening PDF: ${e.message}"
         }
     }
 
@@ -97,22 +107,32 @@ class PdfViewerFragment : Fragment() {
         }
 
         override fun onBindViewHolder(holder: PageViewHolder, position: Int) {
-            // Simple synchronous rendering for now. 
-            // For production, use coroutines and caching to avoid UI jank.
-            try {
-                val page = renderer.openPage(position)
-                // High quality rendering: scale * density? Keeping it simple 1:1 or screen width based
-                val width = resources.displayMetrics.widthPixels
-                val scale = width.toFloat() / page.width
-                val height = (page.height * scale).toInt()
-                
-                val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                
-                holder.imageView.setImageBitmap(bitmap)
-                page.close()
-            } catch (e: Exception) {
-                e.printStackTrace()
+            holder.imageView.setImageBitmap(null) // Clear previous image
+            
+            // Render asynchronously
+            viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Default) {
+                try {
+                    // Check if renderer is still open
+                    if (renderer.pageCount <= position) return@launch
+                    
+                    val page = synchronized(renderer) {
+                        renderer.openPage(position)
+                    }
+                    
+                    val width = resources.displayMetrics.widthPixels
+                    val scale = width.toFloat() / page.width
+                    val height = (page.height * scale).toInt()
+                    
+                    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                    page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                    page.close()
+                    
+                    withContext(Dispatchers.Main) {
+                        holder.imageView.setImageBitmap(bitmap)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
 

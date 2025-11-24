@@ -192,7 +192,7 @@ class CharacterEditorFragment : Fragment() {
     }
 
     private fun loadCharacter() {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
                 if (characterId != null) {
                     val char = repository.getCharacter(characterId!!)
@@ -223,7 +223,7 @@ class CharacterEditorFragment : Fragment() {
     }
     
     private fun loadBuilderAndCreateCharacter() {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
                 if (builderId != null) {
                     val builder = sheetRepository.getSheet(builderId!!)

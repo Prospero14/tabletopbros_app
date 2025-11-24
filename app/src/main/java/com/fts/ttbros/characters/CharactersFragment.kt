@@ -89,28 +89,28 @@ class CharactersFragment : Fragment() {
                 val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
                 val teamSystem = currentTeam?.teamSystem
                 
-                // Always add "All" tab
-                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("All"))
+                // Tab 1: "Чарники" (was "All")
+                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Чарники"))
                 
-                // Add tab for team's system if it exists
+                // Tab 2: "[System] Билдер" (was System Name)
                 if (!teamSystem.isNullOrBlank()) {
                     val systemName = when (teamSystem) {
-                        "vtm_5e" -> getString(R.string.vampire_masquerade)
-                        "dnd_5e" -> getString(R.string.dungeons_dragons)
-                        "viedzmin_2e" -> getString(R.string.viedzmin_2e)
+                        "vtm_5e" -> "VTM"
+                        "dnd_5e" -> "D&D"
+                        "viedzmin_2e" -> "Viedzmin"
                         else -> teamSystem
                     }
-                    binding.tabLayout.addTab(binding.tabLayout.newTab().setText(systemName))
+                    binding.tabLayout.addTab(binding.tabLayout.newTab().setText("$systemName Билдер"))
                 }
                 
-                // Add "Мой билдер" tab
+                // Tab 3: "Мой билдер"
                 binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Мой билдер"))
                 
                 binding.tabLayout.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
                     override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
                         val tabPosition = tab?.position ?: 0
                         if (tabPosition == binding.tabLayout.tabCount - 1) {
-                            // Last tab is "Мой чарник"
+                            // Last tab is "Мой билдер"
                             loadTeamCharacters()
                         } else {
                             filterList(teamSystem)
@@ -121,9 +121,9 @@ class CharactersFragment : Fragment() {
                 })
             } catch (e: Exception) {
                 android.util.Log.e("CharactersFragment", "Error setting up tabs: ${e.message}", e)
-                // Fallback: just show "All" tab and "Мой чарник"
-                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("All"))
-                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Мой чарник"))
+                // Fallback
+                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Чарники"))
+                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Мой билдер"))
                 binding.tabLayout.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
                     override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
                         val tabPosition = tab?.position ?: 0
@@ -231,11 +231,31 @@ class CharactersFragment : Fragment() {
             val currentTeam = profile.teams.find { it.teamId == profile.currentTeamId }
             val system = currentTeam?.teamSystem
             
+            val popup = android.widget.PopupMenu(requireContext(), binding.addCharacterFab)
+            popup.menu.add(0, 1, 0, "Чарники")
+            
             if (!system.isNullOrBlank()) {
-                openCharacterEditor(system)
-            } else {
-                showSystemSelectionDialog()
+                val systemName = when (system) {
+                    "vtm_5e" -> "VTM"
+                    "dnd_5e" -> "D&D"
+                    "viedzmin_2e" -> "Viedzmin"
+                    else -> system
+                }
+                popup.menu.add(0, 2, 1, "$systemName Билдер")
             }
+            
+            popup.setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    1 -> showSystemSelectionDialog()
+                    2 -> {
+                        if (system != null) {
+                            openCharacterEditor(system)
+                        }
+                    }
+                }
+                true
+            }
+            popup.show()
         }
     }
     

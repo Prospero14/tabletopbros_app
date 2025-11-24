@@ -57,7 +57,7 @@ class TeamsFragment : Fragment() {
 
     private fun loadData() {
         setLoading(true)
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val profile = userRepository.currentProfile()
                 if (profile == null) return@launch
@@ -79,7 +79,7 @@ class TeamsFragment : Fragment() {
     }
     
     private fun switchTeam(teamId: String) {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
                 userRepository.switchTeam(teamId)
                 // Refresh data
@@ -122,7 +122,7 @@ class TeamsFragment : Fragment() {
     }
 
     private fun joinGroup(code: String) {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val team = teamRepository.findTeamByCode(code)
                 if (team == null) {
@@ -187,7 +187,7 @@ class TeamsFragment : Fragment() {
     }
 
     private fun createTeamWithSystem(system: String, teamName: String) {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val user = userRepository.currentProfile() ?: return@launch
                 // We need actual user object for createTeam, but repository uses auth.currentUser internally usually

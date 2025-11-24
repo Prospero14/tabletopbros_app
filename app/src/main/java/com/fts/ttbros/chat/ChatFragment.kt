@@ -406,7 +406,7 @@ class ChatFragment : Fragment() {
             val pinnedIcon = dialogView.findViewById<android.view.View>(R.id.pollPinnedIcon)
             
             // poll is guaranteed to be non-null here (checked above)
-            val nonNullPoll = poll!!
+            val nonNullPoll = poll ?: return@launch
             questionTextView.text = nonNullPoll.question
             creatorTextView.text = getString(R.string.created_by, nonNullPoll.createdByName)
             pinnedIcon.isVisible = nonNullPoll.isPinned

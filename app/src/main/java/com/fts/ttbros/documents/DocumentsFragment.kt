@@ -95,7 +95,14 @@ class DocumentsFragment : Fragment() {
                 
                 binding.addDocumentFab.isVisible = isMaster
                 
-                documentRepository.getDocuments(profile.teamId!!).collect { docs ->
+                val teamId = profile.teamId
+                if (teamId == null) {
+                    binding.emptyView.text = "Join a team to view documents"
+                    binding.emptyView.isVisible = true
+                    return@launch
+                }
+                
+                documentRepository.getDocuments(teamId).collect { docs ->
                     // Фильтруем документы, исключая листы персонажей (они хранятся в character_sheets)
                     val filteredDocs = docs.filter { doc ->
                         // Исключаем документы из папки character_sheets

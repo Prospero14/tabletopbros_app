@@ -82,17 +82,23 @@ class CharacterSheetsFragment : Fragment() {
         val userId = auth.currentUser?.uid ?: return
         viewLifecycleOwner.lifecycleScope.launch {
             try {
+                if (!isAdded || view == null) return@launch
                 loadingView.isVisible = true
                 val sheets = sheetRepository.getUserSheets(userId)
+                if (!isAdded || view == null) return@launch
                 adapter.submitList(sheets)
                 emptyView.isVisible = sheets.isEmpty()
             } catch (e: Exception) {
                 android.util.Log.e("CharacterSheetsFragment", "Error loading sheets: ${e.message}", e)
-                view?.let {
-                    Snackbar.make(it, "Ошибка загрузки листов: ${e.message}", Snackbar.LENGTH_LONG).show()
+                if (isAdded && view != null) {
+                    view?.let {
+                        Snackbar.make(it, "Ошибка загрузки листов: ${e.message}", Snackbar.LENGTH_LONG).show()
+                    }
                 }
             } finally {
-                loadingView.isVisible = false
+                if (isAdded && view != null) {
+                    loadingView.isVisible = false
+                }
             }
         }
     }
