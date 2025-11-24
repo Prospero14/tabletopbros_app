@@ -11,9 +11,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.fts.ttbros.R
-import com.fts.ttbros.data.model.CharacterSheet
 import com.fts.ttbros.data.repository.CharacterRepository
-import com.fts.ttbros.data.repository.CharacterSheetRepository
 import com.fts.ttbros.databinding.FragmentCharactersBinding
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
@@ -28,7 +26,6 @@ class CharactersFragment : Fragment() {
     private val repository = CharacterRepository()
     private val userRepository = com.fts.ttbros.data.repository.UserRepository()
     private val chatRepository = com.fts.ttbros.chat.data.ChatRepository()
-    private val sheetRepository = CharacterSheetRepository()
     
     private val adapter = CharactersAdapter(
         onCharacterClick = { character ->
@@ -52,11 +49,6 @@ class CharactersFragment : Fragment() {
     )
     
     private var allCharacters: List<com.fts.ttbros.data.model.Character> = emptyList()
-    private var allBuilders: List<CharacterSheet> = emptyList()
-    private val buildersAdapter = BuildersAdapter(
-        onBuilderClick = { builder -> createCharacterFromBuilder(builder) },
-        onBuilderLongClick = { builder -> showDeleteBuilderDialog(builder) }
-    )
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -79,7 +71,6 @@ class CharactersFragment : Fragment() {
         
         setupTabs()
         loadCharacters()
-        loadBuilders()
     }
     
     private fun setupTabs() {
@@ -103,18 +94,9 @@ class CharactersFragment : Fragment() {
                     binding.tabLayout.addTab(binding.tabLayout.newTab().setText(systemName))
                 }
                 
-                // Tab 3: "Билдеры" - шаблоны для создания новых чарников
-                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Билдеры"))
-                
                 binding.tabLayout.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
                     override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
-                        val tabPosition = tab?.position ?: 0
-                        if (tabPosition == binding.tabLayout.tabCount - 1) {
-                            // Last tab is "Билдеры"
-                            loadBuilders()
-                        } else {
-                            filterList(teamSystem)
-                        }
+                        filterList(teamSystem)
                     }
                     override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
                     override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
@@ -123,15 +105,9 @@ class CharactersFragment : Fragment() {
                 android.util.Log.e("CharactersFragment", "Error setting up tabs: ${e.message}", e)
                 // Fallback
                 binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Все"))
-                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Билдеры"))
                 binding.tabLayout.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
                     override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
-                        val tabPosition = tab?.position ?: 0
-                        if (tabPosition == binding.tabLayout.tabCount - 1) {
-                            loadBuilders()
-                        } else {
-                            filterList(null)
-                        }
+                        filterList(null)
                     }
                     override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
                     override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
@@ -160,13 +136,6 @@ class CharactersFragment : Fragment() {
         binding.emptyView.text = "Нет персонажей. Создайте первого!"
     }
     
-    private fun showBuilders() {
-        binding.charactersRecyclerView.adapter = buildersAdapter as RecyclerView.Adapter<RecyclerView.ViewHolder>
-        buildersAdapter.submitList(allBuilders)
-        binding.emptyView.isVisible = allBuilders.isEmpty()
-        binding.emptyView.text = "Нет билдеров. Загрузите PDF лист персонажа в разделе 'Листы персонажей' для создания билдера"
-    }
-
     private fun loadCharacters() {
         binding.progressBar.isVisible = true
         viewLifecycleOwner.lifecycleScope.launch {
@@ -177,31 +146,11 @@ class CharactersFragment : Fragment() {
                 val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
                 val teamSystem = currentTeam?.teamSystem
                 
-                val selectedTabPosition = binding.tabLayout.selectedTabPosition
-                if (selectedTabPosition != binding.tabLayout.tabCount - 1) {
-                    filterList(teamSystem)
-                }
+                filterList(teamSystem)
             } catch (e: Exception) {
                 Snackbar.make(binding.root, "Error loading characters: ${e.message}", Snackbar.LENGTH_LONG).show()
             } finally {
                 binding.progressBar.isVisible = false
-            }
-        }
-    }
-    
-    private fun loadBuilders() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                val userId = Firebase.auth.currentUser?.uid ?: return@launch
-                // Загружаем только билдеры (isTemplate = true)
-                allBuilders = sheetRepository.getUserSheets(userId).filter { it.isTemplate }
-                
-                val selectedTabPosition = binding.tabLayout.selectedTabPosition
-                if (selectedTabPosition == binding.tabLayout.tabCount - 1) {
-                    showBuilders()
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("CharactersFragment", "Error loading builders: ${e.message}", e)
             }
         }
     }
@@ -373,99 +322,8 @@ class CharactersFragment : Fragment() {
         }
     }
     
-    private fun showDeleteBuilderDialog(builder: CharacterSheet) {
-        MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Удалить билдер")
-            .setMessage("Вы уверены, что хотите удалить '${builder.characterName}'? Это действие нельзя отменить.")
-            .setPositiveButton("Удалить") { _, _ ->
-                deleteBuilder(builder)
-            }
-            .setNegativeButton("Отмена", null)
-            .show()
-    }
-    
-    private fun deleteBuilder(builder: CharacterSheet) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                sheetRepository.deleteSheet(builder.id)
-                Snackbar.make(binding.root, "Билдер удалён", Snackbar.LENGTH_SHORT).show()
-                loadBuilders()
-            } catch (e: Exception) {
-                Snackbar.make(binding.root, "Ошибка удаления: ${e.message}", Snackbar.LENGTH_SHORT).show()
-            }
-        }
-    }
-
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
-    }
-}
-
-/**
- * Адаптер для отображения билдеров персонажей
- */
-class BuildersAdapter(
-    private val onBuilderClick: (CharacterSheet) -> Unit,
-    private val onBuilderLongClick: (CharacterSheet) -> Unit
-) : RecyclerView.Adapter<BuildersAdapter.BuilderViewHolder>() {
-    
-    private var builders: List<CharacterSheet> = emptyList()
-    
-    fun submitList(newBuilders: List<CharacterSheet>) {
-        builders = newBuilders
-        notifyDataSetChanged()
-    }
-    
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): BuilderViewHolder {
-        val binding = com.fts.ttbros.databinding.ItemCharacterBinding.inflate(
-            LayoutInflater.from(parent.context),
-            parent,
-            false
-        )
-        return BuilderViewHolder(binding)
-    }
-    
-    override fun onBindViewHolder(holder: BuilderViewHolder, position: Int) {
-        holder.bind(builders[position])
-    }
-    
-    override fun getItemCount() = builders.size
-    
-    inner class BuilderViewHolder(
-        private val binding: com.fts.ttbros.databinding.ItemCharacterBinding
-    ) : RecyclerView.ViewHolder(binding.root) {
-        
-        init {
-            binding.root.setOnClickListener {
-                val position = bindingAdapterPosition
-                if (position != RecyclerView.NO_POSITION) {
-                    onBuilderClick(builders[position])
-                }
-            }
-            binding.root.setOnLongClickListener {
-                val position = bindingAdapterPosition
-                if (position != RecyclerView.NO_POSITION) {
-                    onBuilderLongClick(builders[position])
-                    true
-                } else {
-                    false
-                }
-            }
-            // Скрываем кнопку share для билдеров
-            binding.shareButton.isVisible = false
-        }
-        
-        fun bind(builder: CharacterSheet) {
-            binding.characterNameTextView.text = builder.characterName.ifBlank { "Безымянный билдер" }
-            val context = binding.root.context
-            binding.systemTextView.text = when(builder.system) {
-                "vtm_5e" -> context.getString(com.fts.ttbros.R.string.vampire_masquerade)
-                "dnd_5e" -> context.getString(com.fts.ttbros.R.string.dungeons_dragons)
-                "viedzmin_2e" -> context.getString(com.fts.ttbros.R.string.viedzmin_2e)
-                else -> builder.system
-            }
-            binding.clanTextView.text = "Билдер • Нажмите для создания персонажа"
-        }
     }
 }

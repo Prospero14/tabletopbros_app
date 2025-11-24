@@ -38,11 +38,15 @@ class DocumentsFragment : Fragment() {
     
     private val documentRepository = DocumentRepository()
     private val userRepository = UserRepository()
+    private val sheetRepository = com.fts.ttbros.data.repository.CharacterSheetRepository()
     private lateinit var adapter: DocumentsAdapter
+    private lateinit var sheetsAdapter: com.fts.ttbros.charactersheets.CharacterSheetsAdapter
     private var currentTeamId: String? = null
     private var isMaster: Boolean = false
     private var currentUserId: String = ""
     private var currentUserName: String = ""
+    private var allDocuments: List<Document> = emptyList()
+    private var allSheets: List<com.fts.ttbros.data.model.CharacterSheet> = emptyList()
 
     private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { showUploadDialog(it) }
@@ -64,6 +68,11 @@ class DocumentsFragment : Fragment() {
             onLongClick = { doc -> if (isMaster) showDeleteDialog(doc) }
         )
         
+        sheetsAdapter = com.fts.ttbros.charactersheets.CharacterSheetsAdapter(
+            onSheetClick = { sheet -> onSheetClicked(sheet) },
+            onSheetDelete = { sheet -> showDeleteSheetDialog(sheet) }
+        )
+        
         binding.documentsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.documentsRecyclerView.adapter = adapter
         
@@ -71,10 +80,49 @@ class DocumentsFragment : Fragment() {
         binding.deleteDocsButton.isVisible = false
         
         binding.addDocumentFab.setOnClickListener {
-            filePickerLauncher.launch("application/pdf")
+            val selectedTab = binding.tabLayout.selectedTabPosition
+            if (selectedTab == 0) {
+                // Загрузка документа
+                filePickerLauncher.launch("application/pdf")
+            } else {
+                // Загрузка листа персонажа - навигация в CharacterSheetsFragment
+                try {
+                    findNavController().navigate(R.id.action_documentsFragment_to_characterSheetsFragment)
+                } catch (e: Exception) {
+                    android.util.Log.e("DocumentsFragment", "Navigation error: ${e.message}", e)
+                    Snackbar.make(binding.root, "Ошибка открытия загрузки листа", Snackbar.LENGTH_SHORT).show()
+                }
+            }
         }
         
+        setupTabs()
         loadData()
+    }
+    
+    private fun setupTabs() {
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Документы"))
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Листы персонажей"))
+        
+        binding.tabLayout.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
+                val tabPosition = tab?.position ?: 0
+                if (tabPosition == 0) {
+                    // Документы
+                    binding.documentsRecyclerView.adapter = adapter
+                    adapter.submitList(allDocuments)
+                    binding.emptyView.isVisible = allDocuments.isEmpty()
+                    binding.addDocumentFab.isVisible = isMaster
+                } else {
+                    // Листы персонажей
+                    binding.documentsRecyclerView.adapter = sheetsAdapter
+                    sheetsAdapter.submitList(allSheets)
+                    binding.emptyView.isVisible = allSheets.isEmpty()
+                    binding.addDocumentFab.isVisible = true // Показываем FAB для загрузки листов
+                }
+            }
+            override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
+            override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
+        })
     }
     
     private fun loadData() {
@@ -104,13 +152,24 @@ class DocumentsFragment : Fragment() {
                 
                 documentRepository.getDocuments(teamId).collect { docs ->
                     // Фильтруем документы, исключая листы персонажей (они хранятся в character_sheets)
-                    val filteredDocs = docs.filter { doc ->
+                    allDocuments = docs.filter { doc ->
                         // Исключаем документы из папки character_sheets
                         !doc.downloadUrl.contains("/character_sheets/")
                     }
-                    adapter.submitList(filteredDocs)
-                    binding.emptyView.isVisible = filteredDocs.isEmpty()
-                    checkDownloads(filteredDocs)
+                    
+                    // Загружаем листы персонажей
+                    allSheets = sheetRepository.getUserSheets(currentUserId)
+                    
+                    // Обновляем отображаемый список в зависимости от выбранной вкладки
+                    val selectedTab = binding.tabLayout.selectedTabPosition
+                    if (selectedTab == 0) {
+                        adapter.submitList(allDocuments)
+                        binding.emptyView.isVisible = allDocuments.isEmpty()
+                        checkDownloads(allDocuments)
+                    } else {
+                        sheetsAdapter.submitList(allSheets)
+                        binding.emptyView.isVisible = allSheets.isEmpty()
+                    }
                 }
             } catch (e: Exception) {
                 Snackbar.make(binding.root, "Error loading documents: ${e.message}", Snackbar.LENGTH_LONG).show()
@@ -303,6 +362,94 @@ class DocumentsFragment : Fragment() {
         } catch (e: Exception) {
             android.util.Log.e("DocumentsFragment", "Error opening document: ${e.message}", e)
             Toast.makeText(context, "Error opening PDF: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun onSheetClicked(sheet: com.fts.ttbros.data.model.CharacterSheet) {
+        // Открываем PDF листа персонажа
+        val context = context ?: return
+        if (!isAdded || view == null) {
+            android.util.Log.w("DocumentsFragment", "Fragment not attached, cannot open sheet")
+            return
+        }
+        
+        try {
+            // Скачиваем PDF из Yandex.Disk
+            viewLifecycleOwner.lifecycleScope.launch {
+                try {
+                    binding.progressBar.isVisible = true
+                    val pdfUrl = sheet.pdfUrl
+                    if (pdfUrl.isBlank()) {
+                        Snackbar.make(binding.root, "PDF не найден", Snackbar.LENGTH_SHORT).show()
+                        binding.progressBar.isVisible = false
+                        return@launch
+                    }
+                    
+                    val docsDir = File(requireContext().filesDir, "documents")
+                    docsDir.mkdirs()
+                    val file = File(docsDir, "${sheet.id}_${sheet.characterName}.pdf")
+                    
+                    if (file.exists()) {
+                        openDocument(file)
+                        binding.progressBar.isVisible = false
+                    } else {
+                        // Скачиваем файл
+                        withContext(Dispatchers.IO) {
+                            URL(pdfUrl).openStream().use { input ->
+                                FileOutputStream(file).use { output ->
+                                    input.copyTo(output)
+                                }
+                            }
+                        }
+                        withContext(Dispatchers.Main) {
+                            if (isAdded && view != null) {
+                                binding.progressBar.isVisible = false
+                                openDocument(file)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("DocumentsFragment", "Error downloading sheet PDF: ${e.message}", e)
+                    if (isAdded && view != null) {
+                        binding.progressBar.isVisible = false
+                        Snackbar.make(binding.root, "Ошибка загрузки PDF: ${e.message}", Snackbar.LENGTH_LONG).show()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("DocumentsFragment", "Error opening sheet: ${e.message}", e)
+            Snackbar.make(binding.root, "Ошибка открытия листа: ${e.message}", Snackbar.LENGTH_SHORT).show()
+        }
+    }
+    
+    private fun showDeleteSheetDialog(sheet: com.fts.ttbros.data.model.CharacterSheet) {
+        val context = context ?: return
+        if (!isAdded || view == null) return
+        
+        MaterialAlertDialogBuilder(context)
+            .setTitle("Удалить лист персонажа")
+            .setMessage("Вы уверены, что хотите удалить '${sheet.characterName}'? Это действие нельзя отменить.")
+            .setPositiveButton("Удалить") { _, _ ->
+                deleteSheet(sheet)
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+    
+    private fun deleteSheet(sheet: com.fts.ttbros.data.model.CharacterSheet) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                sheetRepository.deleteSheet(sheet.id)
+                if (isAdded && view != null) {
+                    Snackbar.make(binding.root, "Лист удалён", Snackbar.LENGTH_SHORT).show()
+                    loadData() // Перезагружаем данные
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("DocumentsFragment", "Error deleting sheet: ${e.message}", e)
+                if (isAdded && view != null) {
+                    Snackbar.make(binding.root, "Ошибка удаления: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 

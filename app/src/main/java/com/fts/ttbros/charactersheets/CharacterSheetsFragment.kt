@@ -34,7 +34,6 @@ class CharacterSheetsFragment : Fragment() {
     private val auth by lazy { Firebase.auth }
     private val yandexDisk = com.fts.ttbros.data.repository.YandexDiskRepository()
     private val sheetRepository = CharacterSheetRepository()
-    private val characterRepository = com.fts.ttbros.data.repository.CharacterRepository()
     private val userRepository = com.fts.ttbros.data.repository.UserRepository()
     private lateinit var adapter: CharacterSheetsAdapter
     
@@ -204,27 +203,24 @@ class CharacterSheetsFragment : Fragment() {
                     else -> teamSystem
                 }
                 
-                // Создаем Character из загруженного PDF (Вариант 1: упрощенный)
-                val characterName = "Чарник $systemName"
-                val characterData = mutableMapOf<String, Any>()
-                characterData.putAll(parsedData)
-                characterData["pdfUrl"] = pdfUrl
-                characterData["attributes"] = (parsedData["attributes"] as? Map<*, *>)?.mapKeys { (it.key as? Any)?.toString() ?: "" }?.mapValues { (it.value as? Number)?.toInt() ?: 0 } ?: emptyMap<String, Int>()
-                characterData["skills"] = (parsedData["skills"] as? Map<*, *>)?.mapKeys { (it.key as? Any)?.toString() ?: "" }?.mapValues { (it.value as? Number)?.toInt() ?: 0 } ?: emptyMap<String, Int>()
-                characterData["stats"] = (parsedData["stats"] as? Map<*, *>)?.mapKeys { (it.key as? Any)?.toString() ?: "" }?.mapValues { it.value ?: "" } ?: emptyMap<String, Any>()
-                
-                val character = com.fts.ttbros.data.model.Character(
+                // Создаем CharacterSheet из загруженного PDF (как было раньше)
+                val sheet = CharacterSheet(
                     userId = userId,
-                    name = characterName,
+                    characterName = parsedData["name"] as? String ?: "Безымянный персонаж",
                     system = teamSystem,
-                    data = characterData
+                    pdfUrl = pdfUrl,
+                    parsedData = parsedData,
+                    attributes = (parsedData["attributes"] as? Map<*, *>)?.mapKeys { (it.key as? Any)?.toString() ?: "" }?.mapValues { (it.value as? Number)?.toInt() ?: 0 } ?: emptyMap<String, Int>(),
+                    skills = (parsedData["skills"] as? Map<*, *>)?.mapKeys { (it.key as? Any)?.toString() ?: "" }?.mapValues { (it.value as? Number)?.toInt() ?: 0 } ?: emptyMap<String, Int>(),
+                    stats = (parsedData["stats"] as? Map<*, *>)?.mapKeys { (it.key as? Any)?.toString() ?: "" }?.mapValues { it.value ?: "" } ?: emptyMap<String, Any>(),
+                    isTemplate = false // Это загруженный лист персонажа
                 )
                 
-                // Показать диалог подтверждения создания чарника
+                // Показать диалог подтверждения создания листа
                 // Используем Main диспетчер для показа диалога в UI потоке
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     if (isAdded && view != null && context != null) {
-                        showCreateCharacterConfirmationDialog(character, systemName)
+                        showCreateSheetConfirmationDialog(sheet)
                     }
                 }
             } catch (e: Exception) {
@@ -517,7 +513,7 @@ class CharacterSheetsFragment : Fragment() {
         }
     }
     
-    private fun showCreateCharacterConfirmationDialog(character: com.fts.ttbros.data.model.Character, systemName: String) {
+    private fun showCreateSheetConfirmationDialog(sheet: CharacterSheet) {
         val context = context ?: return
         if (!isAdded || view == null) {
             android.util.Log.w("CharacterSheetsFragment", "Fragment not attached, cannot show dialog")
@@ -536,17 +532,17 @@ class CharacterSheetsFragment : Fragment() {
         
         try {
             MaterialAlertDialogBuilder(context)
-                .setTitle("Создать чарник?")
-                .setMessage("PDF успешно распарсен. Хотите создать чарник из этого листа?\n\nНазвание: ${character.name}\nСистема: $systemName")
-                .setPositiveButton("Создать чарник") { _, _ ->
+                .setTitle("Сохранить лист персонажа?")
+                .setMessage("PDF успешно распарсен. Хотите сохранить этот лист персонажа?\n\nНазвание: ${sheet.characterName}\nСистема: ${sheet.system}")
+                .setPositiveButton("Сохранить") { _, _ ->
                     if (isAdded && view != null) {
-                        saveCharacter(character)
+                        saveSheet(sheet)
                     }
                 }
                 .setNegativeButton("Отмена") { _, _ ->
                     if (isAdded && view != null) {
                         view?.let {
-                            Snackbar.make(it, "Чарник не создан", Snackbar.LENGTH_SHORT).show()
+                            Snackbar.make(it, "Лист не сохранён", Snackbar.LENGTH_SHORT).show()
                         }
                     }
                 }
@@ -565,21 +561,21 @@ class CharacterSheetsFragment : Fragment() {
         }
     }
     
-    private fun saveCharacter(character: com.fts.ttbros.data.model.Character) {
+    private fun saveSheet(sheet: CharacterSheet) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                characterRepository.createCharacter(character)
+                sheetRepository.saveSheet(sheet)
                 if (isAdded && view != null) {
                     view?.let {
-                        Snackbar.make(it, "Чарник создан! Теперь он доступен в разделе 'Персонажи'", Snackbar.LENGTH_LONG).show()
+                        Snackbar.make(it, "Лист персонажа сохранён! Теперь он доступен в разделе 'Документы' -> 'Листы персонажей'", Snackbar.LENGTH_LONG).show()
                     }
                     loadSheets()
                 }
             } catch (e: Exception) {
-                android.util.Log.e("CharacterSheetsFragment", "Error saving character: ${e.message}", e)
+                android.util.Log.e("CharacterSheetsFragment", "Error saving sheet: ${e.message}", e)
                 if (isAdded && view != null) {
                     view?.let {
-                        Snackbar.make(it, "Ошибка сохранения чарника: ${e.message}", Snackbar.LENGTH_LONG).show()
+                        Snackbar.make(it, "Ошибка сохранения листа: ${e.message}", Snackbar.LENGTH_LONG).show()
                     }
                 }
             }
