@@ -240,7 +240,7 @@ class CharacterSheetsFragment : Fragment() {
                 // Создаем CharacterSheet из загруженного PDF (как было раньше)
                 val sheet = CharacterSheet(
                     userId = userId,
-                    characterName = parsedData["name"] as? String ?: "Безымянный персонаж",
+                    characterName = "Загруженный лист", // Фиксированное название вместо парсинга
                     system = teamSystem,
                     pdfUrl = pdfUrl,
                     parsedData = parsedData,
@@ -515,14 +515,66 @@ class CharacterSheetsFragment : Fragment() {
             val skills = mutableMapOf<String, Int>()
             val stats = mutableMapOf<String, Any>()
             
-            // Basic attribute extraction (this would need to be customized per system)
+            // Улучшенный парсинг атрибутов и навыков для всех систем
             lines.forEach { line ->
-                // Look for common attribute patterns
-                val attributePattern = Regex("(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma|Сила|Ловкость|Выносливость|Интеллект|Мудрость|Харизма)\\s*:?\\s*(\\d+)", RegexOption.IGNORE_CASE)
-                attributePattern.find(line)?.let { match ->
+                val trimmedLine = line.trim()
+                
+                // Атрибуты D&D 5e
+                val dndAttributePattern = Regex("(Strength|Dexterity|Constitution|Intelligence|Wisdom|Charisma|Сила|Ловкость|Выносливость|Интеллект|Мудрость|Харизма)\\s*:?\\s*(\\d+)", RegexOption.IGNORE_CASE)
+                dndAttributePattern.find(trimmedLine)?.let { match ->
                     val attrName = match.groupValues[1]
                     val value = match.groupValues[2].toIntOrNull() ?: 0
                     attributes[attrName] = value
+                }
+                
+                // Атрибуты VTM 5e
+                val vtmAttributePattern = Regex("(Intelligence|Wits|Resolve|Strength|Dexterity|Stamina|Presence|Manipulation|Composure|Интеллект|Сообразительность|Решимость|Сила|Ловкость|Выносливость|Присутствие|Манипуляция|Самообладание)\\s*:?\\s*(\\d+)", RegexOption.IGNORE_CASE)
+                vtmAttributePattern.find(trimmedLine)?.let { match ->
+                    val attrName = match.groupValues[1]
+                    val value = match.groupValues[2].toIntOrNull() ?: 0
+                    attributes[attrName] = value
+                }
+                
+                // Навыки D&D 5e
+                val dndSkillPattern = Regex("(Acrobatics|Animal Handling|Arcana|Athletics|Deception|History|Insight|Intimidation|Investigation|Medicine|Nature|Perception|Performance|Persuasion|Religion|Sleight of Hand|Stealth|Survival)\\s*:?\\s*(\\d+)", RegexOption.IGNORE_CASE)
+                dndSkillPattern.find(trimmedLine)?.let { match ->
+                    val skillName = match.groupValues[1]
+                    val value = match.groupValues[2].toIntOrNull() ?: 0
+                    skills[skillName] = value
+                }
+                
+                // Навыки VTM 5e
+                val vtmSkillPattern = Regex("(Academics|Animal Ken|Athletics|Awareness|Brawl|Craft|Drive|Etiquette|Firearms|Investigation|Larceny|Leadership|Medicine|Melee|Occult|Performance|Persuasion|Science|Stealth|Streetwise|Subterfuge|Survival)\\s*:?\\s*(\\d+)", RegexOption.IGNORE_CASE)
+                vtmSkillPattern.find(trimmedLine)?.let { match ->
+                    val skillName = match.groupValues[1]
+                    val value = match.groupValues[2].toIntOrNull() ?: 0
+                    skills[skillName] = value
+                }
+                
+                // Статистики (HP, AC, и т.д.)
+                val hpPattern = Regex("(HP|Hit Points|Здоровье|ХП)\\s*:?\\s*(\\d+)", RegexOption.IGNORE_CASE)
+                hpPattern.find(trimmedLine)?.let { match ->
+                    val value = match.groupValues[2].toIntOrNull() ?: 0
+                    stats["HP"] = value
+                }
+                
+                val acPattern = Regex("(AC|Armor Class|Класс защиты|КЗ)\\s*:?\\s*(\\d+)", RegexOption.IGNORE_CASE)
+                acPattern.find(trimmedLine)?.let { match ->
+                    val value = match.groupValues[2].toIntOrNull() ?: 0
+                    stats["AC"] = value
+                }
+                
+                // Humanity/Willpower для VTM
+                val humanityPattern = Regex("(Humanity|Humanity Rating|Человечность)\\s*:?\\s*(\\d+)", RegexOption.IGNORE_CASE)
+                humanityPattern.find(trimmedLine)?.let { match ->
+                    val value = match.groupValues[2].toIntOrNull() ?: 0
+                    stats["Humanity"] = value
+                }
+                
+                val willpowerPattern = Regex("(Willpower|Willpower Rating|Сила воли)\\s*:?\\s*(\\d+)", RegexOption.IGNORE_CASE)
+                willpowerPattern.find(trimmedLine)?.let { match ->
+                    val value = match.groupValues[2].toIntOrNull() ?: 0
+                    stats["Willpower"] = value
                 }
             }
             

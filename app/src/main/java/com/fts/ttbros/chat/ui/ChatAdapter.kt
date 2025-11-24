@@ -24,7 +24,8 @@ class ChatAdapter(
     private val onPinMessage: ((String) -> Unit)? = null,
     private val onUnpinMessage: ((String) -> Unit)? = null,
     private val onPollClick: ((String) -> Unit)? = null, // pollId
-    private val onAddMaterial: ((ChatMessage) -> Unit)? = null // material message
+    private val onAddMaterial: ((ChatMessage) -> Unit)? = null, // material message (long click)
+    private val onMaterialClick: ((ChatMessage) -> Unit)? = null // material message (click)
 ) : ListAdapter<ChatMessage, ChatAdapter.MessageViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MessageViewHolder {
@@ -139,6 +140,18 @@ class ChatAdapter(
                 messageCard.strokeColor = ContextCompat.getColor(context, R.color.secondary)
                 // Semi-transparent orange background
                 messageCard.setCardBackgroundColor(ContextCompat.getColor(context, R.color.poll_background))
+            } else if (message.type == "material" && !message.attachmentId.isNullOrBlank()) {
+                // Handle material message - show as clickable
+                messageTextView.text = message.text
+                messageTextView.setOnClickListener {
+                    onMaterialClick?.invoke(message)
+                }
+                messageTextView.setTextColor(ContextCompat.getColor(context, R.color.secondary))
+                messageTextView.typeface = android.graphics.Typeface.DEFAULT_BOLD
+                
+                // Highlight material messages
+                messageCard.strokeWidth = 2
+                messageCard.strokeColor = ContextCompat.getColor(context, R.color.secondary)
             } else {
                 // Handle text
                 messageTextView.text = message.text

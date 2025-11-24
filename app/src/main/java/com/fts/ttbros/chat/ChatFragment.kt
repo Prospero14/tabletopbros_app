@@ -111,6 +111,9 @@ class ChatFragment : Fragment() {
             },
             onAddMaterial = { message ->
                 handleAddMaterial(message)
+            },
+            onMaterialClick = { message ->
+                handleMaterialClick(message)
             }
         )
         val layoutManager = LinearLayoutManager(requireContext()).apply {
@@ -884,6 +887,107 @@ class ChatFragment : Fragment() {
         super.onDestroyView()
         listenerRegistration?.remove()
         pollsRecyclerView = null
+    }
+    
+    private fun handleMaterialClick(message: ChatMessage) {
+        val profile = userProfile ?: return
+        val teamId = profile.teamId ?: return
+        val attachmentId = message.attachmentId ?: return
+        
+        // Показываем диалог с опциями: открыть или добавить в материалы
+        val context = context ?: return
+        if (!isAdded || view == null) return
+        
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
+            .setTitle("Материал")
+            .setItems(arrayOf("Открыть", "Добавить в материалы")) { _, which ->
+                when (which) {
+                    0 -> {
+                        // Открыть материал
+                        openMaterial(teamId, attachmentId)
+                    }
+                    1 -> {
+                        // Добавить в материалы
+                        handleAddMaterial(message)
+                    }
+                }
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+    
+    private fun openMaterial(teamId: String, documentId: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                val docSnapshot = firestore.collection("teams")
+                    .document(teamId)
+                    .collection("documents")
+                    .document(documentId)
+                    .get()
+                    .await()
+                
+                if (docSnapshot.exists()) {
+                    val document = docSnapshot.toObject(com.fts.ttbros.data.model.Document::class.java)
+                        ?.copy(id = docSnapshot.id)
+                    
+                    if (document != null) {
+                        // Скачиваем и открываем файл
+                        val docsDir = java.io.File(requireContext().filesDir, "documents")
+                        docsDir.mkdirs()
+                        val file = java.io.File(docsDir, "${document.id}_${document.fileName}")
+                        
+                        if (file.exists()) {
+                            openDocument(file)
+                        } else {
+                            // Скачиваем файл
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                java.net.URL(document.downloadUrl).openStream().use { input ->
+                                    java.io.FileOutputStream(file).use { output ->
+                                        input.copyTo(output)
+                                    }
+                                }
+                            }
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                                if (isAdded && view != null) {
+                                    openDocument(file)
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("ChatFragment", "Error opening material: ${e.message}", e)
+                view?.let {
+                    Snackbar.make(it, "Ошибка открытия материала: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    
+    private fun openDocument(file: java.io.File) {
+        val context = context ?: return
+        if (!isAdded || view == null) return
+        
+        try {
+            if (!file.exists() || !file.canRead() || file.length() == 0L) {
+                view?.let {
+                    Snackbar.make(it, "Файл недоступен", Snackbar.LENGTH_SHORT).show()
+                }
+                return
+            }
+            
+            val bundle = Bundle().apply {
+                putString("filePath", file.absolutePath)
+            }
+            
+            findNavController().navigate(R.id.action_teamChatFragment_to_pdfViewerFragment, bundle)
+        } catch (e: Exception) {
+            android.util.Log.e("ChatFragment", "Error opening document: ${e.message}", e)
+            view?.let {
+                Snackbar.make(it, "Ошибка открытия файла: ${e.message}", Snackbar.LENGTH_SHORT).show()
+            }
+        }
     }
 
     companion object {
