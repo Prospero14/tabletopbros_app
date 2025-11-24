@@ -52,22 +52,22 @@ class DocumentRepository {
         val metadata = storageRef.metadata.await()
         val size = metadata.sizeBytes
 
-        // 2. Save to Firestore
-        val doc = Document(
-            teamId = teamId,
-            title = title,
-            fileName = fileName,
-            downloadUrl = downloadUrl,
-            uploadedBy = userId,
-            uploadedByName = userName,
-            timestamp = Timestamp.now(),
-            sizeBytes = size
+        // 2. Save to Firestore - convert to HashMap to avoid serialization issues
+        val docMap = hashMapOf(
+            "teamId" to teamId,
+            "title" to title,
+            "fileName" to fileName,
+            "downloadUrl" to downloadUrl,
+            "uploadedBy" to userId,
+            "uploadedByName" to userName,
+            "timestamp" to Timestamp.now(),
+            "sizeBytes" to size
         )
         
         db.collection("teams")
             .document(teamId)
             .collection("documents")
-            .add(doc)
+            .add(docMap)
             .await()
     }
 

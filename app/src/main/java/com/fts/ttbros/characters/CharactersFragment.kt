@@ -71,26 +71,60 @@ class CharactersFragment : Fragment() {
     }
     
     private fun setupTabs() {
-        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("All"))
-        binding.tabLayout.addTab(binding.tabLayout.newTab().setText(getString(R.string.vampire_masquerade)))
-        binding.tabLayout.addTab(binding.tabLayout.newTab().setText(getString(R.string.dungeons_dragons)))
-        binding.tabLayout.addTab(binding.tabLayout.newTab().setText(getString(R.string.viedzmin_2e)))
-        
-        binding.tabLayout.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
-            override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
-                filterList()
+        lifecycleScope.launch {
+            try {
+                val profile = userRepository.currentProfile()
+                val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
+                val teamSystem = currentTeam?.teamSystem
+                
+                // Always add "All" tab
+                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("All"))
+                
+                // Add tab for team's system if it exists
+                if (!teamSystem.isNullOrBlank()) {
+                    val systemName = when (teamSystem) {
+                        "vtm_5e" -> getString(R.string.vampire_masquerade)
+                        "dnd_5e" -> getString(R.string.dungeons_dragons)
+                        "viedzmin_2e" -> getString(R.string.viedzmin_2e)
+                        else -> teamSystem
+                    }
+                    binding.tabLayout.addTab(binding.tabLayout.newTab().setText(systemName))
+                }
+                
+                binding.tabLayout.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
+                    override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
+                        filterList(teamSystem)
+                    }
+                    override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
+                    override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
+                })
+            } catch (e: Exception) {
+                android.util.Log.e("CharactersFragment", "Error setting up tabs: ${e.message}", e)
+                // Fallback: just show "All" tab
+                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("All"))
+                binding.tabLayout.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
+                    override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
+                        filterList(null)
+                    }
+                    override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
+                    override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
+                })
             }
-            override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
-            override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
-        })
+        }
     }
     
-    private fun filterList() {
+    private fun filterList(teamSystem: String?) {
         val selectedTabPosition = binding.tabLayout.selectedTabPosition
         val filteredList = when (selectedTabPosition) {
-            1 -> allCharacters.filter { it.system == "vtm_5e" }
-            2 -> allCharacters.filter { it.system == "dnd_5e" }
-            3 -> allCharacters.filter { it.system == "viedzmin_2e" }
+            0 -> allCharacters // "All" tab
+            1 -> {
+                // Second tab is the team's system
+                if (!teamSystem.isNullOrBlank()) {
+                    allCharacters.filter { it.system == teamSystem }
+                } else {
+                    allCharacters
+                }
+            }
             else -> allCharacters
         }
         adapter.submitList(filteredList)
@@ -102,7 +136,11 @@ class CharactersFragment : Fragment() {
         lifecycleScope.launch {
             try {
                 allCharacters = repository.getCharacters()
-                filterList()
+                // Get team system for filtering
+                val profile = userRepository.currentProfile()
+                val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
+                val teamSystem = currentTeam?.teamSystem
+                filterList(teamSystem)
             } catch (e: Exception) {
                 Snackbar.make(binding.root, "Error loading characters: ${e.message}", Snackbar.LENGTH_LONG).show()
             } finally {
