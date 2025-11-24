@@ -155,19 +155,6 @@ class CharactersFragment : Fragment() {
         }
     }
     
-    private fun createCharacterFromBuilder(builder: CharacterSheet) {
-        try {
-            val bundle = Bundle().apply {
-                putString("characterId", null)
-                putString("system", builder.system)
-                putString("builderId", builder.id) // Передаем ID билдера
-            }
-            findNavController().navigate(R.id.action_charactersFragment_to_characterEditorFragment, bundle)
-        } catch (e: Exception) {
-            android.util.Log.e("CharactersFragment", "Navigation error: ${e.message}", e)
-            Snackbar.make(binding.root, "Ошибка открытия редактора персонажа", Snackbar.LENGTH_SHORT).show()
-        }
-    }
     
     private fun checkSystemAndAddCharacter() {
         viewLifecycleOwner.lifecycleScope.launch {
