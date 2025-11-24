@@ -39,8 +39,7 @@ class ChatFragment : Fragment() {
     private lateinit var messageInputContainer: LinearLayout
     private lateinit var messageEditText: TextInputEditText
     private lateinit var sendButton: MaterialButton
-    private lateinit var createPollButton: MaterialButton
-    private lateinit var diceRollButton: MaterialButton
+    private lateinit var menuButton: MaterialButton
     private lateinit var pinnedMessageContainer: androidx.cardview.widget.CardView
     private lateinit var pinnedMessageText: TextView
     
@@ -90,8 +89,7 @@ class ChatFragment : Fragment() {
         messageInputContainer = view.findViewById(R.id.messageInputContainer)
         messageEditText = view.findViewById(R.id.messageEditText)
         sendButton = view.findViewById(R.id.sendButton)
-        createPollButton = view.findViewById(R.id.createPollButton)
-        diceRollButton = view.findViewById(R.id.diceRollButton)
+        menuButton = view.findViewById(R.id.menuButton)
         pinnedMessageContainer = view.findViewById(R.id.pinnedMessageContainer)
         pinnedMessageText = view.findViewById(R.id.pinnedMessageText)
         
@@ -135,17 +133,7 @@ class ChatFragment : Fragment() {
         pollsRecyclerView?.adapter = pollsAdapter
 
         sendButton.setOnClickListener { sendMessage() }
-        createPollButton.setOnClickListener { showCreatePollDialog() }
-        diceRollButton.setOnClickListener {
-            try {
-                showDiceRollDialog()
-            } catch (e: Exception) {
-                android.util.Log.e("ChatFragment", "Error on dice roll button click: ${e.message}", e)
-                view?.let {
-                    Snackbar.make(it, "Ошибка: ${e.message}", Snackbar.LENGTH_SHORT).show()
-                }
-            }
-        }
+        setupMenuButton()
         observeProfile()
     }
 
@@ -275,6 +263,43 @@ class ChatFragment : Fragment() {
                         Snackbar.make(it, errorMessage, Snackbar.LENGTH_LONG).show()
                     }
                     pollsRecyclerView?.isVisible = false
+                }
+            }
+        }
+    }
+    
+    private fun setupMenuButton() {
+        menuButton.setOnClickListener { view ->
+            try {
+                val popupMenu = android.widget.PopupMenu(requireContext(), view, android.view.Gravity.TOP)
+                popupMenu.menuInflater.inflate(com.fts.ttbros.R.menu.chat_actions_menu, popupMenu.menu)
+                
+                popupMenu.setOnMenuItemClickListener { item ->
+                    when (item.itemId) {
+                        com.fts.ttbros.R.id.action_create_poll -> {
+                            showCreatePollDialog()
+                            true
+                        }
+                        com.fts.ttbros.R.id.action_dice_roll -> {
+                            try {
+                                showDiceRollDialog()
+                            } catch (e: Exception) {
+                                android.util.Log.e("ChatFragment", "Error on dice roll menu click: ${e.message}", e)
+                                this.view?.let {
+                                    Snackbar.make(it, "Ошибка: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                                }
+                            }
+                            true
+                        }
+                        else -> false
+                    }
+                }
+                
+                popupMenu.show()
+            } catch (e: Exception) {
+                android.util.Log.e("ChatFragment", "Error showing menu: ${e.message}", e)
+                this.view?.let {
+                    Snackbar.make(it, "Ошибка открытия меню: ${e.message}", Snackbar.LENGTH_SHORT).show()
                 }
             }
         }

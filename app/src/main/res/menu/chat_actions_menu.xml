@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_create_poll"
+        android:title="Создать опрос"
+        android:icon="@android:drawable/ic_menu_sort_by_size"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_dice_roll"
+        android:title="Бросок кубов"
+        android:icon="@android:drawable/ic_menu_help"
+        app:showAsAction="never" />
+</menu>
+

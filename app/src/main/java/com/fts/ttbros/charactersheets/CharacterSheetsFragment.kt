@@ -333,6 +333,15 @@ class CharacterSheetsFragment : Fragment() {
             inputStream?.use { stream ->
                 parsePdfContent(stream)
             } ?: emptyMap<String, Any>()
+        } catch (e: SecurityException) {
+            android.util.Log.e("CharacterSheetsFragment", "SecurityException parsing PDF: ${e.message}", e)
+            emptyMap<String, Any>()
+        } catch (e: java.io.FileNotFoundException) {
+            android.util.Log.e("CharacterSheetsFragment", "FileNotFoundException parsing PDF: ${e.message}", e)
+            emptyMap<String, Any>()
+        } catch (e: OutOfMemoryError) {
+            android.util.Log.e("CharacterSheetsFragment", "OutOfMemoryError parsing PDF: ${e.message}", e)
+            emptyMap<String, Any>()
         } catch (e: Exception) {
             android.util.Log.e("CharacterSheetsFragment", "Error parsing PDF: ${e.message}", e)
             emptyMap<String, Any>()
@@ -346,9 +355,32 @@ class CharacterSheetsFragment : Fragment() {
         var document: com.tom_roush.pdfbox.pdmodel.PDDocument? = null
         return try {
             // Try to read text from PDF using PDFBox
-            document = com.tom_roush.pdfbox.pdmodel.PDDocument.load(inputStream)
-            val stripper = com.tom_roush.pdfbox.text.PDFTextStripper()
-            val text = stripper.getText(document)
+            document = try {
+                com.tom_roush.pdfbox.pdmodel.PDDocument.load(inputStream)
+            } catch (e: OutOfMemoryError) {
+                android.util.Log.e("CharacterSheetsFragment", "OutOfMemoryError loading PDF: ${e.message}", e)
+                throw e
+            } catch (e: Exception) {
+                android.util.Log.e("CharacterSheetsFragment", "Error loading PDF document: ${e.message}", e)
+                throw e
+            }
+            
+            val stripper = try {
+                com.tom_roush.pdfbox.text.PDFTextStripper()
+            } catch (e: Exception) {
+                android.util.Log.e("CharacterSheetsFragment", "Error creating PDFTextStripper: ${e.message}", e)
+                document?.close()
+                throw e
+            }
+            
+            val text = try {
+                stripper.getText(document)
+            } catch (e: Exception) {
+                android.util.Log.e("CharacterSheetsFragment", "Error extracting text from PDF: ${e.message}", e)
+                document?.close()
+                throw e
+            }
+            
             document.close()
             document = null
             
@@ -390,6 +422,21 @@ class CharacterSheetsFragment : Fragment() {
             parsedData["rawText"] = text // Store raw text for reference
             
             parsedData
+        } catch (e: OutOfMemoryError) {
+            android.util.Log.e("CharacterSheetsFragment", "OutOfMemoryError parsing PDF content: ${e.message}", e)
+            // Ensure document is closed even if error occurs
+            try {
+                document?.close()
+            } catch (closeException: Exception) {
+                android.util.Log.e("CharacterSheetsFragment", "Error closing PDF document: ${closeException.message}", closeException)
+            }
+            mapOf(
+                "name" to "Безымянный персонаж",
+                "system" to "unknown",
+                "attributes" to emptyMap<String, Int>(),
+                "skills" to emptyMap<String, Int>(),
+                "stats" to emptyMap<String, Any>()
+            )
         } catch (e: Exception) {
             android.util.Log.e("CharacterSheetsFragment", "Error parsing PDF content: ${e.message}", e)
             // Ensure document is closed even if error occurs

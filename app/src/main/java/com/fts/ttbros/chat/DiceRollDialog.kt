@@ -48,144 +48,219 @@ class DiceRollDialog(
             return super.onCreateDialog(savedInstanceState)
         }
         
-        val builder = MaterialAlertDialogBuilder(context)
-        val inflater = activity.layoutInflater
-        val view = inflater.inflate(com.fts.ttbros.R.layout.dialog_dice_roll, null)
+        return try {
+            val builder = MaterialAlertDialogBuilder(context)
+            val inflater = activity.layoutInflater
+            val view = inflater.inflate(com.fts.ttbros.R.layout.dialog_dice_roll, null)
 
-        diceTypeSpinner = view.findViewById(com.fts.ttbros.R.id.diceTypeSpinner)
-        quantityEditText = view.findViewById(com.fts.ttbros.R.id.quantityEditText)
-        resultTextView = view.findViewById(com.fts.ttbros.R.id.resultTextView)
-        rollButton = view.findViewById(com.fts.ttbros.R.id.rollButton)
-        sendButton = view.findViewById(com.fts.ttbros.R.id.sendButton)
-        sendToTeamCheckbox = view.findViewById(com.fts.ttbros.R.id.sendToTeamCheckbox)
-        sendToMasterCheckbox = view.findViewById(com.fts.ttbros.R.id.sendToMasterCheckbox)
-        sendToLabelTextView = view.findViewById(com.fts.ttbros.R.id.sendToLabelTextView)
-        
-        // Скрываем чекбокс "Мастеру" если пользователь сам мастер
-        if (isMaster) {
-            sendToMasterCheckbox.visibility = android.view.View.GONE
+            diceTypeSpinner = view.findViewById(com.fts.ttbros.R.id.diceTypeSpinner)
+            quantityEditText = view.findViewById(com.fts.ttbros.R.id.quantityEditText)
+            resultTextView = view.findViewById(com.fts.ttbros.R.id.resultTextView)
+            rollButton = view.findViewById(com.fts.ttbros.R.id.rollButton)
+            sendButton = view.findViewById(com.fts.ttbros.R.id.sendButton)
+            sendToTeamCheckbox = view.findViewById(com.fts.ttbros.R.id.sendToTeamCheckbox)
+            sendToMasterCheckbox = view.findViewById(com.fts.ttbros.R.id.sendToMasterCheckbox)
+            sendToLabelTextView = view.findViewById(com.fts.ttbros.R.id.sendToLabelTextView)
+            
+            // Проверяем что все view найдены
+            if (!::diceTypeSpinner.isInitialized || !::quantityEditText.isInitialized || 
+                !::resultTextView.isInitialized || !::rollButton.isInitialized || 
+                !::sendButton.isInitialized || !::sendToTeamCheckbox.isInitialized || 
+                !::sendToMasterCheckbox.isInitialized || !::sendToLabelTextView.isInitialized) {
+                android.util.Log.e("DiceRollDialog", "Failed to find all views")
+                return MaterialAlertDialogBuilder(context)
+                    .setTitle("Ошибка")
+                    .setMessage("Не удалось инициализировать диалог")
+                    .setPositiveButton("OK", null)
+                    .create()
+            }
+            
+            // Скрываем чекбокс "Мастеру" если пользователь сам мастер
+            if (isMaster) {
+                sendToMasterCheckbox.visibility = android.view.View.GONE
+            }
+
+            setupDiceSpinner()
+            setupButtons()
+
+            val dialog = builder
+                .setTitle("Бросок кубиков")
+                .setView(view)
+                .setNegativeButton("Отмена", null)
+                .create()
+
+            // Устанавливаем размер диалога
+            try {
+                dialog.window?.setLayout(
+                    WindowManager.LayoutParams.MATCH_PARENT,
+                    WindowManager.LayoutParams.WRAP_CONTENT
+                )
+            } catch (e: Exception) {
+                android.util.Log.e("DiceRollDialog", "Error setting dialog window size: ${e.message}", e)
+            }
+
+            dialog
+        } catch (e: Exception) {
+            android.util.Log.e("DiceRollDialog", "Error creating dialog: ${e.message}", e)
+            MaterialAlertDialogBuilder(context ?: activity ?: return super.onCreateDialog(savedInstanceState))
+                .setTitle("Ошибка")
+                .setMessage("Не удалось открыть диалог: ${e.message}")
+                .setPositiveButton("OK", null)
+                .create()
         }
-
-        setupDiceSpinner()
-        setupButtons()
-
-        val dialog = builder
-            .setTitle("Бросок кубиков")
-            .setView(view)
-            .setNegativeButton("Отмена", null)
-            .create()
-
-        // Устанавливаем размер диалога
-        dialog.window?.setLayout(
-            WindowManager.LayoutParams.MATCH_PARENT,
-            WindowManager.LayoutParams.WRAP_CONTENT
-        )
-
-        return dialog
     }
 
     private fun setupDiceSpinner() {
-        val context = context ?: return
-        val diceTypes = listOf(
-            "d2", "d4", "d6", "d8", "d10", "d12", "d20", "d100"
-        )
-        val adapter = ArrayAdapter(
-            context,
-            android.R.layout.simple_spinner_item,
-            diceTypes
-        )
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        diceTypeSpinner.adapter = adapter
+        try {
+            val context = context ?: return
+            if (!::diceTypeSpinner.isInitialized) return
+            
+            val diceTypes = listOf(
+                "d2", "d4", "d6", "d8", "d10", "d12", "d20", "d100"
+            )
+            val adapter = ArrayAdapter(
+                context,
+                android.R.layout.simple_spinner_item,
+                diceTypes
+            )
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+            diceTypeSpinner.adapter = adapter
+        } catch (e: Exception) {
+            android.util.Log.e("DiceRollDialog", "Error setting up dice spinner: ${e.message}", e)
+        }
     }
 
     private fun setupButtons() {
-        rollButton.setOnClickListener {
-            rollDice()
-        }
-
-        sendButton.setOnClickListener {
-            if (lastRollResult != null) {
-                val sendOptions = DiceRollSendOptions(
-                    sendToTeam = sendToTeamCheckbox.isChecked,
-                    sendToMaster = sendToMasterCheckbox.isChecked && !isMaster
-                )
-                
-                // Проверяем, что хотя бы один чекбокс выбран
-                if (sendOptions.sendToTeam || sendOptions.sendToMaster) {
-                    onRollResult(lastRollResult!!, sendOptions)
-                    dismiss()
-                } else {
-                    // Показываем сообщение, что нужно выбрать хотя бы один чат
+        try {
+            if (!::rollButton.isInitialized || !::sendButton.isInitialized) return
+            
+            rollButton.setOnClickListener {
+                try {
+                    rollDice()
+                } catch (e: Exception) {
+                    android.util.Log.e("DiceRollDialog", "Error in rollDice: ${e.message}", e)
                     val context = context
                     if (context != null) {
                         android.widget.Toast.makeText(
                             context,
-                            "Выберите хотя бы один чат для отправки",
+                            "Ошибка броска: ${e.message}",
                             android.widget.Toast.LENGTH_SHORT
                         ).show()
                     }
                 }
             }
-        }
 
-        // Изначально кнопка отправки неактивна и скрыта
-        sendButton.isEnabled = false
-        sendButton.visibility = android.view.View.GONE
-        sendToLabelTextView.visibility = android.view.View.GONE
-        sendToTeamCheckbox.visibility = android.view.View.GONE
-        sendToMasterCheckbox.visibility = android.view.View.GONE
+            sendButton.setOnClickListener {
+                try {
+                    if (lastRollResult != null) {
+                        val sendOptions = DiceRollSendOptions(
+                            sendToTeam = if (::sendToTeamCheckbox.isInitialized) sendToTeamCheckbox.isChecked else false,
+                            sendToMaster = if (::sendToMasterCheckbox.isInitialized) sendToMasterCheckbox.isChecked && !isMaster else false
+                        )
+                        
+                        // Проверяем, что хотя бы один чекбокс выбран
+                        if (sendOptions.sendToTeam || sendOptions.sendToMaster) {
+                            onRollResult(lastRollResult!!, sendOptions)
+                            dismiss()
+                        } else {
+                            // Показываем сообщение, что нужно выбрать хотя бы один чат
+                            val context = context
+                            if (context != null) {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Выберите хотя бы один чат для отправки",
+                                    android.widget.Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("DiceRollDialog", "Error in sendButton click: ${e.message}", e)
+                }
+            }
+
+            // Изначально кнопка отправки неактивна и скрыта
+            sendButton.isEnabled = false
+            sendButton.visibility = android.view.View.GONE
+            if (::sendToLabelTextView.isInitialized) {
+                sendToLabelTextView.visibility = android.view.View.GONE
+            }
+            if (::sendToTeamCheckbox.isInitialized) {
+                sendToTeamCheckbox.visibility = android.view.View.GONE
+            }
+            if (::sendToMasterCheckbox.isInitialized) {
+                sendToMasterCheckbox.visibility = android.view.View.GONE
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("DiceRollDialog", "Error setting up buttons: ${e.message}", e)
+        }
     }
 
     private fun rollDice() {
-        val diceType = diceTypeSpinner.selectedItem.toString()
-        val sides = when (diceType) {
-            "d2" -> 2
-            "d4" -> 4
-            "d6" -> 6
-            "d8" -> 8
-            "d10" -> 10
-            "d12" -> 12
-            "d20" -> 20
-            "d100" -> 100
-            else -> 6
-        }
-
-        val quantityText = quantityEditText.text.toString().trim()
-        val quantity = if (quantityText.isBlank()) {
-            1
-        } else {
-            quantityText.toIntOrNull()?.coerceIn(1, 100) ?: 1
-        }
-
-        // Бросаем кубики
-        val results = mutableListOf<Int>()
-        repeat(quantity) {
-            results.add(Random.nextInt(1, sides + 1))
-        }
-
-        val total = results.sum()
-        val resultText = buildString {
-            append("🎲 ")
-            append(if (quantity > 1) "$quantity$diceType" else diceType)
-            append(": ")
-            if (quantity > 1) {
-                append("[${results.joinToString(", ")}]")
-                append(" = $total")
-            } else {
-                append("$total")
+        try {
+            if (!::diceTypeSpinner.isInitialized || !::quantityEditText.isInitialized || 
+                !::resultTextView.isInitialized || !::sendButton.isInitialized) {
+                android.util.Log.e("DiceRollDialog", "Views not initialized in rollDice")
+                return
             }
-        }
+            
+            val diceType = diceTypeSpinner.selectedItem?.toString() ?: "d6"
+            val sides = when (diceType) {
+                "d2" -> 2
+                "d4" -> 4
+                "d6" -> 6
+                "d8" -> 8
+                "d10" -> 10
+                "d12" -> 12
+                "d20" -> 20
+                "d100" -> 100
+                else -> 6
+            }
 
-        resultTextView.text = resultText
-        lastRollResult = resultText
-        
-        // Показываем кнопку отправки и чекбоксы после броска
-        sendButton.isEnabled = true
-        sendButton.visibility = android.view.View.VISIBLE
-        sendToLabelTextView.visibility = android.view.View.VISIBLE
-        sendToTeamCheckbox.visibility = android.view.View.VISIBLE
-        if (!isMaster) {
-            sendToMasterCheckbox.visibility = android.view.View.VISIBLE
+            val quantityText = quantityEditText.text?.toString()?.trim() ?: "1"
+            val quantity = if (quantityText.isBlank()) {
+                1
+            } else {
+                quantityText.toIntOrNull()?.coerceIn(1, 100) ?: 1
+            }
+
+            // Бросаем кубики
+            val results = mutableListOf<Int>()
+            repeat(quantity) {
+                results.add(Random.nextInt(1, sides + 1))
+            }
+
+            val total = results.sum()
+            val resultText = buildString {
+                append("🎲 ")
+                append(if (quantity > 1) "$quantity$diceType" else diceType)
+                append(": ")
+                if (quantity > 1) {
+                    append("[${results.joinToString(", ")}]")
+                    append(" = $total")
+                } else {
+                    append("$total")
+                }
+            }
+
+            resultTextView.text = resultText
+            lastRollResult = resultText
+            
+            // Показываем кнопку отправки и чекбоксы после броска
+            sendButton.isEnabled = true
+            sendButton.visibility = android.view.View.VISIBLE
+            if (::sendToLabelTextView.isInitialized) {
+                sendToLabelTextView.visibility = android.view.View.VISIBLE
+            }
+            if (::sendToTeamCheckbox.isInitialized) {
+                sendToTeamCheckbox.visibility = android.view.View.VISIBLE
+            }
+            if (!isMaster && ::sendToMasterCheckbox.isInitialized) {
+                sendToMasterCheckbox.visibility = android.view.View.VISIBLE
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("DiceRollDialog", "Error in rollDice: ${e.message}", e)
+            throw e
         }
     }
 }

@@ -106,11 +106,23 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/menuButton"
+            style="@style/Widget.MaterialComponents.Button.IconButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            app:icon="@drawable/ic_more_vert"
+            app:iconTint="@color/primary"
+            android:contentDescription="Меню"
+            android:layout_marginEnd="8dp" />
+
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"
-            android:layout_weight="1"
+            android:layout_weight="3"
+            android:minWidth="0dp"
             android:hint="@string/chat_hint">
 
             <com.google.android.material.textfield.TextInputEditText
@@ -123,30 +135,14 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/createPollButton"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            app:icon="@android:drawable/ic_menu_sort_by_size"
-            android:text="Опрос"
-            android:contentDescription="@string/create_poll"
-            android:layout_marginEnd="4dp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/diceRollButton"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🎲"
-            android:contentDescription="Бросок кубов"
-            android:layout_marginEnd="4dp" />
-
-        <com.google.android.material.button.MaterialButton
             android:id="@+id/sendButton"
-            style="@style/Widget.MaterialComponents.Button.Icon"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="@string/chat_send" />
+            style="@style/Widget.MaterialComponents.Button.IconButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            app:icon="@drawable/ic_send"
+            app:iconTint="@color/primary"
+            android:contentDescription="@string/chat_send" />
 
     </LinearLayout>
 
