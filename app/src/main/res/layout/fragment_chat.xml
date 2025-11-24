@@ -106,13 +106,19 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
-        <ImageButton
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/menuButton"
+            style="@style/Widget.MaterialComponents.Button.Icon"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_more_vert"
-            app:tint="@color/primary"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:insetLeft="0dp"
+            android:insetRight="0dp"
+            android:padding="12dp"
+            app:icon="@drawable/ic_more_vert"
+            app:iconTint="@color/primary"
+            app:iconGravity="textStart"
             android:contentDescription="Меню"
             android:layout_marginEnd="8dp" />
 
@@ -133,13 +139,19 @@
 
         </com.google.android.material.textfield.TextInputLayout>
 
-        <ImageButton
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/sendButton"
+            style="@style/Widget.MaterialComponents.Button.Icon"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_send"
-            app:tint="@color/primary"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:insetLeft="0dp"
+            android:insetRight="0dp"
+            android:padding="12dp"
+            app:icon="@drawable/ic_send"
+            app:iconTint="@color/primary"
+            app:iconGravity="textStart"
             android:contentDescription="@string/chat_send" />
 
     </LinearLayout>

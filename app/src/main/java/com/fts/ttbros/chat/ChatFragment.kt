@@ -38,8 +38,8 @@ class ChatFragment : Fragment() {
     private lateinit var messagesRecyclerView: RecyclerView
     private lateinit var messageInputContainer: LinearLayout
     private lateinit var messageEditText: TextInputEditText
-    private lateinit var sendButton: android.widget.ImageButton
-    private lateinit var menuButton: android.widget.ImageButton
+    private lateinit var sendButton: MaterialButton
+    private lateinit var menuButton: MaterialButton
     private lateinit var pinnedMessageContainer: androidx.cardview.widget.CardView
     private lateinit var pinnedMessageText: TextView
     
