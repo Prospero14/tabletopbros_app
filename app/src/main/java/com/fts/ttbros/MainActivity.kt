@@ -95,18 +95,112 @@ class MainActivity : AppCompatActivity() {
         )
         
         binding.toolbar.setNavigationIcon(R.drawable.ic_menu)
+        binding.toolbar.setNavigationOnClickListener {
+            binding.drawerLayout.openDrawer(GravityCompat.END)
+        }
+
+        setupActionBarWithNavController(navController, appBarConfiguration)
+        binding.navigationView.setupWithNavController(navController)
+        binding.navigationView.setNavigationItemSelectedListener { item ->
+            if (isNavigating) return@setNavigationItemSelectedListener false
+
+            when (item.itemId) {
+                R.id.menu_show_code -> {
+                    binding.drawerLayout.closeDrawer(GravityCompat.END)
+                    showCodeDialog()
+                    true
+                }
+                R.id.menu_logout -> {
+                    binding.drawerLayout.closeDrawer(GravityCompat.END)
+                    logout()
+                    true
+                }
+                R.id.charactersFragment -> {
+                    // Always pop to root of characters tab to show list
+                    isNavigating = true
+                    try {
+                        if (navController.currentDestination?.id != R.id.charactersFragment) {
+                            val navOptions = NavOptions.Builder()
+                                .setEnterAnim(R.anim.slide_in_right)
+                                .setExitAnim(R.anim.slide_out_left)
+                                .setPopEnterAnim(R.anim.slide_in_left)
+                                .setPopExitAnim(R.anim.slide_out_right)
+                                .setPopUpTo(R.id.charactersFragment, false)
+                                .build()
+                            navController.navigate(R.id.charactersFragment, null, navOptions)
+                        }
+                    } catch (e: Exception) {
+                        // If navigation fails, try simple navigate with animations
+                        try {
+                            val navOptions = androidx.navigation.NavOptions.Builder()
+                                .setEnterAnim(R.anim.slide_in_right)
+                                .setExitAnim(R.anim.slide_out_left)
+                                .setPopEnterAnim(R.anim.slide_in_left)
+                                .setPopExitAnim(R.anim.slide_out_right)
+                                .build()
+                            navController.navigate(R.id.charactersFragment, null, navOptions)
+                        } catch (e2: Exception) {
+                            android.util.Log.e("MainActivity", "Navigation error: ${e2.message}", e2)
+                        }
+                    } finally {
+                        binding.root.postDelayed({
+                            isNavigating = false
+                        }, 500)
+                    }
+                    binding.drawerLayout.closeDrawer(GravityCompat.END)
+                    true
+                }
+                else -> {
+                    // Add smooth animations for menu transitions
+                    isNavigating = true
+                    val navOptions = NavOptions.Builder()
+                        .setEnterAnim(R.anim.slide_in_right)
+                        .setExitAnim(R.anim.slide_out_left)
+                        .setPopEnterAnim(R.anim.slide_in_left)
+                        .setPopExitAnim(R.anim.slide_out_right)
+                        .build()
+                    
+                    try {
+                        navController.navigate(item.itemId, null, navOptions)
+                        binding.drawerLayout.closeDrawer(GravityCompat.END)
+                        // Reset flag after delay
+                        binding.root.postDelayed({
+                            isNavigating = false
+                        }, 500)
+                        true
+                    } catch (e: Exception) {
+                        android.util.Log.e("MainActivity", "Navigation error: ${e.message}", e)
+                        try {
+                            NavigationUI.onNavDestinationSelected(item, navController)
+                        } catch (e2: Exception) {
+                            android.util.Log.e("MainActivity", "NavigationUI error: ${e2.message}", e2)
+                        }
+                        binding.drawerLayout.closeDrawer(GravityCompat.END)
+                        isNavigating = false
+                        true
+                    }
+                }
+            }
+        }
         
         // Создать каналы уведомлений
         NotificationHelper.createNotificationChannels(this)
         
         // Перепланировать все уведомления о событиях при запуске
         EventNotificationScheduler.rescheduleAllEventNotifications(this)
+        
+        setupHeader()
+        setupFooter()
     }
 
     private fun setupFooter() {
-        // Using findViewById because binding might not be updated until rebuild
-        findViewById<View>(R.id.footerMenuButton)?.setOnClickListener {
-            binding.drawerLayout.openDrawer(GravityCompat.END)
+        // Используем binding для доступа к кнопке
+        binding.root.findViewById<View>(R.id.footerMenuButton)?.setOnClickListener {
+            try {
+                binding.drawerLayout.openDrawer(GravityCompat.END)
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Error opening drawer: ${e.message}", e)
+            }
         }
     }
 

@@ -269,9 +269,15 @@ class ChatFragment : Fragment() {
     }
     
     private fun setupMenuButton() {
-        menuButton.setOnClickListener { view ->
+        menuButton.setOnClickListener { anchorView ->
+            if (!isAdded || view == null) {
+                android.util.Log.w("ChatFragment", "Fragment not attached, cannot show menu")
+                return@setOnClickListener
+            }
+            
             try {
-                val popupMenu = android.widget.PopupMenu(requireContext(), view, android.view.Gravity.TOP)
+                val context = requireContext()
+                val popupMenu = android.widget.PopupMenu(context, anchorView, android.view.Gravity.TOP)
                 popupMenu.menuInflater.inflate(com.fts.ttbros.R.menu.chat_actions_menu, popupMenu.menu)
                 
                 popupMenu.setOnMenuItemClickListener { item ->
@@ -293,6 +299,10 @@ class ChatFragment : Fragment() {
                         }
                         else -> false
                     }
+                }
+                
+                popupMenu.setOnDismissListener {
+                    // Меню закрыто
                 }
                 
                 popupMenu.show()
