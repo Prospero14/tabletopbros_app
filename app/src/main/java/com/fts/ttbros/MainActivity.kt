@@ -34,6 +34,8 @@ import com.fts.ttbros.data.model.UserRole
 import com.fts.ttbros.data.repository.TeamRepository
 import com.fts.ttbros.data.repository.UserRepository
 import com.fts.ttbros.databinding.ActivityMainBinding
+import com.fts.ttbros.notifications.EventNotificationScheduler
+import com.fts.ttbros.notifications.NotificationHelper
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
@@ -167,6 +169,12 @@ class MainActivity : AppCompatActivity() {
         setupHeader()
         setupFooter()
         setupSwipeGesture()
+        
+        // Создать каналы уведомлений
+        NotificationHelper.createNotificationChannels(this)
+        
+        // Перепланировать все уведомления о событиях при запуске
+        EventNotificationScheduler.rescheduleAllEventNotifications(this)
     }
 
     private fun setupFooter() {

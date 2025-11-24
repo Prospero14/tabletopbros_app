@@ -122,23 +122,19 @@ class CalendarFragment : Fragment() {
 
     private fun filterEventsByDate(date: Calendar?) {
         val filteredEvents = if (date == null) {
-            // Show upcoming events (from today onwards)
-            val today = Calendar.getInstance()
-            // Reset time to start of day
-            today.set(Calendar.HOUR_OF_DAY, 0)
-            today.set(Calendar.MINUTE, 0)
-            today.set(Calendar.SECOND, 0)
-            today.set(Calendar.MILLISECOND, 0)
+            // Show upcoming events (from now onwards, not from start of day)
+            val now = System.currentTimeMillis()
             
             allEvents.filter { event ->
-                event.dateTime >= today.timeInMillis
-            }.sortedBy { it.dateTime }
+                // Показываем только будущие события (дата события еще не наступила)
+                event.dateTime > now
+            }.sortedBy { it.dateTime } // Сортируем по дате события, а не по дате создания
         } else {
             allEvents.filter { event ->
                 val eventCalendar = Calendar.getInstance()
                 eventCalendar.timeInMillis = event.dateTime
                 isSameDay(date, eventCalendar)
-            }
+            }.sortedBy { it.dateTime }
         }
         
         if (filteredEvents.isEmpty()) {
@@ -240,7 +236,12 @@ class CalendarFragment : Fragment() {
     private fun updateEvent(event: Event) {
         lifecycleScope.launch {
             try {
+                // Отменить старые уведомления перед обновлением
+                EventNotificationScheduler.cancelEventNotifications(requireContext(), event.id)
+                
                 eventRepository.updateEvent(event)
+                
+                // Планировать новые уведомления
                 EventNotificationScheduler.scheduleEventNotifications(requireContext(), event)
                 Snackbar.make(requireView(), "Event updated", Snackbar.LENGTH_SHORT).show()
             } catch (e: Exception) {

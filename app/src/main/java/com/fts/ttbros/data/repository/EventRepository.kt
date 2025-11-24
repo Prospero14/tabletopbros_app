@@ -64,4 +64,24 @@ class EventRepository {
             .await()
             .toObject(Event::class.java)
     }
+
+    /**
+     * Получить все события команды один раз (не Flow)
+     */
+    suspend fun getTeamEventsOnce(teamId: String): List<Event> {
+        return eventsCollection
+            .whereEqualTo("teamId", teamId)
+            .orderBy("dateTime", Query.Direction.ASCENDING)
+            .get()
+            .await()
+            .documents
+            .mapNotNull { doc ->
+                try {
+                    doc.toObject(Event::class.java)
+                } catch (e: Exception) {
+                    android.util.Log.e("EventRepository", "Error parsing event ${doc.id}: ${e.message}", e)
+                    null
+                }
+            }
+    }
 }
