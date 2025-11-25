@@ -171,7 +171,6 @@
     <string name="confirm_delete_sheet">Вы уверены, что хотите удалить \'%s\'? Это действие нельзя отменить.</string>
     <string name="sheet_deleted">Лист удалён</string>
     <string name="error_deleting">Ошибка удаления: %s</string>
-    <string name="error_opening_dialog">Не удалось открыть диалог</string>
     <string name="save_character_sheet">Сохранить лист персонажа?</string>
     <string name="pdf_parsed_successfully">PDF успешно распарсен. Хотите сохранить этот лист персонажа?\n\nНазвание: %1$s\nСистема: %2$s</string>
     <string name="sheet_not_saved">Лист не сохранён</string>

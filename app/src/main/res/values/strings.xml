@@ -373,7 +373,6 @@
     <string name="confirm_delete_sheet">Are you sure you want to delete \'%s\'? This action cannot be undone.</string>
     <string name="sheet_deleted">Sheet deleted</string>
     <string name="error_deleting">Error deleting: %s</string>
-    <string name="error_opening_dialog">Failed to open dialog</string>
     <string name="save_character_sheet">Save Character Sheet?</string>
     <string name="pdf_parsed_successfully">PDF successfully parsed. Do you want to save this character sheet?\n\nName: %1$s\nSystem: %2$s</string>
     <string name="sheet_not_saved">Sheet not saved</string>
