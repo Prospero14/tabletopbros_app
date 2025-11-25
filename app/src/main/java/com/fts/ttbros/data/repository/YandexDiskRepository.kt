@@ -11,6 +11,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.logging.HttpLoggingInterceptor
 import java.io.File
 import java.io.FileOutputStream
@@ -40,6 +41,12 @@ data class YandexResource(
 
 data class CustomProperties(
     val custom_properties: Map<String, String>
+)
+
+data class CharacterSheetUploadResult(
+    val publicUrl: String,
+    val remotePath: String,
+    val fileName: String
 )
 
 class YandexDiskRepository {
@@ -366,7 +373,7 @@ class YandexDiskRepository {
         userId: String,
         pdfUri: Uri,
         context: Context
-    ): String = withContext(Dispatchers.IO) {
+    ): CharacterSheetUploadResult = withContext(Dispatchers.IO) {
         try {
             // 1. Создать путь на Яндекс.Диске
             val fileName = "character_sheet_${userId}_${System.currentTimeMillis()}.pdf"
@@ -391,7 +398,11 @@ class YandexDiskRepository {
             val publicUrl = publishFile(remotePath)
             Log.d("YandexDisk", "Public character sheet URL: $publicUrl")
             
-            publicUrl
+            CharacterSheetUploadResult(
+                publicUrl = publicUrl,
+                remotePath = remotePath,
+                fileName = fileName
+            )
         } catch (e: Exception) {
             Log.e("YandexDisk", "Character sheet upload error: ${e.message}", e)
             throw e
@@ -530,7 +541,7 @@ class YandexDiskRepository {
             val request = Request.Builder()
                 .url("$baseUrl/resources?path=${Uri.encode(path)}")
                 .header("Authorization", "OAuth $oauthToken")
-                .patch(jsonBody.asRequestBody("application/json".toMediaType()))
+                .patch(jsonBody.toRequestBody("application/json".toMediaType()))
                 .build()
             
             val response = client.newCall(request).execute()

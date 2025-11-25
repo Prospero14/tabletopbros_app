@@ -219,10 +219,10 @@ class TeamsFragment : Fragment() {
             try {
                 val user = userRepository.currentProfile() ?: return@launch
                 val currentUser = Firebase.auth.currentUser
-                val view = view
+                val currentView = view
                 if (currentUser == null) {
-                    if (isAdded && view != null) {
-                        Snackbar.make(view, "User not authenticated", Snackbar.LENGTH_LONG).show()
+                    if (isAdded && currentView != null) {
+                        Snackbar.make(currentView, "User not authenticated", Snackbar.LENGTH_LONG).show()
                     }
                     return@launch
                 }
@@ -232,14 +232,14 @@ class TeamsFragment : Fragment() {
                 userRepository.addTeam(team.id, team.code, UserRole.MASTER, team.system, finalTeamName)
                 
                 loadData()
-                val view = view
-                if (isAdded && view != null) {
-                    Snackbar.make(view, "Team created", Snackbar.LENGTH_SHORT).show()
+                val rootView = view
+                if (isAdded && rootView != null) {
+                    Snackbar.make(rootView, "Team created", Snackbar.LENGTH_SHORT).show()
                 }
             } catch (error: Exception) {
-                val view = view
-                if (isAdded && view != null) {
-                    Snackbar.make(view, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
+                val rootView = view
+                if (isAdded && rootView != null) {
+                    Snackbar.make(rootView, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
                 }
             }
         }

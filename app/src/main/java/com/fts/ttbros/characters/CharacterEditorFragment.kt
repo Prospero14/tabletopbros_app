@@ -33,6 +33,7 @@ class CharacterEditorFragment : Fragment() {
     private var characterId: String? = null
     private var system: String? = null
     private var builderId: String? = null
+    private var teamId: String? = null
     private var currentCharacter: Character? = null
     
     // Default to Russian as requested
@@ -104,6 +105,7 @@ class CharacterEditorFragment : Fragment() {
             characterId = it.getString("characterId")
             system = it.getString("system")
             builderId = it.getString("builderId")
+            teamId = it.getString("teamId")
         }
     }
 
@@ -229,7 +231,14 @@ class CharacterEditorFragment : Fragment() {
             try {
                 val bId = builderId
                 if (bId != null) {
-                    val builder = sheetRepository.getSheet(bId)
+                    val selectedTeamId = teamId
+                    if (selectedTeamId.isNullOrBlank()) {
+                        if (isAdded && view != null) {
+                            showError("Команда не выбрана для загруженного листа")
+                        }
+                        return@launch
+                    }
+                    val builder = sheetRepository.getSheet(bId, selectedTeamId)
                     if (builder != null) {
                         system = builder.system
                         

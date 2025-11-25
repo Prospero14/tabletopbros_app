@@ -166,6 +166,7 @@ class CharactersFragment : Fragment() {
                 val profile = userRepository.currentProfile()
                 val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
                 val teamSystem = currentTeam?.teamSystem
+                val teamId = currentTeam?.teamId
                 
                 val context = context ?: return@launch
                 val popup = android.widget.PopupMenu(context, binding.addCharacterFab)
@@ -173,9 +174,9 @@ class CharactersFragment : Fragment() {
             
             // Загружаем доступные билдеры (загруженные листы персонажей)
             val userId = Firebase.auth.currentUser?.uid
-            if (userId != null) {
+            if (userId != null && !teamId.isNullOrBlank()) {
                 try {
-                    val sheets = sheetRepository.getUserSheets(userId)
+                    val sheets = sheetRepository.getUserSheets(userId, teamId)
                     if (sheets.isNotEmpty()) {
                         popup.menu.add(0, 2, 1, "Загруженный лист персонажа")
                     }
@@ -193,9 +194,12 @@ class CharactersFragment : Fragment() {
                             }
                         }
                         2 -> {
-                            // Показываем диалог выбора билдера
-                            if (isAdded && view != null) {
-                                showBuilderSelectionDialog()
+                            if (teamId.isNullOrBlank()) {
+                                if (isAdded && view != null) {
+                                    Snackbar.make(binding.root, "Сначала выберите команду", Snackbar.LENGTH_SHORT).show()
+                                }
+                            } else if (isAdded && view != null) {
+                                showBuilderSelectionDialog(teamId)
                             }
                         }
                     }
@@ -238,7 +242,7 @@ class CharactersFragment : Fragment() {
         }
     }
     
-    private fun showBuilderSelectionDialog() {
+    private fun showBuilderSelectionDialog(teamId: String) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 if (!isAdded || view == null) return@launch
@@ -249,7 +253,7 @@ class CharactersFragment : Fragment() {
                     return@launch
                 }
                 
-                val sheets = sheetRepository.getUserSheets(userId)
+                val sheets = sheetRepository.getUserSheets(userId, teamId)
                 if (sheets.isEmpty()) {
                     Snackbar.make(binding.root, "Нет загруженных листов персонажей", Snackbar.LENGTH_SHORT).show()
                     return@launch
@@ -270,7 +274,7 @@ class CharactersFragment : Fragment() {
                             if (which >= 0 && which < sheets.size) {
                                 val selectedSheet = sheets[which]
                                 if (selectedSheet.id.isNotBlank()) {
-                                    openCharacterEditorFromBuilder(selectedSheet.id)
+                                    openCharacterEditorFromBuilder(selectedSheet.id, teamId)
                                 } else {
                                     if (isAdded && view != null) {
                                         Snackbar.make(binding.root, "Ошибка: неверный лист персонажа", Snackbar.LENGTH_SHORT).show()
@@ -295,12 +299,13 @@ class CharactersFragment : Fragment() {
         }
     }
     
-    private fun openCharacterEditorFromBuilder(builderId: String) {
+    private fun openCharacterEditorFromBuilder(builderId: String, teamId: String) {
         try {
             val bundle = Bundle().apply {
                 putString("characterId", null)
                 putString("system", null) // Система будет определена из билдера
                 putString("builderId", builderId)
+                putString("teamId", teamId)
             }
             findNavController().navigate(R.id.action_charactersFragment_to_characterEditorFragment, bundle)
         } catch (e: Exception) {
@@ -392,7 +397,7 @@ class CharactersFragment : Fragment() {
     private fun shareCharacter(character: com.fts.ttbros.data.model.Character) {
         viewLifecycleOwner.lifecycleScope.launch {
             val profile = userRepository.currentProfile()
-            if (profile == null || profile.teamId.isNullOrBlank()) {
+            if (profile == null || profile.currentTeamId.isNullOrBlank()) {
                 Snackbar.make(binding.root, "You must join a team to share characters", Snackbar.LENGTH_LONG).show()
                 return@launch
             }

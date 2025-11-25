@@ -71,6 +71,20 @@ class UserRepository(
         saveProfile(profile.copy(currentTeamId = teamId))
     }
 
+    suspend fun switchTeam(teamId: String) {
+        updateCurrentTeam(teamId)
+    }
+
+    suspend fun updateAvatarUrl(avatarUrl: String?) {
+        val firebaseUser = auth.currentUser ?: return
+        val profile = getProfile(firebaseUser.uid) ?: return
+        saveProfile(profile.copy(avatarUrl = avatarUrl))
+    }
+
+    fun signOut() {
+        auth.signOut()
+    }
+
     private suspend fun getProfile(userId: String): UserProfile? {
         return try {
             val snapshot = usersCollection.document(userId).get().await()

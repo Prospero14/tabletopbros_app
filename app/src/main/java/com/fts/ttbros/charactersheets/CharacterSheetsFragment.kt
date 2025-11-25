@@ -22,7 +22,9 @@ import com.google.firebase.ktx.Firebase
 import com.fts.ttbros.R
 import com.fts.ttbros.data.model.CharacterSheet
 import com.fts.ttbros.data.repository.CharacterSheetRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.InputStream
 
 class CharacterSheetsFragment : Fragment() {
@@ -38,6 +40,8 @@ class CharacterSheetsFragment : Fragment() {
     private val userRepository = com.fts.ttbros.data.repository.UserRepository()
     private val documentRepository = com.fts.ttbros.data.repository.DocumentRepository()
     private lateinit var adapter: CharacterSheetsAdapter
+    private var uploadedPath: String? = null
+    private var uploadedFileName: String? = null
     
     private val pickPdfLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
@@ -89,9 +93,9 @@ class CharacterSheetsFragment : Fragment() {
                 loadingView.isVisible = true
                 
                 val profile = userRepository.currentProfile()
-                val teamId = profile?.teamId
+                val teamId = profile?.currentTeamId
                 
-                if (teamId != null) {
+                if (!teamId.isNullOrBlank()) {
                     val sheets = sheetRepository.getUserSheets(userId, teamId)
                     if (!isAdded || view == null) return@launch
                     adapter.submitList(sheets)
@@ -125,8 +129,8 @@ class CharacterSheetsFragment : Fragment() {
             return
         }
         
-        val context = context
-        if (context == null) {
+        val ctx = context
+        if (ctx == null) {
             android.util.Log.e("CharacterSheetsFragment", "Context is null")
             return
         }
@@ -137,104 +141,112 @@ class CharacterSheetsFragment : Fragment() {
         }
         
         viewLifecycleOwner.lifecycleScope.launch {
+            loadingView.isVisible = true
+            uploadedPath = null
+            uploadedFileName = null
             try {
-                // Проверяем что фрагмент все еще прикреплен перед началом операций
-                if (!isAdded || view == null) {
-                    android.util.Log.w("CharacterSheetsFragment", "Fragment not attached at start of upload")
-                    return@launch
-                }
+                val profile = userRepository.currentProfile()
+                val teamId = profile?.currentTeamId
+                val currentTeam = profile?.teams?.find { it.teamId == teamId }
+                val userName = profile?.displayName ?: getString(R.string.app_name)
                 
-                loadingView.isVisible = true
-                view?.let {
-                    Snackbar.make(it, "Проверка PDF...", Snackbar.LENGTH_SHORT).show()
-                }
-                
-                // Сначала проверяем, что это действительно лист персонажа (до загрузки в Yandex.Disk)
-                val validationResult = try {
-                    validateCharacterSheet(uri, context)
-                } catch (e: Exception) {
-                    android.util.Log.e("CharacterSheetsFragment", "Error validating PDF: ${e.message}", e)
+                if (teamId.isNullOrBlank()) {
                     if (isAdded && view != null) {
-                        view?.let {
-                            Snackbar.make(it, "Ошибка проверки файла: ${e.message}", Snackbar.LENGTH_LONG).show()
-                        }
-                        loadingView.isVisible = false
+                        view?.let { Snackbar.make(it, "Сначала выберите команду", Snackbar.LENGTH_LONG).show() }
                     }
                     return@launch
                 }
+                
+                val validationResult = try {
+                    validateCharacterSheet(uri, ctx)
+                } catch (e: Exception) {
+                    android.util.Log.e("CharacterSheetsFragment", "Error validating PDF: ${e.message}", e)
+                    if (isAdded && view != null) {
+                        view?.let { Snackbar.make(it, "Ошибка проверки файла: ${e.message}", Snackbar.LENGTH_LONG).show() }
+                    }
+                    return@launch
+                }
+                
                 if (!validationResult.isValid) {
                     if (isAdded && view != null) {
                         view?.let {
                             Snackbar.make(it, validationResult.errorMessage ?: "Этот файл не является листом персонажа", Snackbar.LENGTH_LONG).show()
                         }
-                        loadingView.isVisible = false
                     }
                     return@launch
                 }
                 
-                // Проверка что фрагмент все еще прикреплен
-                if (!isAdded || view == null) {
-                    android.util.Log.w("CharacterSheetsFragment", "Fragment detached during validation")
-                    return@launch
-                }
+                val uploadResult = yandexDisk.uploadCharacterSheet(teamId, userId, uri, ctx)
+                uploadedPath = uploadResult.remotePath
+                uploadedFileName = uploadResult.fileName
                 
-                view?.let {
-                
-                // Parse PDF
                 val parsedData = try {
-                    parsePdf(uri, context)
+                    parsePdf(uri, ctx)
                 } catch (e: Exception) {
                     android.util.Log.e("CharacterSheetsFragment", "Error parsing PDF: ${e.message}", e)
                     throw e
                 }
                 
-                // Проверка что фрагмент все еще прикреплен
-                if (!isAdded || view == null) {
-                    android.util.Log.w("CharacterSheetsFragment", "Fragment detached during parsing")
-                    return@launch
-                }
+                val resolvedSystem = currentTeam?.teamSystem
+                    ?: validationResult.system
+                    ?: (parsedData["system"] as? String)
+                    ?: "unknown"
                 
-                // Получаем систему команды для названия
-                val profile = userRepository.currentProfile()
-                val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
-                val teamSystem = currentTeam?.teamSystem ?: (parsedData["system"] as? String ?: "unknown")
+                val attributes = (parsedData["attributes"] as? Map<*, *>)?.mapNotNull { (key, value) ->
+                    val safeKey = (key as? String)?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                    safeKey to ((value as? Number)?.toInt() ?: 0)
+                }?.toMap() ?: emptyMap()
                 
-                // Формируем название системы для отображения
-                val systemName = when (teamSystem) {
-                    "vtm_5e" -> "VTM"
-                    "dnd_5e" -> "D&D"
-                    "viedzmin_2e" -> "Viedzmin"
-                    else -> teamSystem
-                }
+                val skills = (parsedData["skills"] as? Map<*, *>)?.mapNotNull { (key, value) ->
+                    val safeKey = (key as? String)?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                    safeKey to ((value as? Number)?.toInt() ?: 0)
+                }?.toMap() ?: emptyMap()
                 
-                // Создаем CharacterSheet из загруженного PDF (как было раньше)
+                val stats = (parsedData["stats"] as? Map<*, *>)?.mapNotNull { (key, value) ->
+                    val safeKey = (key as? String)?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                    safeKey to (value ?: "")
+                }?.toMap() ?: emptyMap()
+                
                 val sheet = CharacterSheet(
+                    teamId = teamId,
                     userId = userId,
-                    characterName = "Загруженный лист", // Фиксированное название вместо парсинга
-                    system = teamSystem,
-                    pdfUrl = pdfUrl,
+                    characterName = "Загруженный лист",
+                    system = resolvedSystem,
+                    pdfUrl = uploadResult.publicUrl,
                     parsedData = parsedData,
-                    attributes = (parsedData["attributes"] as? Map<*, *>)?.mapKeys { (it.key as? Any)?.toString() ?: "" }?.mapValues { (it.value as? Number)?.toInt() ?: 0 } ?: emptyMap<String, Int>(),
-                    skills = (parsedData["skills"] as? Map<*, *>)?.mapKeys { (it.key as? Any)?.toString() ?: "" }?.mapValues { (it.value as? Number)?.toInt() ?: 0 } ?: emptyMap<String, Int>(),
-                    stats = (parsedData["stats"] as? Map<*, *>)?.mapKeys { (it.key as? Any)?.toString() ?: "" }?.mapValues { it.value ?: "" } ?: emptyMap<String, Any>(),
-                    isTemplate = false // Это загруженный лист персонажа
+                    attributes = attributes,
+                    skills = skills,
+                    stats = stats,
+                    isTemplate = false
                 )
                 
-                // Показать диалог подтверждения создания листа
-                // Используем Main диспетчер для показа диалога в UI потоке
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (isAdded && view != null && context != null) {
-                        showCreateSheetConfirmationDialog(sheet)
+                withContext(Dispatchers.Main) {
+                    if (isAdded && view != null) {
+                        showCreateSheetConfirmationDialog(
+                            sheet,
+                            teamId,
+                            uploadResult.remotePath,
+                            uploadResult.fileName,
+                            userId,
+                            userName
+                        )
                     }
                 }
             } catch (e: Exception) {
                 android.util.Log.e("CharacterSheetsFragment", "Error uploading PDF: ${e.message}", e)
                 if (isAdded && view != null) {
-                    view?.let {
-                        Snackbar.make(it, "Ошибка загрузки: ${e.message}", Snackbar.LENGTH_LONG).show()
+                    view?.let { Snackbar.make(it, "Ошибка загрузки: ${e.message}", Snackbar.LENGTH_LONG).show() }
+                }
+                uploadedPath?.let {
+                    try {
+                        yandexDisk.deleteFile(it)
+                    } catch (_: Exception) {
+                        android.util.Log.w("CharacterSheetsFragment", "Failed to cleanup uploaded file")
                     }
                 }
             } finally {
+                uploadedPath = null
+                uploadedFileName = null
                 if (isAdded && view != null) {
                     loadingView.isVisible = false
                 }
@@ -715,7 +727,9 @@ class CharacterSheetsFragment : Fragment() {
     private fun performDeleteSheet(sheet: CharacterSheet) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                sheetRepository.deleteSheet(sheet.id)
+                if (sheet.id.isNotBlank() && sheet.teamId.isNotBlank()) {
+                    sheetRepository.deleteSheet(sheet.id, sheet.teamId)
+                }
                 loadSheets()
                 view?.let {
                     Snackbar.make(it, "Лист удалён", Snackbar.LENGTH_SHORT).show()
@@ -728,7 +742,14 @@ class CharacterSheetsFragment : Fragment() {
         }
     }
     
-    private fun showCreateSheetConfirmationDialog(sheet: CharacterSheet) {
+    private fun showCreateSheetConfirmationDialog(
+        sheet: CharacterSheet,
+        teamId: String,
+        remotePath: String,
+        fileName: String,
+        userId: String,
+        userName: String
+    ) {
         val context = context ?: return
         if (!isAdded || view == null) {
             android.util.Log.w("CharacterSheetsFragment", "Fragment not attached, cannot show dialog")
@@ -751,10 +772,17 @@ class CharacterSheetsFragment : Fragment() {
                 .setMessage("PDF успешно распарсен. Хотите сохранить этот лист персонажа?\n\nНазвание: ${sheet.characterName}\nСистема: ${sheet.system}")
                 .setPositiveButton("Сохранить") { _, _ ->
                     if (isAdded && view != null) {
-                        saveSheet(sheet)
+                        saveSheet(sheet, teamId, remotePath, fileName, userId, userName)
                     }
                 }
                 .setNegativeButton("Отмена") { _, _ ->
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        try {
+                            yandexDisk.deleteFile(remotePath)
+                        } catch (e: Exception) {
+                            android.util.Log.w("CharacterSheetsFragment", "Failed to delete uploaded sheet: ${e.message}", e)
+                        }
+                    }
                     if (isAdded && view != null) {
                         view?.let {
                             Snackbar.make(it, "Лист не сохранён", Snackbar.LENGTH_SHORT).show()
@@ -776,16 +804,37 @@ class CharacterSheetsFragment : Fragment() {
         }
     }
     
-    private fun saveSheet(sheet: CharacterSheet) {
+    private fun saveSheet(
+        sheet: CharacterSheet,
+        teamId: String,
+        remotePath: String,
+        fileName: String,
+        userId: String,
+        userName: String
+    ) {
+        val ctx = context ?: return
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                sheetRepository.saveSheet(sheet)
+                sheetRepository.saveSheet(sheet.copy(teamId = teamId), ctx)
+                documentRepository.uploadCharacterSheetMetadata(
+                    teamId = teamId,
+                    pdfUrl = sheet.pdfUrl,
+                    characterName = sheet.characterName,
+                    system = sheet.system,
+                    userId = userId,
+                    userName = userName,
+                    fileName = fileName
+                )
+                loadSheets()
                 if (isAdded && view != null) {
                     view?.let {
-                        Snackbar.make(it, "Лист персонажа сохранён! Теперь он доступен в разделе 'Документы' -> 'Загруженные листы персонажей'", Snackbar.LENGTH_LONG).show()
+                        Snackbar.make(
+                            it,
+                            "Лист персонажа сохранён! Теперь он доступен в разделе 'Документы' -> 'Загруженные листы персонажей'",
+                            Snackbar.LENGTH_LONG
+                        ).show()
                     }
-                    // Возвращаемся назад в DocumentsFragment после сохранения
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    withContext(Dispatchers.Main) {
                         if (isAdded && view != null) {
                             try {
                                 findNavController().navigateUp()
@@ -798,9 +847,12 @@ class CharacterSheetsFragment : Fragment() {
             } catch (e: Exception) {
                 android.util.Log.e("CharacterSheetsFragment", "Error saving sheet: ${e.message}", e)
                 if (isAdded && view != null) {
-                    view?.let {
-                        Snackbar.make(it, "Ошибка сохранения листа: ${e.message}", Snackbar.LENGTH_LONG).show()
-                    }
+                    view?.let { Snackbar.make(it, "Ошибка сохранения листа: ${e.message}", Snackbar.LENGTH_LONG).show() }
+                }
+                try {
+                    yandexDisk.deleteFile(remotePath)
+                } catch (cleanupError: Exception) {
+                    android.util.Log.w("CharacterSheetsFragment", "Failed to delete uploaded file: ${cleanupError.message}", cleanupError)
                 }
             }
         }

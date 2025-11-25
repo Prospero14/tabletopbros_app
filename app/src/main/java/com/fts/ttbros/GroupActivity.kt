@@ -66,7 +66,13 @@ class GroupActivity : AppCompatActivity() {
                 }
 
                 teamRepository.addMember(team.id, user, UserRole.PLAYER)
-                userRepository.updateTeamInfo(team.id, team.code, UserRole.PLAYER, team.system)
+                userRepository.addTeam(
+                    teamId = team.id,
+                    teamCode = team.code,
+                    role = UserRole.PLAYER,
+                    teamSystem = team.system,
+                    teamName = "Team ${team.code}"
+                )
 
                 Snackbar.make(findViewById(android.R.id.content), getString(R.string.success_joined_group), Snackbar.LENGTH_SHORT).show()
                 navigateToMain()
@@ -107,7 +113,13 @@ class GroupActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 val team = teamRepository.createTeam(user, system)
-                userRepository.updateTeamInfo(team.id, team.code, UserRole.MASTER, team.system)
+                userRepository.addTeam(
+                    teamId = team.id,
+                    teamCode = team.code,
+                    role = UserRole.MASTER,
+                    teamSystem = team.system,
+                    teamName = "Team ${team.code}"
+                )
                 showCodeDialog(team.code)
             } catch (error: Exception) {
                 Snackbar.make(findViewById(android.R.id.content), error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
