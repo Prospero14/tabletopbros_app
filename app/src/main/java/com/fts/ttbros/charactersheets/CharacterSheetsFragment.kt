@@ -793,25 +793,25 @@ class CharacterSheetsFragment : Fragment() {
                     }
                     
                     val value = sectionText.toString().trim()
-                    // Очищаем от возможных остатков других полей в конце
-                    val cleaned = value.split(Regex("\\s*(?:Advantages|Достоинства|Flaws|Недостатки|Merits|Notes|Заметки|History|История|Blood Potency|Мощь крови|Experience|Опыт|Convictions|Убеждения|Touchstones|Якоря|Chronicle Tenets|Заповеди хроники|Ambition|Амбиция|Desire|Желание)\\s*[:=]")).firstOrNull()?.trim()
                     
-                    if (cleaned != null && cleaned.isNotBlank() && cleaned.length > 2) {
-                        stats[key] = cleaned
-                        android.util.Log.d("CharacterSheetsFragment", "Extracted $key: ${cleaned.take(100)}...")
+                    // Не применяем дополнительную очистку - логика while уже остановилась на правильном месте
+                    // Просто проверяем, что значение валидное
+                    if (value.isNotBlank() && value.length > 2) {
+                        stats[key] = value
+                        android.util.Log.d("CharacterSheetsFragment", "Extracted $key: ${value.take(100)}...")
                     }
                 }
             }
             
             // Также ищем в полном тексте с более широким паттерном (резервный метод)
             if (!stats.containsKey(key)) {
-                val widePattern = Regex("$label\\s*[:=]\\s*([^\\n\\r]{10,500})", RegexOption.IGNORE_CASE)
+                val widePattern = Regex("$label\\s*[:=]\\s*([^\\n\\r]+)", RegexOption.IGNORE_CASE)
                 widePattern.findAll(fullText).forEach { match ->
-                    val value = match.groupValues[1].trim()
-                    if (value.isNotBlank() && value.length > 2) {
-                        // Очищаем от лишних полей - останавливаемся на следующей секции
-                        val stopPattern = Regex("(?:Advantages|Достоинства|Flaws|Недостатки|Merits|Notes|Заметки|History|История|Blood Potency|Мощь крови|Experience|Опыт|Convictions|Убеждения|Touchstones|Якоря|Chronicle Tenets|Заповеди хроники|Ambition|Амбиция|Desire|Желание)\\s*[:=]")
-                        val cleaned = stopPattern.split(value).firstOrNull()?.trim()
+                    val rawValue = match.groupValues[1].trim()
+                    if (rawValue.isNotBlank() && rawValue.length > 2) {
+                        // Останавливаемся на следующей секции (только если есть двоеточие/равно после имени секции)
+                        val stopPattern = Regex("\\s+(?:Advantages|Достоинства|Flaws|Недостатки|Merits|Notes|Заметки|History|История|Blood Potency|Мощь крови|Experience|Опыт|Convictions|Убеждения|Touchstones|Якоря|Chronicle Tenets|Заповеди хроники|Ambition|Амбиция|Desire|Желание)\\s*[:=]", RegexOption.IGNORE_CASE)
+                        val cleaned = stopPattern.split(rawValue).firstOrNull()?.trim()
                         if (cleaned != null && cleaned.isNotBlank() && cleaned.length > 2) {
                             stats[key] = cleaned
                             android.util.Log.d("CharacterSheetsFragment", "Extracted $key (wide pattern): ${cleaned.take(100)}...")
