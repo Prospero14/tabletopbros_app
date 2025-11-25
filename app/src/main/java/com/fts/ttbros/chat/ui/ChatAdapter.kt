@@ -88,15 +88,7 @@ class ChatAdapter(
                 ContextCompat.getColor(context, R.color.chat_bubble_other)
             }
             messageCard.setCardBackgroundColor(bubbleColor)
-            
-            // Apply shape appearance
-            val shapeStyle = if (isMine) R.style.ShapeAppearance_App_Chat_Sent else R.style.ShapeAppearance_App_Chat_Received
-            val shapeAppearanceModel = com.google.android.material.shape.ShapeAppearanceModel.builder(
-                context,
-                shapeStyle,
-                0
-            ).build()
-            messageCard.shapeAppearanceModel = shapeAppearanceModel
+            messageCard.radius = context.resources.getDimension(R.dimen.chat_bubble_radius)
             
             // Debug logging
             if (message.type == "poll") {

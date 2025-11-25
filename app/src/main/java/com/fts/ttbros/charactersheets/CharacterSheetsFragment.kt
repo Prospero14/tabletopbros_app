@@ -243,6 +243,7 @@ class CharacterSheetsFragment : Fragment() {
                 // Создаем CharacterSheet из загруженного PDF (как было раньше)
                 val sheet = CharacterSheet(
                     userId = userId,
+                    userName = auth.currentUser?.displayName ?: "Unknown",
                     characterName = "Загруженный лист", // Фиксированное название вместо парсинга
                     system = teamSystem,
                     pdfUrl = pdfUrl,
