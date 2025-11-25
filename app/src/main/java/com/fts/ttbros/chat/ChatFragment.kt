@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.snackbar.Snackbar
+import com.fts.ttbros.utils.NotificationHelper
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
@@ -158,7 +159,7 @@ class ChatFragment : Fragment() {
                 if (profile == null || currentTeamId.isNullOrBlank()) {
                     if (isAdded && view != null) {
                         view?.let {
-                            Snackbar.make(it, getString(R.string.error_group_not_found), Snackbar.LENGTH_LONG)
+                            NotificationHelper.showErrorSnackbar(it, getString(R.string.error_group_not_found))
                                 .setAction(getString(R.string.join_group)) {
                                     try {
                                         val contextForIntent = context
@@ -184,7 +185,7 @@ class ChatFragment : Fragment() {
                 android.util.Log.e("ChatFragment", "Error observing profile: ${e.message}", e)
                 if (isAdded && view != null) {
                     view?.let {
-                        Snackbar.make(it, getString(R.string.error_loading_profile, e.message ?: ""), Snackbar.LENGTH_LONG).show()
+                        NotificationHelper.showErrorSnackbar(it, getString(R.string.error_loading_profile, e.message ?: ""))
                     }
                 }
             }
@@ -254,8 +255,8 @@ class ChatFragment : Fragment() {
                 }
             },
             onError = { error ->
-                view?.let {
-                    Snackbar.make(it, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
+                if (isAdded && view != null) {
+                    NotificationHelper.showErrorSnackbar(view, error.localizedMessage ?: getString(R.string.error_unknown))
                 }
             }
         )
@@ -290,8 +291,8 @@ class ChatFragment : Fragment() {
                     } else {
                         getString(R.string.error_loading_polls, e.message ?: "")
                     }
-                    view?.let {
-                        Snackbar.make(it, errorMessage, Snackbar.LENGTH_LONG).show()
+                    if (isAdded && view != null) {
+                        NotificationHelper.showErrorSnackbar(view, errorMessage)
                     }
                     pollsRecyclerView?.isVisible = false
                 }
@@ -324,7 +325,7 @@ class ChatFragment : Fragment() {
                             } catch (e: Exception) {
                                 android.util.Log.e("ChatFragment", "Error on dice roll menu click: ${e.message}", e)
                                 this.view?.let {
-                                    Snackbar.make(it, getString(R.string.error_unknown), Snackbar.LENGTH_SHORT).show()
+                                    NotificationHelper.showErrorSnackbar(it, getString(R.string.error_unknown))
                                 }
                             }
                             true
@@ -341,7 +342,7 @@ class ChatFragment : Fragment() {
             } catch (e: Exception) {
                 android.util.Log.e("ChatFragment", "Error showing menu: ${e.message}", e)
                 this.view?.let {
-                    Snackbar.make(it, "Ошибка открытия меню: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showErrorSnackbar(it, getString(R.string.error_opening_menu, e.message ?: ""))
                 }
             }
         }
@@ -395,12 +396,12 @@ class ChatFragment : Fragment() {
                         )
 
                         view?.let {
-                            Snackbar.make(it, getString(R.string.poll_created), Snackbar.LENGTH_SHORT).show()
+                            NotificationHelper.showSuccessSnackbar(it, getString(R.string.poll_created))
                         }
                     } catch (e: Exception) {
                         android.util.Log.e("ChatFragment", "Error creating poll: ${e.message}", e)
                         view?.let {
-                            Snackbar.make(it, "Error creating poll: ${e.message}", Snackbar.LENGTH_LONG).show()
+                            NotificationHelper.showErrorSnackbar(it, getString(R.string.error_creating_poll, e.message ?: ""))
                         }
                     }
                 }
@@ -426,7 +427,7 @@ class ChatFragment : Fragment() {
                 } catch (e: Exception) {
                     android.util.Log.e("ChatFragment", "Error loading poll: ${e.message}", e)
                     view?.let {
-                        Snackbar.make(it, "Error loading poll: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                        NotificationHelper.showErrorSnackbar(it, getString(R.string.error_loading_poll, e.message ?: ""))
                     }
                     return@launch
                 }
@@ -434,7 +435,7 @@ class ChatFragment : Fragment() {
             
             if (poll == null) {
                 view?.let {
-                    Snackbar.make(it, "Poll not found", Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showErrorSnackbar(it, getString(R.string.poll_not_found))
                 }
                 return@launch
             }
@@ -571,7 +572,7 @@ class ChatFragment : Fragment() {
                         pollsAdapter.submitList(revertedPolls)
                     }
                     view?.let {
-                        Snackbar.make(it, "Poll not found", Snackbar.LENGTH_SHORT).show()
+                        NotificationHelper.showErrorSnackbar(it, getString(R.string.poll_not_found))
                     }
                     return@launch
                 }
@@ -587,7 +588,7 @@ class ChatFragment : Fragment() {
                 )
                 // UI already updated optimistically, just show confirmation
                 view?.let {
-                    Snackbar.make(it, getString(R.string.vote_recorded), Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showSuccessSnackbar(it, getString(R.string.vote_recorded))
                 }
             } catch (e: Exception) {
                 android.util.Log.e("ChatFragment", "Error voting: ${e.message}", e)
@@ -599,7 +600,7 @@ class ChatFragment : Fragment() {
                     android.util.Log.d("ChatFragment", "Reverted optimistic update due to error")
                 }
                 view?.let {
-                    Snackbar.make(it, "Error voting: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showErrorSnackbar(it, getString(R.string.error_voting, e.message ?: ""))
                 }
             }
         }
@@ -612,11 +613,11 @@ class ChatFragment : Fragment() {
             try {
                 chatRepository.pinMessage(teamId, chatType, messageId, profile.uid)
                 view?.let {
-                    Snackbar.make(it, getString(R.string.message_pinned), Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showSuccessSnackbar(it, getString(R.string.message_pinned))
                 }
             } catch (e: Exception) {
                 view?.let {
-                    Snackbar.make(it, "Error pinning message: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showErrorSnackbar(it, getString(R.string.error_pinning_message, e.message ?: ""))
                 }
             }
         }
@@ -629,11 +630,11 @@ class ChatFragment : Fragment() {
             try {
                 chatRepository.unpinMessage(teamId, chatType, messageId)
                 view?.let {
-                    Snackbar.make(it, getString(R.string.message_unpinned), Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showSuccessSnackbar(it, getString(R.string.message_unpinned))
                 }
             } catch (e: Exception) {
                 view?.let {
-                    Snackbar.make(it, "Error unpinning message: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showErrorSnackbar(it, getString(R.string.error_unpinning_message, e.message ?: ""))
                 }
             }
         }
@@ -701,11 +702,11 @@ class ChatFragment : Fragment() {
                                 tempFile.delete()
                                 
                                 view?.let {
-                                    Snackbar.make(it, "Материал добавлен в 'Материалы от мастера'", Snackbar.LENGTH_SHORT).show()
+                                    NotificationHelper.showSuccessSnackbar(it, getString(R.string.material_added_to_master))
                                 }
                             } else {
                                 view?.let {
-                                    Snackbar.make(it, "Документ не найден", Snackbar.LENGTH_SHORT).show()
+                                    NotificationHelper.showErrorSnackbar(it, getString(R.string.document_not_found))
                                 }
                             }
                         } else {
@@ -716,7 +717,7 @@ class ChatFragment : Fragment() {
                     } catch (e: Exception) {
                         android.util.Log.e("ChatFragment", "Error adding material: ${e.message}", e)
                         view?.let {
-                            Snackbar.make(it, "Ошибка добавления материала: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                            NotificationHelper.showErrorSnackbar(it, getString(R.string.error_adding_material, e.message ?: ""))
                         }
                     }
                 }
@@ -731,11 +732,11 @@ class ChatFragment : Fragment() {
             try {
                 pollRepository.pinPoll(pollId, profile.uid)
                 view?.let {
-                    Snackbar.make(it, getString(R.string.poll_pinned), Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showSuccessSnackbar(it, getString(R.string.poll_pinned))
                 }
             } catch (e: Exception) {
                 view?.let {
-                    Snackbar.make(it, "Error pinning poll: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showErrorSnackbar(it, getString(R.string.error_pinning_poll, e.message ?: ""))
                 }
             }
         }
@@ -746,11 +747,11 @@ class ChatFragment : Fragment() {
             try {
                 pollRepository.unpinPoll(pollId)
                 view?.let {
-                    Snackbar.make(it, getString(R.string.poll_unpinned), Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showSuccessSnackbar(it, getString(R.string.poll_unpinned))
                 }
             } catch (e: Exception) {
                 view?.let {
-                    Snackbar.make(it, "Error unpinning poll: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showErrorSnackbar(it, getString(R.string.error_unpinning_poll, e.message ?: ""))
                 }
             }
         }
@@ -776,7 +777,7 @@ class ChatFragment : Fragment() {
                 )
             } catch (error: Exception) {
                 view?.let {
-                    Snackbar.make(it, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
+                    NotificationHelper.showErrorSnackbar(it, error.localizedMessage ?: getString(R.string.error_unknown))
                 }
             }
         }
@@ -790,14 +791,14 @@ class ChatFragment : Fragment() {
         val profile = userProfile ?: run {
             android.util.Log.w("ChatFragment", "User profile is null, cannot show dice roll dialog")
             view?.let {
-                Snackbar.make(it, "Профиль пользователя не загружен", Snackbar.LENGTH_SHORT).show()
+                NotificationHelper.showErrorSnackbar(it, getString(R.string.profile_not_loaded))
             }
             return
         }
         val teamId = profile.currentTeamId ?: run {
             android.util.Log.w("ChatFragment", "Team ID is null, cannot show dice roll dialog")
             view?.let {
-                Snackbar.make(it, getString(R.string.error_team_not_selected), Snackbar.LENGTH_SHORT).show()
+                NotificationHelper.showErrorSnackbar(it, getString(R.string.error_team_not_selected))
             }
             return
         }
@@ -817,7 +818,7 @@ class ChatFragment : Fragment() {
             if (fragmentManager.isStateSaved) {
                 android.util.Log.w("ChatFragment", "FragmentManager state is saved, cannot show dialog")
                 view?.let {
-                    Snackbar.make(it, getString(R.string.error_cannot_open_dialog), Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showErrorSnackbar(it, getString(R.string.error_cannot_open_dialog))
                 }
                 return
             }
@@ -825,12 +826,12 @@ class ChatFragment : Fragment() {
         } catch (e: IllegalStateException) {
             android.util.Log.e("ChatFragment", "IllegalStateException showing dice roll dialog: ${e.message}", e)
             view?.let {
-                Snackbar.make(it, getString(R.string.error_cannot_open_dialog_retry), Snackbar.LENGTH_SHORT).show()
+                NotificationHelper.showErrorSnackbar(it, getString(R.string.error_cannot_open_dialog_retry))
             }
         } catch (e: Exception) {
             android.util.Log.e("ChatFragment", "Error showing dice roll dialog: ${e.message}", e)
             view?.let {
-                Snackbar.make(it, getString(R.string.error_opening_dialog, e.message ?: ""), Snackbar.LENGTH_SHORT).show()
+                NotificationHelper.showErrorSnackbar(it, getString(R.string.error_opening_dialog, e.message ?: ""))
             }
         }
     }
@@ -877,13 +878,13 @@ class ChatFragment : Fragment() {
 
                 if (sentCount > 0) {
                     view?.let {
-                        Snackbar.make(it, "Результат броска отправлен", Snackbar.LENGTH_SHORT).show()
+                        NotificationHelper.showSuccessSnackbar(it, getString(R.string.dice_roll_sent))
                     }
                 }
             } catch (error: Exception) {
                 android.util.Log.e("ChatFragment", "Error sending dice roll result: ${error.message}", error)
                 view?.let {
-                    Snackbar.make(it, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
+                    NotificationHelper.showErrorSnackbar(it, error.localizedMessage ?: getString(R.string.error_unknown))
                 }
             }
         }
@@ -902,11 +903,11 @@ class ChatFragment : Fragment() {
                 chatRepository.markAsImported(teamId, chatType, messageId, profile.uid)
                 
                 view?.let {
-                    Snackbar.make(it, "Character imported successfully!", Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showSuccessSnackbar(it, getString(R.string.character_imported_success))
                 }
             } catch (e: Exception) {
                 view?.let {
-                    Snackbar.make(it, "Error importing character: ${e.message}", Snackbar.LENGTH_LONG).show()
+                    NotificationHelper.showErrorSnackbar(it, getString(R.string.error_importing_character, e.message ?: ""))
                 }
             }
         }
@@ -994,7 +995,7 @@ class ChatFragment : Fragment() {
             } catch (e: Exception) {
                 android.util.Log.e("ChatFragment", "Error opening material: ${e.message}", e)
                 view?.let {
-                    Snackbar.make(it, "Ошибка открытия материала: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showErrorSnackbar(it, getString(R.string.error_opening_material, e.message ?: ""))
                 }
             }
         }
@@ -1007,7 +1008,7 @@ class ChatFragment : Fragment() {
         try {
             if (!file.exists() || !file.canRead() || file.length() == 0L) {
                 view?.let {
-                    Snackbar.make(it, "Файл недоступен", Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showErrorSnackbar(it, getString(R.string.file_unavailable))
                 }
                 return
             }
@@ -1020,7 +1021,7 @@ class ChatFragment : Fragment() {
         } catch (e: Exception) {
             android.util.Log.e("ChatFragment", "Error opening document: ${e.message}", e)
             view?.let {
-                Snackbar.make(it, "Ошибка открытия файла: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                NotificationHelper.showErrorSnackbar(it, getString(R.string.error_opening_file, e.message ?: ""))
             }
         }
     }

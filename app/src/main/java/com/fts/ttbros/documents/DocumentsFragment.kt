@@ -22,6 +22,7 @@ import com.fts.ttbros.data.repository.DocumentRepository
 import com.fts.ttbros.data.repository.UserRepository
 import com.fts.ttbros.databinding.FragmentDocumentsBinding
 import com.fts.ttbros.databinding.ItemDocumentBinding
+import com.fts.ttbros.utils.NotificationHelper
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
@@ -106,7 +107,9 @@ class DocumentsFragment : Fragment() {
                         findNavController().navigate(R.id.action_documentsFragment_to_characterSheetsFragment)
                     } catch (e: Exception) {
                         android.util.Log.e("DocumentsFragment", "Navigation error: ${e.message}", e)
-                        Snackbar.make(binding.root, "Ошибка открытия загрузки листа", Snackbar.LENGTH_SHORT).show()
+                        if (isAdded && view != null) {
+                            NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_opening_sheet_upload))
+                        }
                     }
                 }
                 2 -> {
@@ -258,20 +261,20 @@ class DocumentsFragment : Fragment() {
                         } catch (e: Exception) {
                             android.util.Log.e("DocumentsFragment", "Error processing documents: ${e.message}", e)
                             if (isAdded && view != null) {
-                                Snackbar.make(binding.root, "Ошибка обработки документов: ${e.message}", Snackbar.LENGTH_LONG).show()
+                                NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_processing_documents, e.message ?: ""))
                             }
                         }
                     }
                 } catch (e: Exception) {
                     android.util.Log.e("DocumentsFragment", "Error loading documents: ${e.message}", e)
                     if (isAdded && view != null) {
-                        Snackbar.make(binding.root, "Ошибка загрузки документов: ${e.message}", Snackbar.LENGTH_LONG).show()
+                        NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_loading_documents, e.message ?: ""))
                     }
                 }
             } catch (e: Exception) {
                 android.util.Log.e("DocumentsFragment", "Error in loadData: ${e.message}", e)
                 if (isAdded && view != null) {
-                    Snackbar.make(binding.root, "Ошибка: ${e.message}", Snackbar.LENGTH_LONG).show()
+                    NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_unknown))
                 }
             }
         }
@@ -306,11 +309,14 @@ class DocumentsFragment : Fragment() {
     }
     
     private fun uploadDocument(uri: Uri, title: String, fileName: String) {
-        val teamId = currentTeamId
-        if (teamId == null) {
-            Snackbar.make(binding.root, "Ошибка: команда не выбрана", Snackbar.LENGTH_SHORT).show()
-            return
-        }
+        try {
+            val teamId = currentTeamId
+            if (teamId == null) {
+                if (isAdded && view != null) {
+                    NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_team_not_selected))
+                }
+                return
+            }
         
         // Use the tracked flag instead of current tab position
         val isMaterial = isUploadingMaterial
@@ -327,7 +333,8 @@ class DocumentsFragment : Fragment() {
                 )
                 
                 if (isAdded && view != null) {
-                    Snackbar.make(binding.root, if (isMaterial) "Материал загружен" else "Документ загружен", Snackbar.LENGTH_SHORT).show()
+                    val message = if (isMaterial) getString(R.string.material_uploaded) else getString(R.string.document_uploaded)
+                    NotificationHelper.showSuccessSnackbar(binding.root, message)
                 }
                 
                 // Если это материал, предлагаем отправить в чат и переключаемся на вкладку материалов
@@ -354,12 +361,17 @@ class DocumentsFragment : Fragment() {
             } catch (e: Exception) {
                 android.util.Log.e("DocumentsFragment", "Error uploading document: ${e.message}", e)
                 if (isAdded && view != null) {
-                    Snackbar.make(binding.root, "Ошибка загрузки: ${e.message}", Snackbar.LENGTH_LONG).show()
+                    NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_uploading, e.message ?: ""))
                 }
             } finally {
                 if (isAdded && view != null) {
                     binding.progressBar.isVisible = false
                 }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("DocumentsFragment", "Error in uploadDocument: ${e.message}", e)
+            if (isAdded && view != null) {
+                NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_uploading, e.message ?: ""))
             }
         }
     }
@@ -377,7 +389,7 @@ class DocumentsFragment : Fragment() {
             .setNegativeButton("Позже") { _, _ ->
                 // Материал уже сохранён в материалах для игроков, просто показываем сообщение
                 if (isAdded && view != null) {
-                    Snackbar.make(binding.root, "Материал сохранён в 'Материалы для игроков'. Вы можете отправить его позже.", Snackbar.LENGTH_LONG).show()
+                    NotificationHelper.showWarningSnackbar(binding.root, getString(R.string.material_saved_info))
                 }
             }
             .show()
@@ -390,7 +402,7 @@ class DocumentsFragment : Fragment() {
                 val teamId = currentTeamId
                 if (teamId == null) {
                     if (isAdded && view != null) {
-                        Snackbar.make(binding.root, "Ошибка: команда не выбрана", Snackbar.LENGTH_SHORT).show()
+                        NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_team_not_selected))
                     }
                     return@launch
                 }
@@ -405,12 +417,12 @@ class DocumentsFragment : Fragment() {
                 )
                 chatRepository.sendMessage(teamId, ChatType.TEAM, message)
                 if (isAdded && view != null) {
-                    Snackbar.make(binding.root, "Материал отправлен в чат", Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showSuccessSnackbar(binding.root, getString(R.string.material_sent_to_chat))
                 }
             } catch (e: Exception) {
                 android.util.Log.e("DocumentsFragment", "Error sending material to chat: ${e.message}", e)
                 if (isAdded && view != null) {
-                    Snackbar.make(binding.root, "Ошибка отправки: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_sending_material_to_chat, e.message ?: ""))
                 }
             }
         }
@@ -449,9 +461,14 @@ class DocumentsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 documentRepository.deleteDocument(teamId, doc.id, doc.downloadUrl)
-                Snackbar.make(binding.root, "Document deleted", Snackbar.LENGTH_SHORT).show()
+                if (isAdded && view != null) {
+                    NotificationHelper.showSuccessSnackbar(binding.root, getString(R.string.document_deleted))
+                }
             } catch (e: Exception) {
-                Snackbar.make(binding.root, "Delete failed: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                android.util.Log.e("DocumentsFragment", "Error deleting document: ${e.message}", e)
+                if (isAdded && view != null) {
+                    NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.delete_failed, e.message ?: ""))
+                }
             }
         }
     }
@@ -628,13 +645,15 @@ class DocumentsFragment : Fragment() {
                     android.util.Log.e("DocumentsFragment", "Error downloading sheet PDF: ${e.message}", e)
                     if (isAdded && view != null) {
                         binding.progressBar.isVisible = false
-                        Snackbar.make(binding.root, "Ошибка загрузки PDF: ${e.message}", Snackbar.LENGTH_LONG).show()
+                        NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_loading_pdf, e.message ?: ""))
                     }
                 }
             }
         } catch (e: Exception) {
             android.util.Log.e("DocumentsFragment", "Error opening sheet: ${e.message}", e)
-            Snackbar.make(binding.root, "Ошибка открытия листа: ${e.message}", Snackbar.LENGTH_SHORT).show()
+            if (isAdded && view != null) {
+                NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_opening_sheet, e.message ?: ""))
+            }
         }
     }
     
@@ -657,12 +676,13 @@ class DocumentsFragment : Fragment() {
             try {
                 sheetRepository.deleteSheet(sheet.id)
                 if (isAdded && view != null) {
-                    Snackbar.make(binding.root, "Лист удалён", Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showSuccessSnackbar(binding.root, getString(R.string.sheet_deleted))
                     loadData() // Перезагружаем данные
                 }
             } catch (e: Exception) {
                 android.util.Log.e("DocumentsFragment", "Error deleting sheet: ${e.message}", e)
                 if (isAdded && view != null) {
+                    NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_deleting_sheet, e.message ?: ""))
                     Snackbar.make(binding.root, "Ошибка удаления: ${e.message}", Snackbar.LENGTH_SHORT).show()
                 }
             }

@@ -41,6 +41,7 @@ import com.fts.ttbros.databinding.ActivityMainBinding
 import com.fts.ttbros.notifications.EventNotificationScheduler
 import com.fts.ttbros.notifications.NotificationHelper
 import com.fts.ttbros.utils.LocaleHelper
+import com.fts.ttbros.utils.NotificationHelper
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
@@ -374,9 +375,9 @@ private fun pickImageFromGallery() {
                 val avatarView = headerView.findViewById<ImageView>(R.id.navHeaderAvatar)
                 avatarView.setImageResource(android.R.drawable.sym_def_app_icon)
 
-                Snackbar.make(binding.root, "Аватар удалён", Snackbar.LENGTH_SHORT).show()
+                NotificationHelper.showSuccessSnackbar(binding.root, getString(R.string.avatar_deleted))
             } catch (e: Exception) {
-                Snackbar.make(binding.root, "Ошибка удаления аватара", Snackbar.LENGTH_SHORT).show()
+                NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_deleting_avatar))
             }
         }
     }
@@ -389,7 +390,7 @@ private fun pickImageFromGallery() {
                 lifecycleScope.launch {
                     try {
                         // Показать прогресс
-                        Snackbar.make(binding.root, "Загрузка аватара...", Snackbar.LENGTH_LONG).show()
+                        NotificationHelper.showWarningSnackbar(binding.root, getString(R.string.uploading_avatar))
 
                         // Загрузить на Яндекс.Диск
                         val userId = auth.currentUser?.uid ?: return@launch
@@ -409,9 +410,9 @@ private fun pickImageFromGallery() {
                             .placeholder(android.R.drawable.sym_def_app_icon)
                             .into(avatarView)
 
-                        Snackbar.make(binding.root, "Аватар загружен", Snackbar.LENGTH_SHORT).show()
+                        NotificationHelper.showSuccessSnackbar(binding.root, getString(R.string.avatar_uploaded))
                     } catch (e: Exception) {
-                        Snackbar.make(binding.root, "Ошибка загрузки аватара: ${e.message}", Snackbar.LENGTH_LONG).show()
+                        NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_uploading_avatar, e.message ?: ""))
                     }
                 }
             }
@@ -463,7 +464,7 @@ private fun pickImageFromGallery() {
                         currentTeam?.role == UserRole.MASTER
                 }
             } catch (error: Exception) {
-                Snackbar.make(binding.root, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
+                NotificationHelper.showErrorSnackbar(binding.root, error.localizedMessage ?: getString(R.string.error_unknown))
             }
         }
     }
@@ -477,7 +478,7 @@ private fun pickImageFromGallery() {
         val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
         
         if (currentTeam == null || currentTeam.teamCode.isBlank()) {
-            Snackbar.make(binding.root, getString(R.string.error_unknown), Snackbar.LENGTH_SHORT).show()
+            NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_unknown))
             return
         }
         MaterialAlertDialogBuilder(this)
@@ -521,9 +522,9 @@ private fun pickImageFromGallery() {
                 refreshProfile()
                 // Don't navigate to current destination - just refresh the current fragment
                 // Navigation to same destination can cause issues
-                Snackbar.make(binding.root, "Switched team", Snackbar.LENGTH_SHORT).show()
+                NotificationHelper.showSuccessSnackbar(binding.root, getString(R.string.team_switched))
             } catch (e: Exception) {
-                Snackbar.make(binding.root, "Error switching team: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_switching_team, e.message ?: ""))
             }
         }
     }
@@ -532,7 +533,7 @@ private fun pickImageFromGallery() {
         val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
             ?: return
         clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.dialog_team_code_title), code))
-        Snackbar.make(binding.root, R.string.code_copied, Snackbar.LENGTH_SHORT).show()
+        NotificationHelper.showSuccessSnackbar(binding.root, getString(R.string.code_copied))
     }
 
     private fun navigateTo(destination: Class<*>) {
@@ -613,10 +614,10 @@ private fun pickImageFromGallery() {
                 }
                 
                 // Показываем сообщение об успехе
-                Snackbar.make(binding.root, getString(R.string.cache_cleared), Snackbar.LENGTH_SHORT).show()
+                NotificationHelper.showSuccessSnackbar(binding.root, getString(R.string.cache_cleared))
             } catch (e: Exception) {
                 android.util.Log.e("MainActivity", "Error clearing cache: ${e.message}", e)
-                Snackbar.make(binding.root, getString(R.string.error_clearing_cache, e.message ?: ""), Snackbar.LENGTH_LONG).show()
+                NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_clearing_cache, e.message ?: ""))
             }
         }
     }
