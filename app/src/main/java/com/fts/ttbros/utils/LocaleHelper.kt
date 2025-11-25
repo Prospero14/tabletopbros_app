@@ -5,14 +5,11 @@ import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.content.res.Resources
 import android.os.Build
-import androidx.appcompat.app.AppCompatDelegate
 import java.util.Locale
 
 object LocaleHelper {
     private const val PREFS_NAME = "app_prefs"
     private const val KEY_LANGUAGE = "app_language"
-    
-    private val supportedLocales = listOf("ru", "en")
     
     fun setLocale(context: Context, languageCode: String): Context {
         val locale = Locale(languageCode)
