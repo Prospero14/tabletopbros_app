@@ -84,14 +84,14 @@ class CharacterSheetsFragment : Fragment() {
     private fun loadSheets() {
         val userId = auth.currentUser?.uid ?: return
         viewLifecycleOwner.lifecycleScope.launch {
+            var uploadedPath: String? = null
+            var uploadedFileName: String? = null
             try {
-                var uploadedPath: String? = null
-                var uploadedFileName: String? = null
                 if (!isAdded || view == null) return@launch
                 loadingView.isVisible = true
                 
                 val profile = userRepository.currentProfile()
-                val teamId = profile?.teamId
+                val teamId = profile?.currentTeamId ?: profile?.teamId
                 
                 if (teamId != null) {
                     val sheets = sheetRepository.getUserSheets(userId, teamId)
@@ -221,6 +221,7 @@ class CharacterSheetsFragment : Fragment() {
                 
                 // Создаем CharacterSheet из загруженного PDF (как было раньше)
                 val sheet = CharacterSheet(
+                    teamId = teamId,
                     userId = userId,
                     characterName = "Загруженный лист", // Фиксированное название вместо парсинга
                     system = teamSystem,

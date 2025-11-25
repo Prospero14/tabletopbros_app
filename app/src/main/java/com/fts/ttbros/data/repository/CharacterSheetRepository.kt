@@ -1,14 +1,11 @@
 package com.fts.ttbros.data.repository
 
 import android.content.Context
-import android.net.Uri
 import com.fts.ttbros.data.model.CharacterSheet
 import com.google.firebase.Timestamp
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
-import java.io.FileOutputStream
 import java.util.UUID
 
 class CharacterSheetRepository {
@@ -17,60 +14,35 @@ class CharacterSheetRepository {
 
     suspend fun saveSheet(sheet: CharacterSheet, context: Context): String {
         return withContext(Dispatchers.IO) {
+            val resolvedTeamId = sheet.teamId
+            val finalTeamId = if (resolvedTeamId.isNotBlank()) resolvedTeamId else "default_team"
             val sheetId = if (sheet.id.isBlank()) UUID.randomUUID().toString() else sheet.id
-            val teamId = sheet.teamId.ifBlank { "default_team" } // Should always have teamId
             val now = Timestamp.now()
             
-            val sheetWithId = if (sheet.id.isBlank()) {
-                sheet.copy(
+            val sheetWithTeam = if (sheet.teamId.isBlank()) sheet.copy(teamId = finalTeamId) else sheet
+            val sheetWithId = if (sheetWithTeam.id.isBlank()) {
+                sheetWithTeam.copy(
                     id = sheetId,
                     createdAt = now,
                     updatedAt = now
                 )
             } else {
-                sheet.copy(updatedAt = now)
+                sheetWithTeam.copy(updatedAt = now)
             }
             
             // Serialize to JSON
             val json = gson.toJson(sheetWithId)
             val fileName = "${sheetId}.json"
             
-            // Save to temp file
-            val tempFile = File(context.cacheDir, fileName)
-            FileOutputStream(tempFile).use { it.write(json.toByteArray()) }
-            
-            try {
-                // Upload to Yandex.Disk
-                // We use a specific folder for builder sheets
-                val remotePath = "/TTBros/teams/$teamId/builders/$fileName"
-                
-                // Use uploadFile logic but adapted for our needs
-                // Since we don't have a direct "uploadFile" that takes a File object in YandexDiskRepository (it takes Uri),
-                // we'll use Uri.fromFile
-                yandexDisk.uploadFile(
-                    teamId = teamId,
-                    fileName = fileName,
-                    fileUri = Uri.fromFile(tempFile),
-                    context = context,
-                    isMaterial = false // It's a builder sheet, not a player material
-                )
-                
-                // We also need to set metadata so we can list it properly later?
-                // Actually, if we read the JSON content, we have everything.
-                // But for listing, it's faster to have metadata.
-                // Let's set custom properties
-                val metadata = mapOf(
-                    "userId" to sheetWithId.userId,
-                    "characterName" to sheetWithId.characterName,
-                    "system" to sheetWithId.system,
-                    "type" to "builder_sheet"
-                )
-                yandexDisk.patchResource(remotePath, metadata)
-                
-                sheetId
-            } finally {
-                tempFile.delete()
-            }
+            val remotePath = "/TTBros/teams/$finalTeamId/builders/$fileName"
+            val metadata = mapOf(
+                "userId" to sheetWithId.userId,
+                "characterName" to sheetWithId.characterName,
+                "system" to sheetWithId.system,
+                "type" to "builder_sheet"
+            )
+            yandexDisk.uploadJson(remotePath, json, metadata)
+            sheetId
         }
     }
 
