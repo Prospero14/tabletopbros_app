@@ -87,10 +87,19 @@ class CharacterSheetsFragment : Fragment() {
             try {
                 if (!isAdded || view == null) return@launch
                 loadingView.isVisible = true
-                val sheets = sheetRepository.getUserSheets(userId)
-                if (!isAdded || view == null) return@launch
-                adapter.submitList(sheets)
-                emptyView.isVisible = sheets.isEmpty()
+                
+                val profile = userRepository.currentProfile()
+                val teamId = profile?.teamId
+                
+                if (teamId != null) {
+                    val sheets = sheetRepository.getUserSheets(userId, teamId)
+                    if (!isAdded || view == null) return@launch
+                    adapter.submitList(sheets)
+                    emptyView.isVisible = sheets.isEmpty()
+                } else {
+                    // No team, no sheets
+                    emptyView.isVisible = true
+                }
             } catch (e: Exception) {
                 android.util.Log.e("CharacterSheetsFragment", "Error loading sheets: ${e.message}", e)
                 if (isAdded && view != null) {
@@ -170,46 +179,6 @@ class CharacterSheetsFragment : Fragment() {
                 }
                 
                 view?.let {
-                    Snackbar.make(it, "Загрузка PDF...", Snackbar.LENGTH_SHORT).show()
-                }
-                
-                // Upload PDF to Yandex.Disk (только если валидация прошла)
-                val pdfUrl = try {
-                    yandexDisk.uploadCharacterSheet(userId, uri, context)
-                } catch (e: Exception) {
-                    android.util.Log.e("CharacterSheetsFragment", "Error uploading to Yandex.Disk: ${e.message}", e)
-                    throw e
-                }
-                
-                // Проверка что фрагмент все еще прикреплен
-                if (!isAdded || view == null) {
-                    android.util.Log.w("CharacterSheetsFragment", "Fragment detached during upload")
-                    return@launch
-                }
-                
-                // Save character sheet metadata to Firestore so it appears in Documents tab
-                val userProfile = userRepository.currentProfile()
-                val teamId = userProfile?.teamId
-                if (teamId != null) {
-                    try {
-                        documentRepository.uploadCharacterSheetMetadata(
-                            teamId = teamId,
-                            pdfUrl = pdfUrl,
-                            characterName = validationResult.characterName ?: "Unknown",
-                            system = validationResult.system ?: "unknown",
-                            userId = userId,
-                            userName = auth.currentUser?.displayName ?: "Unknown"
-                        )
-                        android.util.Log.d("CharacterSheetsFragment", "Character sheet metadata saved to Firestore")
-                    } catch (e: Exception) {
-                        android.util.Log.e("CharacterSheetsFragment", "Error saving metadata: ${e.message}", e)
-                        // Don't fail the upload if metadata save fails
-                    }
-                }
-                
-                view?.let {
-                    Snackbar.make(it, "Парсинг PDF...", Snackbar.LENGTH_SHORT).show()
-                }
                 
                 // Parse PDF
                 val parsedData = try {

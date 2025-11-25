@@ -4,33 +4,44 @@ import android.content.Context
 import android.net.Uri
 import com.fts.ttbros.data.model.Document
 import com.google.firebase.Timestamp
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.flow.flow
+import java.util.Date
 
 class DocumentRepository {
-    private val db = FirebaseFirestore.getInstance()
     private val yandexDisk = YandexDiskRepository()
 
-    fun getDocuments(teamId: String): Flow<List<Document>> = callbackFlow {
-        val listener = db.collection("teams")
-            .document(teamId)
-            .collection("documents")
-            .orderBy("timestamp", Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    trySend(emptyList())
-                    return@addSnapshotListener
-                }
-                val docs = snapshot?.documents?.mapNotNull { doc ->
-                    doc.toObject(Document::class.java)?.copy(id = doc.id)
-                } ?: emptyList()
-                trySend(docs)
-            }
-        awaitClose { listener.remove() }
+    fun getDocuments(teamId: String): Flow<List<Document>> = flow {
+        // Fetch from all three locations
+        val documents = yandexDisk.listResources("/TTBros/teams/$teamId/documents")
+        val materials = yandexDisk.listResources("/TTBros/teams/$teamId/player_materials")
+        val sheets = yandexDisk.listResources("/TTBros/teams/$teamId/character_sheets")
+        
+        val allResources = documents + materials + sheets
+        
+        val docs = allResources.map { resource ->
+            val metadata = resource.custom_properties ?: emptyMap()
+            Document(
+                id = resource.path, // Use path as ID
+                teamId = teamId,
+                title = metadata["title"] ?: resource.name,
+                fileName = resource.name,
+                downloadUrl = resource.public_url ?: resource.file ?: "",
+                uploadedBy = metadata["uploadedBy"] ?: "",
+                uploadedByName = metadata["uploadedByName"] ?: "Unknown",
+                timestamp = try {
+                    // Parse ISO 8601 date from Yandex (e.g., "2023-10-27T10:00:00+00:00")
+                    val date = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US)
+                        .parse(resource.created) ?: Date()
+                    Timestamp(date)
+                } catch (e: Exception) {
+                    Timestamp.now()
+                },
+                sizeBytes = resource.size ?: 0L
+            )
+        }.sortedByDescending { it.timestamp }
+        
+        emit(docs)
     }
 
     suspend fun uploadDocument(
@@ -44,50 +55,27 @@ class DocumentRepository {
         isMaterial: Boolean = false
     ): Document? {
         try {
-            android.util.Log.d("DocumentRepository", "Starting upload to Yandex.Disk")
+            val metadata = mapOf(
+                "uploadedBy" to userId,
+                "uploadedByName" to userName,
+                "title" to title,
+                "teamId" to teamId
+            )
             
-            // 1. Upload to Yandex.Disk and get public URL
-            android.util.Log.d("DocumentRepository", "Uploading file: $fileName, isMaterial: $isMaterial")
             val downloadUrl = yandexDisk.uploadFile(
                 teamId = teamId,
                 fileName = fileName,
                 fileUri = uri,
                 context = context,
-                isMaterial = isMaterial
+                isMaterial = isMaterial,
+                metadata = metadata
             )
             
-            android.util.Log.d("DocumentRepository", "File uploaded, URL: $downloadUrl")
-            android.util.Log.d("DocumentRepository", "URL contains /player_materials/: ${downloadUrl.contains("/player_materials/")}")
-            
-            // 2. Get file size
             val size = context.contentResolver
                 .openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0L
-            
-            android.util.Log.d("DocumentRepository", "File size: $size bytes")
 
-            // 3. Save to Firestore
-            val docMap = hashMapOf(
-                "teamId" to teamId,
-                "title" to title,
-                "fileName" to fileName,
-                "downloadUrl" to downloadUrl,
-                "uploadedBy" to userId,
-                "uploadedByName" to userName,
-                "timestamp" to Timestamp.now(),
-                "sizeBytes" to size
-            )
-            
-            val docRef = db.collection("teams")
-                .document(teamId)
-                .collection("documents")
-                .add(docMap)
-                .await()
-                
-            android.util.Log.d("DocumentRepository", "Document metadata saved to Firestore")
-            
-            // 4. Return Document object
             return Document(
-                id = docRef.id,
+                id = "", // Will be filled on reload
                 teamId = teamId,
                 title = title,
                 fileName = fileName,
@@ -98,76 +86,39 @@ class DocumentRepository {
                 sizeBytes = size
             )
         } catch (e: Exception) {
-            android.util.Log.e("DocumentRepository", "Upload error: ${e.message}", e)
+            android.util.Log.e("DocumentRepository", "Error uploading document: ${e.message}", e)
             throw e
         }
     }
-
+    
     suspend fun uploadCharacterSheetMetadata(
         teamId: String,
-        pdfUrl: String,
+        pdfUrl: String, // Not used directly as we need path to patch
         characterName: String,
         system: String,
         userId: String,
-        userName: String
-    ): Document? {
-        try {
-            val fileName = "character_sheet_${characterName}_${System.currentTimeMillis()}.pdf"
-            
-            val docMap = hashMapOf(
-                "teamId" to teamId,
-                "title" to "Character Sheet: $characterName",
-                "fileName" to fileName,
-                "downloadUrl" to pdfUrl,
-                "uploadedBy" to userId,
-                "uploadedByName" to userName,
-                "timestamp" to Timestamp.now(),
-                "sizeBytes" to 0L, // Unknown size for already uploaded files
-                "system" to system
-            )
-            
-            val docRef = db.collection("teams")
-                .document(teamId)
-                .collection("documents")
-                .add(docMap)
-                .await()
-                
-            android.util.Log.d("DocumentRepository", "Character sheet metadata saved to Firestore")
-            
-            return Document(
-                id = docRef.id,
-                teamId = teamId,
-                title = "Character Sheet: $characterName",
-                fileName = fileName,
-                downloadUrl = pdfUrl,
-                uploadedBy = userId,
-                uploadedByName = userName,
-                timestamp = Timestamp.now(),
-                sizeBytes = 0L
-            )
-        } catch (e: Exception) {
-            android.util.Log.e("DocumentRepository", "Error saving character sheet metadata: ${e.message}", e)
-            throw e
-        }
+        userName: String,
+        fileName: String // Need filename to construct path
+    ) {
+        // Construct path based on new team-centric structure
+        // Note: CharacterSheetsFragment needs to be updated to upload to /teams/{teamId}/character_sheets/
+        val remotePath = "/TTBros/teams/$teamId/character_sheets/$fileName"
+        
+        val metadata = mapOf(
+            "uploadedBy" to userId,
+            "uploadedByName" to userName,
+            "characterName" to characterName,
+            "system" to system,
+            "title" to characterName
+        )
+        
+        yandexDisk.patchResource(remotePath, metadata)
     }
-
-    suspend fun deleteDocument(teamId: String, documentId: String, downloadUrl: String) {
-        // 1. Delete from Firestore
-        db.collection("teams")
-            .document(teamId)
-            .collection("documents")
-            .document(documentId)
-            .delete()
-            .await()
-
-        // 2. Delete from Yandex.Disk
-        try {
-            // Extract path from public URL or construct it
-            // For now, we'll skip deletion from Yandex.Disk as we need to track the path
-            // TODO: Store remote path in Firestore for proper deletion
-            android.util.Log.w("DocumentRepository", "Yandex.Disk file deletion not implemented yet")
-        } catch (e: Exception) {
-            android.util.Log.e("DocumentRepository", "Yandex.Disk delete error: ${e.message}", e)
+    
+    suspend fun deleteDocument(document: Document) {
+        // Document ID is now the path
+        if (document.id.isNotEmpty()) {
+            yandexDisk.deleteFile(document.id)
         }
     }
 }

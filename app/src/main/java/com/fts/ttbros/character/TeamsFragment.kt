@@ -50,7 +50,8 @@ class TeamsFragment : Fragment() {
         playersRecyclerView = view.findViewById(R.id.playersRecyclerView)
         progressIndicator = view.findViewById(R.id.progressIndicator)
         
-        playersRecyclerView.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(requireContext())
+        val context = context ?: return
+        playersRecyclerView.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(context)
         playersRecyclerView.adapter = teamsAdapter
         loadData()
     }
@@ -84,18 +85,26 @@ class TeamsFragment : Fragment() {
                 userRepository.switchTeam(teamId)
                 // Refresh data
                 loadData()
-                Snackbar.make(requireView(), "Switched team", Snackbar.LENGTH_SHORT).show()
+                val view = view
+                if (isAdded && view != null) {
+                    Snackbar.make(view, "Switched team", Snackbar.LENGTH_SHORT).show()
+                }
             } catch (e: Exception) {
-                Snackbar.make(requireView(), "Error switching team: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                val view = view
+                if (isAdded && view != null) {
+                    Snackbar.make(view, "Error switching team: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                }
             }
         }
     }
     
     private fun showJoinTeamDialog() {
-        val input = com.google.android.material.textfield.TextInputEditText(requireContext())
+        val context = context ?: return
+        if (!isAdded) return
+        val input = com.google.android.material.textfield.TextInputEditText(context)
         input.hint = getString(R.string.enter_group_code)
         
-        val container = android.widget.FrameLayout(requireContext())
+        val container = android.widget.FrameLayout(context)
         val params = android.widget.FrameLayout.LayoutParams(
             android.view.ViewGroup.LayoutParams.MATCH_PARENT, 
             android.view.ViewGroup.LayoutParams.WRAP_CONTENT
@@ -106,7 +115,7 @@ class TeamsFragment : Fragment() {
         input.layoutParams = params
         container.addView(input)
 
-        MaterialAlertDialogBuilder(requireContext())
+        MaterialAlertDialogBuilder(context)
             .setTitle(R.string.join_group)
             .setView(container)
             .setPositiveButton(R.string.join_group) { _, _ ->
@@ -114,7 +123,10 @@ class TeamsFragment : Fragment() {
                 if (code.length >= 4) {
                     joinGroup(code)
                 } else {
-                    Snackbar.make(requireView(), R.string.error_group_code, Snackbar.LENGTH_SHORT).show()
+                    val view = view
+                    if (isAdded && view != null) {
+                        Snackbar.make(view, R.string.error_group_code, Snackbar.LENGTH_SHORT).show()
+                    }
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
@@ -125,21 +137,31 @@ class TeamsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val team = teamRepository.findTeamByCode(code)
+                val view = view
                 if (team == null) {
-                    Snackbar.make(requireView(), R.string.error_group_not_found, Snackbar.LENGTH_LONG).show()
+                    if (isAdded && view != null) {
+                        Snackbar.make(view, R.string.error_group_not_found, Snackbar.LENGTH_LONG).show()
+                    }
                     return@launch
                 }
                 
                 userRepository.addTeam(team.id, team.code, UserRole.PLAYER, team.system, "Team ${team.code}")
                 loadData()
-                Snackbar.make(requireView(), R.string.success_joined_group, Snackbar.LENGTH_SHORT).show()
+                if (isAdded && view != null) {
+                    Snackbar.make(view, R.string.success_joined_group, Snackbar.LENGTH_SHORT).show()
+                }
             } catch (error: Exception) {
-                Snackbar.make(requireView(), error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
+                val view = view
+                if (isAdded && view != null) {
+                    Snackbar.make(view, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
+                }
             }
         }
     }
 
     private fun chooseSystemAndCreateTeam() {
+        val context = context ?: return
+        if (!isAdded) return
         val options = arrayOf(
             getString(R.string.vampire_masquerade),
             getString(R.string.dungeons_dragons),
@@ -148,23 +170,29 @@ class TeamsFragment : Fragment() {
         val values = arrayOf("vtm_5e", "dnd_5e", "viedzmin_2e")
         var selectedIndex = 0
         
-        MaterialAlertDialogBuilder(requireContext())
+        MaterialAlertDialogBuilder(context)
             .setTitle(R.string.select_game_system)
             .setSingleChoiceItems(options, selectedIndex) { _, which ->
-                selectedIndex = which
+                if (which >= 0 && which < values.size) {
+                    selectedIndex = which
+                }
             }
             .setPositiveButton(android.R.string.ok) { _, _ ->
-                showTeamNameDialog(values[selectedIndex])
+                if (selectedIndex >= 0 && selectedIndex < values.size) {
+                    showTeamNameDialog(values[selectedIndex])
+                }
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
     
     private fun showTeamNameDialog(system: String) {
-        val input = com.google.android.material.textfield.TextInputEditText(requireContext())
+        val context = context ?: return
+        if (!isAdded) return
+        val input = com.google.android.material.textfield.TextInputEditText(context)
         input.hint = "Название команды"
         
-        val container = android.widget.FrameLayout(requireContext())
+        val container = android.widget.FrameLayout(context)
         val params = android.widget.FrameLayout.LayoutParams(
             android.view.ViewGroup.LayoutParams.MATCH_PARENT, 
             android.view.ViewGroup.LayoutParams.WRAP_CONTENT
@@ -175,7 +203,7 @@ class TeamsFragment : Fragment() {
         input.layoutParams = params
         container.addView(input)
 
-        MaterialAlertDialogBuilder(requireContext())
+        MaterialAlertDialogBuilder(context)
             .setTitle("Название команды")
             .setView(container)
             .setPositiveButton(R.string.create_new_group) { _, _ ->
@@ -191,8 +219,11 @@ class TeamsFragment : Fragment() {
             try {
                 val user = userRepository.currentProfile() ?: return@launch
                 val currentUser = Firebase.auth.currentUser
+                val view = view
                 if (currentUser == null) {
-                    Snackbar.make(requireView(), "User not authenticated", Snackbar.LENGTH_LONG).show()
+                    if (isAdded && view != null) {
+                        Snackbar.make(view, "User not authenticated", Snackbar.LENGTH_LONG).show()
+                    }
                     return@launch
                 }
                 
@@ -201,9 +232,15 @@ class TeamsFragment : Fragment() {
                 userRepository.addTeam(team.id, team.code, UserRole.MASTER, team.system, finalTeamName)
                 
                 loadData()
-                Snackbar.make(requireView(), "Team created", Snackbar.LENGTH_SHORT).show()
+                val view = view
+                if (isAdded && view != null) {
+                    Snackbar.make(view, "Team created", Snackbar.LENGTH_SHORT).show()
+                }
             } catch (error: Exception) {
-                Snackbar.make(requireView(), error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
+                val view = view
+                if (isAdded && view != null) {
+                    Snackbar.make(view, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
+                }
             }
         }
     }
@@ -240,13 +277,19 @@ class TeamsFragment : Fragment() {
 
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             if (holder is TeamViewHolder) {
+                if (position < 0 || position >= teams.size) {
+                    android.util.Log.w("TeamsAdapter", "Invalid position: $position, teams size: ${teams.size}")
+                    return
+                }
                 holder.bind(teams[position])
             } else if (holder is ActionViewHolder) {
                 // First action is Join, second is Create
                 if (position == teams.size) {
                     holder.bind(getString(R.string.join_group)) { showJoinTeamDialog() }
-                } else {
+                } else if (position == teams.size + 1) {
                     holder.bind(getString(R.string.create_new_group)) { chooseSystemAndCreateTeam() }
+                } else {
+                    android.util.Log.w("TeamsAdapter", "Invalid action position: $position")
                 }
             }
         }

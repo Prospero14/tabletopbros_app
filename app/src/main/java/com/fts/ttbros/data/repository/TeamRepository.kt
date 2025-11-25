@@ -1,107 +1,101 @@
 package com.fts.ttbros.data.repository
 
-import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
+import com.fts.ttbros.data.model.Member
 import com.fts.ttbros.data.model.Team
 import com.fts.ttbros.data.model.UserRole
 import com.fts.ttbros.data.utils.TeamCodeGenerator
-import kotlinx.coroutines.tasks.await
+import com.google.firebase.auth.FirebaseUser
+import com.google.gson.Gson
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.util.UUID
 
-class TeamRepository(
-    private val firestore: FirebaseFirestore = Firebase.firestore
-) {
-
-    private val teamsCollection = firestore.collection(COLLECTION_TEAMS)
+class TeamRepository {
+    private val yandexDisk = YandexDiskRepository()
+    private val gson = Gson()
 
     suspend fun createTeam(owner: FirebaseUser, system: String): Team {
-        val code = TeamCodeGenerator.generate()
-        val docRef = teamsCollection.document()
-        val payload = mapOf(
-            FIELD_CODE to code,
-            FIELD_OWNER_ID to owner.uid,
-            FIELD_OWNER_EMAIL to owner.email,
-            FIELD_SYSTEM to system,
-            FIELD_CREATED_AT to FieldValue.serverTimestamp()
-        )
-        docRef.set(payload).await()
-        addMemberDocument(docRef.id, owner.uid, owner.email.orEmpty(), UserRole.MASTER)
-        return Team(
-            id = docRef.id,
-            code = code,
-            ownerId = owner.uid,
-            ownerEmail = owner.email.orEmpty(),
-            system = system
-        )
-    }
-
-    suspend fun findTeamByCode(code: String): Team? {
-        val snapshot = teamsCollection.whereEqualTo(FIELD_CODE, code.uppercase()).limit(1).get().await()
-        val document = snapshot.documents.firstOrNull() ?: return null
-        return Team(
-            id = document.id,
-            code = document.getString(FIELD_CODE).orEmpty(),
-            ownerId = document.getString(FIELD_OWNER_ID).orEmpty(),
-            ownerEmail = document.getString(FIELD_OWNER_EMAIL).orEmpty()
-            ,
-            system = document.getString(FIELD_SYSTEM).orEmpty()
-        )
-    }
-
-    suspend fun addMember(teamId: String, user: FirebaseUser, role: UserRole) {
-        addMemberDocument(teamId, user.uid, user.email.orEmpty(), role)
-    }
-
-    suspend fun fetchMembers(teamId: String): List<Member> {
-        val snapshot = teamsCollection
-            .document(teamId)
-            .collection(COLLECTION_MEMBERS)
-            .get()
-            .await()
-
-        return snapshot.documents.mapNotNull { doc ->
-            val uid = doc.getString(FIELD_MEMBER_UID) ?: return@mapNotNull null
-            val email = doc.getString(FIELD_MEMBER_EMAIL).orEmpty()
-            val role = UserRole.from(doc.getString(FIELD_ROLE))
-            Member(uid = uid, email = email, role = role)
+        return withContext(Dispatchers.IO) {
+            val code = TeamCodeGenerator.generate()
+            val teamId = UUID.randomUUID().toString()
+            
+            val ownerMember = Member(
+                uid = owner.uid,
+                email = owner.email.orEmpty(),
+                role = UserRole.MASTER.name,
+                joinedAt = System.currentTimeMillis()
+            )
+            
+            val team = Team(
+                id = teamId,
+                code = code,
+                ownerId = owner.uid,
+                ownerEmail = owner.email.orEmpty(),
+                system = system,
+                members = listOf(ownerMember)
+            )
+            
+            // 1. Save team JSON
+            val teamPath = "/TTBros/teams/$teamId/team.json"
+            val teamJson = gson.toJson(team)
+            yandexDisk.uploadJson(teamPath, teamJson)
+            
+            // 2. Save code mapping
+            val codePath = "/TTBros/codes/${code.uppercase()}.json"
+            val codeMapping = mapOf("teamId" to teamId)
+            val codeJson = gson.toJson(codeMapping)
+            yandexDisk.uploadJson(codePath, codeJson)
+            
+            team
         }
     }
 
-    private suspend fun addMemberDocument(teamId: String, uid: String, email: String, role: UserRole) {
-        val docRef = teamsCollection
-            .document(teamId)
-            .collection(COLLECTION_MEMBERS)
-            .document(uid)
-
-        val payload = mapOf(
-            FIELD_MEMBER_UID to uid,
-            FIELD_MEMBER_EMAIL to email,
-            FIELD_ROLE to role.name,
-            FIELD_JOINED_AT to FieldValue.serverTimestamp()
-        )
-        docRef.set(payload).await()
+    suspend fun findTeamByCode(code: String): Team? {
+        return withContext(Dispatchers.IO) {
+            try {
+                // 1. Get teamId from code
+                val codePath = "/TTBros/codes/${code.uppercase()}.json"
+                val codeMapping = yandexDisk.readJson(codePath, Map::class.java)
+                val teamId = codeMapping?.get("teamId") as? String ?: return@withContext null
+                
+                // 2. Get team
+                val teamPath = "/TTBros/teams/$teamId/team.json"
+                yandexDisk.readJson(teamPath, Team::class.java)
+            } catch (e: Exception) {
+                null
+            }
+        }
     }
 
-    data class Member(
-        val uid: String,
-        val email: String,
-        val role: UserRole
-    )
+    suspend fun addMember(teamId: String, user: FirebaseUser, role: UserRole) {
+        withContext(Dispatchers.IO) {
+            val teamPath = "/TTBros/teams/$teamId/team.json"
+            val team = yandexDisk.readJson(teamPath, Team::class.java) ?: return@withContext
+            
+            // Check if already member
+            if (team.members.any { it.uid == user.uid }) return@withContext
+            
+            val newMember = Member(
+                uid = user.uid,
+                email = user.email.orEmpty(),
+                role = role.name,
+                joinedAt = System.currentTimeMillis()
+            )
+            
+            val updatedTeam = team.copy(
+                members = team.members + newMember
+            )
+            
+            val teamJson = gson.toJson(updatedTeam)
+            yandexDisk.uploadJson(teamPath, teamJson)
+        }
+    }
 
-    companion object {
-        private const val COLLECTION_TEAMS = "teams"
-        private const val COLLECTION_MEMBERS = "members"
-        private const val FIELD_CODE = "code"
-        private const val FIELD_OWNER_ID = "ownerId"
-        private const val FIELD_OWNER_EMAIL = "ownerEmail"
-        private const val FIELD_CREATED_AT = "createdAt"
-        private const val FIELD_MEMBER_UID = "uid"
-        private const val FIELD_MEMBER_EMAIL = "email"
-        private const val FIELD_JOINED_AT = "joinedAt"
-        private const val FIELD_ROLE = "role"
-        private const val FIELD_SYSTEM = "system"
+    suspend fun fetchMembers(teamId: String): List<Member> {
+        return withContext(Dispatchers.IO) {
+            val teamPath = "/TTBros/teams/$teamId/team.json"
+            val team = yandexDisk.readJson(teamPath, Team::class.java)
+            team?.members ?: emptyList()
+        }
     }
 }
-

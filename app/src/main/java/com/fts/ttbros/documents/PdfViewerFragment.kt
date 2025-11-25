@@ -88,7 +88,10 @@ class PdfViewerFragment : Fragment() {
                 withContext(Dispatchers.Main) {
                     if (isAdded && view != null && pdfRenderer != null) {
                         try {
-                            binding.pdfRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+                            val context = context
+                            if (context != null) {
+                                binding.pdfRecyclerView.layoutManager = LinearLayoutManager(context)
+                            }
                             binding.pdfRecyclerView.adapter = PdfPageAdapter(pdfRenderer!!)
                             binding.errorTextView.visibility = View.GONE
                         } catch (e: Exception) {

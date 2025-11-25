@@ -61,7 +61,8 @@ class CalendarFragment : Fragment() {
         createEventFab = view.findViewById(R.id.createEventFab)
         progressIndicator = view.findViewById(R.id.progressIndicator)
 
-        eventsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
+        val context = context ?: return
+        eventsRecyclerView.layoutManager = LinearLayoutManager(context)
         eventsRecyclerView.adapter = eventsAdapter
 
         createEventFab.setOnClickListener {
@@ -160,10 +161,13 @@ class CalendarFragment : Fragment() {
             val userName = profile.displayName
 
             // Pass selected date to dialog if possible, or just current time
-            val dialog = CreateEventDialog(requireContext()) { title, description, dateTime ->
-                createEvent(teamId, userName, title, description, dateTime)
+            val context = context
+            if (context != null && isAdded) {
+                val dialog = CreateEventDialog(context) { title, description, dateTime ->
+                    createEvent(teamId, userName, title, description, dateTime)
+                }
+                dialog.show()
             }
-            dialog.show()
         }
     }
     
@@ -173,7 +177,10 @@ class CalendarFragment : Fragment() {
             
             // Only creator or master can edit? Let's allow creator for now.
             if (event.createdBy != profile.uid) {
-                Snackbar.make(requireView(), "Only the creator can edit this event", Snackbar.LENGTH_SHORT).show()
+                val view = view
+                if (isAdded && view != null) {
+                    Snackbar.make(view, "Only the creator can edit this event", Snackbar.LENGTH_SHORT).show()
+                }
                 return@launch
             }
 
@@ -197,12 +204,15 @@ class CalendarFragment : Fragment() {
             // Better: Let's make a new EditEventDialog or modify CreateEventDialog.
             // I'll modify CreateEventDialog in the next step. For now, I'll just put a placeholder or basic logic.
             
-            val dialog = CreateEventDialog(requireContext()) { title, description, dateTime ->
-                updateEvent(event.copy(title = title, description = description, dateTime = dateTime))
+            val context = context
+            if (context != null && isAdded) {
+                val dialog = CreateEventDialog(context) { title, description, dateTime ->
+                    updateEvent(event.copy(title = title, description = description, dateTime = dateTime))
+                }
+                // We need to pre-fill the dialog. I'll need to add a method to CreateEventDialog to set data.
+                dialog.setEventData(event)
+                dialog.show()
             }
-            // We need to pre-fill the dialog. I'll need to add a method to CreateEventDialog to set data.
-            dialog.setEventData(event)
-            dialog.show()
         }
     }
 
@@ -221,14 +231,23 @@ class CalendarFragment : Fragment() {
 
                 val eventId = eventRepository.createEvent(event)
                 
-                EventNotificationScheduler.scheduleEventNotifications(
-                    requireContext(),
-                    event.copy(id = eventId)
-                )
+                val context = context
+                if (context != null && isAdded) {
+                    EventNotificationScheduler.scheduleEventNotifications(
+                        context,
+                        event.copy(id = eventId)
+                    )
+                }
 
-                Snackbar.make(requireView(), R.string.event_created, Snackbar.LENGTH_SHORT).show()
+                val view = view
+                if (isAdded && view != null) {
+                    Snackbar.make(view, R.string.event_created, Snackbar.LENGTH_SHORT).show()
+                }
             } catch (e: Exception) {
-                Snackbar.make(requireView(), "Error creating event: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                val view = view
+                if (isAdded && view != null) {
+                    Snackbar.make(view, "Error creating event: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -236,16 +255,26 @@ class CalendarFragment : Fragment() {
     private fun updateEvent(event: Event) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                // Отменить старые уведомления перед обновлением
-                EventNotificationScheduler.cancelEventNotifications(requireContext(), event.id)
+                val context = context
+                if (context != null && isAdded) {
+                    // Отменить старые уведомления перед обновлением
+                    EventNotificationScheduler.cancelEventNotifications(context, event.id)
+                    
+                    eventRepository.updateEvent(event)
+                    
+                    // Планировать новые уведомления
+                    EventNotificationScheduler.scheduleEventNotifications(context, event)
+                }
                 
-                eventRepository.updateEvent(event)
-                
-                // Планировать новые уведомления
-                EventNotificationScheduler.scheduleEventNotifications(requireContext(), event)
-                Snackbar.make(requireView(), "Event updated", Snackbar.LENGTH_SHORT).show()
+                val view = view
+                if (isAdded && view != null) {
+                    Snackbar.make(view, "Event updated", Snackbar.LENGTH_SHORT).show()
+                }
             } catch (e: Exception) {
-                Snackbar.make(requireView(), "Error updating event: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                val view = view
+                if (isAdded && view != null) {
+                    Snackbar.make(view, "Error updating event: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                }
             }
         }
     }
@@ -267,6 +296,10 @@ class CalendarFragment : Fragment() {
         }
 
         override fun onBindViewHolder(holder: EventViewHolder, position: Int) {
+            if (position < 0 || position >= events.size) {
+                android.util.Log.w("EventsAdapter", "Invalid position: $position, events size: ${events.size}")
+                return
+            }
             holder.bind(events[position])
         }
 

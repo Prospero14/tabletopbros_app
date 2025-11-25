@@ -454,7 +454,9 @@ class CharactersFragment : Fragment() {
     }
     
     private fun showDeleteCharacterDialog(character: com.fts.ttbros.data.model.Character) {
-        MaterialAlertDialogBuilder(requireContext())
+        val context = context ?: return
+        if (!isAdded) return
+        MaterialAlertDialogBuilder(context)
             .setTitle("Delete Character")
             .setMessage("Are you sure you want to delete '${character.name}'? This action cannot be undone.")
             .setPositiveButton("Delete") { _, _ ->

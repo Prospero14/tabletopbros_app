@@ -50,10 +50,12 @@ class DocumentsFragment : Fragment() {
     private var allSheets: List<com.fts.ttbros.data.model.CharacterSheet> = emptyList()
     private var playerMaterials: List<Document> = emptyList() // Материалы для игроков (мастер)
     private var masterMaterials: List<Document> = emptyList() // Материалы от мастера (игрок)
-    private var isUploadingMaterial: Boolean = false
+    private val documentPickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let { showUploadDialog(it, isMaterial = false) }
+    }
 
-    private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        uri?.let { showUploadDialog(it) }
+    private val materialPickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        uri?.let { showUploadDialog(it, isMaterial = true) }
     }
 
     override fun onCreateView(
@@ -89,8 +91,7 @@ class DocumentsFragment : Fragment() {
             when (selectedTab) {
                 0 -> {
                     // Загрузка документа
-                    isUploadingMaterial = false
-                    filePickerLauncher.launch("application/pdf")
+                    documentPickerLauncher.launch("application/pdf")
                 }
                 1 -> {
                     // Загрузка листа персонажа - навигация в CharacterSheetsFragment
@@ -104,9 +105,8 @@ class DocumentsFragment : Fragment() {
                 2 -> {
                     // Добавление материала для игроков (только для мастера)
                     if (isMaster) {
-                        isUploadingMaterial = true
                         // Support both PDF and JPG for materials
-                        filePickerLauncher.launch("*/*")
+                        materialPickerLauncher.launch("*/*")
                     }
                 }
             }
@@ -220,8 +220,11 @@ class DocumentsFragment : Fragment() {
                                 doc.downloadUrl.contains("/player_materials/") && doc.uploadedBy != currentUserId
                             }
                             
-                            // Загружаем листы персонажей
-                            allSheets = sheetRepository.getUserSheets(currentUserId)
+                            // Загружаем листы персонажей (Builder)
+                            val teamId = currentTeamId
+                            if (teamId != null) {
+                                allSheets = sheetRepository.getUserSheets(currentUserId, teamId)
+                            }
                             
                             // Обновляем отображаемый список в зависимости от выбранной вкладки
                             val selectedTab = binding.tabLayout.selectedTabPosition
@@ -262,7 +265,7 @@ class DocumentsFragment : Fragment() {
         }
     }
     
-    private fun showUploadDialog(uri: Uri) {
+    private fun showUploadDialog(uri: Uri, isMaterial: Boolean) {
         val context = context ?: return
         val view = LayoutInflater.from(context).inflate(R.layout.dialog_add_note, null) // Reusing layout or create new
         // Ideally create a new layout for document upload, but for now let's use a simple input
@@ -284,23 +287,18 @@ class DocumentsFragment : Fragment() {
             .setView(input)
             .setPositiveButton("Upload") { _, _ ->
                 val title = input.text?.toString()?.trim() ?: fileName
-                uploadDocument(uri, title, fileName)
+                uploadDocument(uri, title, fileName, isMaterial)
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
     
-    private fun uploadDocument(uri: Uri, title: String, fileName: String) {
+    private fun uploadDocument(uri: Uri, title: String, fileName: String, isMaterial: Boolean) {
         val teamId = currentTeamId
         if (teamId == null) {
             Snackbar.make(binding.root, "Ошибка: команда не выбрана", Snackbar.LENGTH_SHORT).show()
             return
         }
-        
-        // Use the tracked flag instead of current tab position
-        val isMaterial = isUploadingMaterial
-        // Reset the flag
-        isUploadingMaterial = false
         
         binding.progressBar.isVisible = true
         viewLifecycleOwner.lifecycleScope.launch {
@@ -625,10 +623,16 @@ class DocumentsFragment : Fragment() {
     private fun deleteSheet(sheet: com.fts.ttbros.data.model.CharacterSheet) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                sheetRepository.deleteSheet(sheet.id)
+                val teamId = currentTeamId
+                if (teamId == null) {
+                    if (isAdded && view != null) {
+                        Snackbar.make(binding.root, "Ошибка: команда не выбрана", Snackbar.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+                sheetRepository.deleteSheet(teamId, sheet.id, sheet.pdfUrl)
                 if (isAdded && view != null) {
-                    Snackbar.make(binding.root, "Лист удалён", Snackbar.LENGTH_SHORT).show()
-                    loadData() // Перезагружаем данные
+                    Snackbar.make(binding.root, "Лист персонажа удалён", Snackbar.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 android.util.Log.e("DocumentsFragment", "Error deleting sheet: ${e.message}", e)
@@ -636,6 +640,33 @@ class DocumentsFragment : Fragment() {
                     Snackbar.make(binding.root, "Ошибка удаления: ${e.message}", Snackbar.LENGTH_SHORT).show()
                 }
             }
+        }
+    }
+    
+    private fun onMaterialClick(document: Document) {
+        // Открываем материал в разделе "Материалы для игроков"
+        val context = context ?: return
+        if (!isAdded || view == null) return
+        
+        try {
+            // Переключаемся на вкладку "Материалы для игроков" (таб 2)
+            if (binding.tabLayout.tabCount > 2) {
+                binding.tabLayout.getTabAt(2)?.select()
+            }
+            
+            // Открываем документ
+            val docsDir = File(context.filesDir, "documents")
+            docsDir.mkdirs()
+            val file = File(docsDir, "${document.id}_${document.fileName}")
+            
+            if (file.exists()) {
+                openDocument(file)
+            } else {
+                downloadDocument(document, file)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("DocumentsFragment", "Error opening material: ${e.message}", e)
+            Snackbar.make(binding.root, "Ошибка открытия материала: ${e.message}", Snackbar.LENGTH_SHORT).show()
         }
     }
 
@@ -677,6 +708,10 @@ class DocumentsAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        if (position < 0 || position >= items.size) {
+            android.util.Log.w("DocumentsAdapter", "Invalid position: $position, items size: ${items.size}")
+            return
+        }
         val item = items[position]
         holder.binding.titleTextView.text = item.title
         

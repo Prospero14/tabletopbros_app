@@ -16,6 +16,32 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.concurrent.TimeUnit
 
+// Data classes for Yandex.Disk API
+data class YandexResourceList(
+    val items: List<YandexResource>
+)
+
+data class YandexResourceResponse(
+    val _embedded: YandexResourceList?
+)
+
+data class YandexResource(
+    val name: String,
+    val path: String,
+    val created: String,
+    val modified: String,
+    val type: String, // "file" or "dir"
+    val mime_type: String?,
+    val size: Long?,
+    val public_url: String?,
+    val file: String?, // Direct link
+    val custom_properties: Map<String, String>?
+)
+
+data class CustomProperties(
+    val custom_properties: Map<String, String>
+)
+
 class YandexDiskRepository {
     
     private val oauthToken = "y0__xCbs5y6Axj26Dsg8cirqxXirRUThBMOfP9QPmPxX0_alMiVWA"
@@ -40,7 +66,8 @@ class YandexDiskRepository {
         fileName: String,
         fileUri: Uri,
         context: Context,
-        isMaterial: Boolean = false
+        isMaterial: Boolean = false,
+        metadata: Map<String, String>? = null
     ): String = withContext(Dispatchers.IO) {
         try {
             // 1. Создать путь на Яндекс.Диске
@@ -73,6 +100,12 @@ class YandexDiskRepository {
             // 5. Опубликовать файл и получить публичную ссылку
             val publicUrl = publishFile(remotePath)
             Log.d("YandexDisk", "Public URL: $publicUrl")
+            
+            // 6. Если есть метаданные, сохранить их
+            if (metadata != null) {
+                patchResource(remotePath, metadata)
+                Log.d("YandexDisk", "Metadata saved")
+            }
             
             publicUrl
         } catch (e: Exception) {
@@ -322,6 +355,7 @@ class YandexDiskRepository {
      * Загрузить PDF лист персонажа на Яндекс.Диск
      */
     suspend fun uploadCharacterSheet(
+        teamId: String,
         userId: String,
         pdfUri: Uri,
         context: Context
@@ -329,13 +363,14 @@ class YandexDiskRepository {
         try {
             // 1. Создать путь на Яндекс.Диске
             val fileName = "character_sheet_${userId}_${System.currentTimeMillis()}.pdf"
-            val remotePath = "/TTBros/character_sheets/$userId/$fileName"
+            val remotePath = "/TTBros/teams/$teamId/character_sheets/$fileName"
             Log.d("YandexDisk", "Uploading character sheet to: $remotePath")
             
             // 2. Создать папки если не существуют
             createFolderIfNeeded("/TTBros")
-            createFolderIfNeeded("/TTBros/character_sheets")
-            createFolderIfNeeded("/TTBros/character_sheets/$userId")
+            createFolderIfNeeded("/TTBros/teams")
+            createFolderIfNeeded("/TTBros/teams/$teamId")
+            createFolderIfNeeded("/TTBros/teams/$teamId/character_sheets")
             
             // 3. Получить URL для загрузки
             val uploadUrl = getUploadUrl(remotePath)
@@ -356,6 +391,151 @@ class YandexDiskRepository {
         }
     }
     
+    /**
+     * Получить список ресурсов в папке
+     */
+    suspend fun listResources(path: String): List<YandexResource> = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("$baseUrl/resources?path=${Uri.encode(path)}&limit=100&fields=_embedded.items.name,_embedded.items.path,_embedded.items.created,_embedded.items.modified,_embedded.items.type,_embedded.items.mime_type,_embedded.items.size,_embedded.items.public_url,_embedded.items.file,_embedded.items.custom_properties")
+                .header("Authorization", "OAuth $oauthToken")
+                .get()
+                .build()
+            
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                if (response.code == 404) return@withContext emptyList()
+                throw Exception("List resources failed: ${response.code} ${response.message}")
+            }
+            
+            val body = response.body?.string() ?: return@withContext emptyList()
+            response.close()
+            
+            val resourceResponse = gson.fromJson(body, YandexResourceResponse::class.java)
+            resourceResponse._embedded?.items ?: emptyList()
+        } catch (e: Exception) {
+            Log.e("YandexDisk", "List resources error: ${e.message}", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * Загрузить JSON контент в файл по указанному пути
+     */
+    suspend fun uploadJson(remotePath: String, jsonContent: String, metadata: Map<String, String>? = null) = withContext(Dispatchers.IO) {
+        try {
+            // 1. Создать папки
+            val parentPath = remotePath.substringBeforeLast("/")
+            createFolderRecursive(parentPath)
+            
+            // 2. Получить URL для загрузки
+            val uploadUrl = getUploadUrl(remotePath)
+            
+            // 3. Загрузить контент
+            val request = Request.Builder()
+                .url(uploadUrl)
+                .put(jsonContent.toRequestBody("application/json".toMediaType()))
+                .build()
+            
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                throw Exception("Upload failed: ${response.code} ${response.message}")
+            }
+            response.close()
+            
+            // 4. Опубликовать (не обязательно для JSON, но может пригодиться)
+            // val publicUrl = publishFile(remotePath)
+            
+            // 5. Сохранить метаданные
+            if (metadata != null) {
+                patchResource(remotePath, metadata)
+            }
+        } catch (e: Exception) {
+            Log.e("YandexDisk", "Upload JSON error: ${e.message}", e)
+            throw e
+        }
+    }
+
+    private fun createFolderRecursive(path: String) {
+        if (path.isEmpty() || path == "/") return
+        
+        // Split path into components
+        val parts = path.split("/").filter { it.isNotEmpty() }
+        var currentPath = ""
+        
+        for (part in parts) {
+            currentPath += "/$part"
+            createFolderIfNeeded(currentPath)
+        }
+    }
+
+    /**
+     * Прочитать JSON файл и преобразовать в объект
+     */
+    suspend fun <T> readJson(remotePath: String, classOfT: Class<T>): T? = withContext(Dispatchers.IO) {
+        try {
+            // 1. Получить ссылку на скачивание
+            val request = Request.Builder()
+                .url("$baseUrl/resources/download?path=${Uri.encode(remotePath)}")
+                .header("Authorization", "OAuth $oauthToken")
+                .get()
+                .build()
+            
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                if (response.code == 404) return@withContext null
+                throw Exception("Get download link failed: ${response.code} ${response.message}")
+            }
+            
+            val body = response.body?.string() ?: return@withContext null
+            response.close()
+            
+            val json = gson.fromJson(body, Map::class.java)
+            val href = json["href"] as? String ?: return@withContext null
+            
+            // 2. Скачать файл
+            val downloadRequest = Request.Builder()
+                .url(href)
+                .get()
+                .build()
+                
+            val downloadResponse = client.newCall(downloadRequest).execute()
+            if (!downloadResponse.isSuccessful) return@withContext null
+            
+            val jsonContent = downloadResponse.body?.string() ?: return@withContext null
+            downloadResponse.close()
+            
+            gson.fromJson(jsonContent, classOfT)
+        } catch (e: Exception) {
+            Log.e("YandexDisk", "Read JSON error: ${e.message}", e)
+            null
+        }
+    }
+
+    /**
+     * Обновить пользовательские свойства (метаданные) файла
+     */
+    suspend fun patchResource(path: String, properties: Map<String, String>) = withContext(Dispatchers.IO) {
+        try {
+            val body = CustomProperties(properties)
+            val jsonBody = gson.toJson(body)
+            
+            val request = Request.Builder()
+                .url("$baseUrl/resources?path=${Uri.encode(path)}")
+                .header("Authorization", "OAuth $oauthToken")
+                .patch(jsonBody.asRequestBody("application/json".toMediaType()))
+                .build()
+            
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                Log.w("YandexDisk", "Patch resource failed: ${response.code} ${response.message}")
+            }
+            response.close()
+        } catch (e: Exception) {
+            Log.e("YandexDisk", "Patch resource error: ${e.message}", e)
+        }
+    }
+
     /**
      * Удалить файл с Яндекс.Диска
      */

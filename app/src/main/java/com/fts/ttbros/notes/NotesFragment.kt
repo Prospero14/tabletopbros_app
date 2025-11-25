@@ -40,11 +40,14 @@ class NotesFragment : Fragment() {
             // Permission granted, proceed with camera
             currentPhotoPreview?.let { launchCamera(it) }
         } else {
-            com.google.android.material.snackbar.Snackbar.make(
-                requireView(),
-                "Camera permission required",
-                com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
-            ).show()
+            val view = view
+            if (isAdded && view != null) {
+                com.google.android.material.snackbar.Snackbar.make(
+                    view,
+                    "Camera permission required",
+                    com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
+                ).show()
+            }
         }
     }
 
@@ -104,7 +107,9 @@ class NotesFragment : Fragment() {
             takePhoto(photoPreview)
         }
 
-        MaterialAlertDialogBuilder(requireContext())
+        val context = context ?: return
+        if (!isAdded) return
+        MaterialAlertDialogBuilder(context)
             .setTitle(if (existingNote != null) "Редактировать заметку" else "Новая заметка")
             .setView(dialogView)
             .setPositiveButton("Сохранить") { _, _ ->
@@ -126,8 +131,10 @@ class NotesFragment : Fragment() {
     }
 
     private fun takePhoto(preview: ImageView) {
+        val context = context ?: return
+        if (!isAdded) return
         currentPhotoPreview = preview
-        if (androidx.core.content.ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
             requestPermissionLauncher.launch(android.Manifest.permission.CAMERA)
             return
         }
@@ -135,13 +142,15 @@ class NotesFragment : Fragment() {
     }
 
     private fun launchCamera(preview: ImageView) {
+        val context = context ?: return
+        if (!isAdded) return
         try {
-            val photoFile = File(requireContext().cacheDir, "note_${System.currentTimeMillis()}.jpg")
+            val photoFile = File(context.cacheDir, "note_${System.currentTimeMillis()}.jpg")
             currentPhotoPath = photoFile.absolutePath
             
             val photoUri = FileProvider.getUriForFile(
-                requireContext(),
-                "${requireContext().packageName}.fileprovider",
+                context,
+                "${context.packageName}.fileprovider",
                 photoFile
             )
 
@@ -165,11 +174,14 @@ class NotesFragment : Fragment() {
             }, 1000)
         } catch (e: Exception) {
             android.util.Log.e("NotesFragment", "Error taking photo", e)
-            com.google.android.material.snackbar.Snackbar.make(
-                requireView(),
-                "Ошибка при создании фото: ${e.message}",
-                com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
-            ).show()
+            val view = view
+            if (isAdded && view != null) {
+                com.google.android.material.snackbar.Snackbar.make(
+                    view,
+                    "Ошибка при создании фото: ${e.message}",
+                    com.google.android.material.snackbar.Snackbar.LENGTH_SHORT
+                ).show()
+            }
         }
     }
 
@@ -193,9 +205,16 @@ class NotesFragment : Fragment() {
         }
 
         override fun onBindViewHolder(holder: NoteViewHolder, position: Int) {
-            holder.bind(notes[position])
+            if (position < 0 || position >= notes.size) {
+                android.util.Log.w("NotesAdapter", "Invalid position: $position, notes size: ${notes.size}")
+                return
+            }
+            val note = notes[position]
+            holder.bind(note)
             holder.itemView.setOnClickListener {
-                onNoteClick(notes[position], position)
+                if (position < notes.size) {
+                    onNoteClick(note, position)
+                }
             }
         }
 

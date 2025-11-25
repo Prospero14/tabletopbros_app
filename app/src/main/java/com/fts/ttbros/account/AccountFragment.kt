@@ -30,10 +30,14 @@ class AccountFragment : Fragment() {
     }
 
     private fun signOut() {
+        val context = context ?: return
+        val activity = activity ?: return
+        if (!isAdded) return
+        
         userRepository.signOut()
-        val intent = Intent(requireContext(), LoginActivity::class.java)
+        val intent = Intent(context, LoginActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
-        requireActivity().finish()
+        activity.finish()
     }
 }
