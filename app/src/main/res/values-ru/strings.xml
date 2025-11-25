@@ -149,4 +149,39 @@
     <string name="label_class">Класс</string>
     <string name="label_level">Уровень</string>
 
+    <!-- Character Sheets Fragment -->
+    <string name="error_loading_sheets">Ошибка загрузки листов: %s</string>
+    <string name="error_user_not_authenticated">Ошибка: пользователь не авторизован</string>
+    <string name="checking_pdf">Проверка PDF…</string>
+    <string name="error_checking_file">Ошибка проверки файла: %s</string>
+    <string name="not_character_sheet">Этот файл не является листом персонажа</string>
+    <string name="uploading_pdf">Загрузка PDF…</string>
+    <string name="parsing_pdf">Парсинг PDF…</string>
+    <string name="error_uploading">Ошибка загрузки: %s</string>
+    <string name="error_reading_file">Не удалось прочитать файл</string>
+    <string name="error_file_access">Нет доступа к файлу. Проверьте разрешения.</string>
+    <string name="file_not_found">Файл не найден</string>
+    <string name="error_checking_file_unknown">Ошибка проверки файла: %s</string>
+    <string name="unknown_error">Неизвестная ошибка</string>
+    <string name="file_not_character_sheet">Файл не похож на лист персонажа. Не найдено достаточно характерных полей (найдено: %1$d из %2$d)</string>
+    <string name="attributes_not_found">В файле не найдены характеристики персонажа. Убедитесь, что это лист персонажа.</string>
+    <string name="name_field_not_found">В файле не найдено поле имени персонажа.</string>
+    <string name="opening_sheet">Открытие листа: %s</string>
+    <string name="delete_character_sheet">Удалить лист персонажа</string>
+    <string name="confirm_delete_sheet">Вы уверены, что хотите удалить \'%s\'? Это действие нельзя отменить.</string>
+    <string name="sheet_deleted">Лист удалён</string>
+    <string name="error_deleting">Ошибка удаления: %s</string>
+    <string name="error_opening_dialog">Не удалось открыть диалог</string>
+    <string name="save_character_sheet">Сохранить лист персонажа?</string>
+    <string name="pdf_parsed_successfully">PDF успешно распарсен. Хотите сохранить этот лист персонажа?\n\nНазвание: %1$s\nСистема: %2$s</string>
+    <string name="sheet_not_saved">Лист не сохранён</string>
+    <string name="error_opening_dialog_retry">Не удалось открыть диалог. Попробуйте еще раз.</string>
+    <string name="error_displaying_dialog">Ошибка отображения диалога: %s</string>
+    <string name="sheet_saved_successfully">Лист персонажа сохранён! Теперь он доступен в разделе \'Документы\' -> \'Загруженные листы персонажей\'</string>
+    <string name="error_saving_sheet">Ошибка сохранения листа: %s</string>
+    <string name="uploaded_sheet">Загруженный лист</string>
+    <string name="unknown_character">Неизвестный персонаж</string>
+    <string name="unknown">Неизвестно</string>
+    <string name="unknown_system">неизвестно</string>
+
 </resources>

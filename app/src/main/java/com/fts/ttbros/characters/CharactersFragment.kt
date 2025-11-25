@@ -375,12 +375,15 @@ class CharactersFragment : Fragment() {
     private fun shareCharacter(character: com.fts.ttbros.data.model.Character) {
         viewLifecycleOwner.lifecycleScope.launch {
             val profile = userRepository.currentProfile()
-            if (profile == null || profile.teamId.isNullOrBlank()) {
+            val currentTeamId = profile?.currentTeamId
+            if (profile == null || currentTeamId.isNullOrBlank()) {
                 Snackbar.make(binding.root, "You must join a team to share characters", Snackbar.LENGTH_LONG).show()
                 return@launch
             }
             
-            val role = profile.role
+            // Определяем роль из текущей команды
+            val currentTeam = profile.teams.find { it.teamId == currentTeamId }
+            val role = currentTeam?.role ?: profile.role
             val masterPlayerLabel = if (role == com.fts.ttbros.data.model.UserRole.MASTER) "Player Chat" else "Master Chat"
             
             val options = arrayOf("Team Chat", masterPlayerLabel)
@@ -409,7 +412,7 @@ class CharactersFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 // teamId is already validated in shareCharacter, but add safety check
-                val teamId = profile.teamId
+                val teamId = profile.currentTeamId
                 if (teamId.isNullOrBlank()) {
                     Snackbar.make(binding.root, "No team selected", Snackbar.LENGTH_LONG).show()
                     return@launch

@@ -154,7 +154,8 @@ class ChatFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val profile = userRepository.currentProfile()
-                if (profile == null || profile.teamId.isNullOrBlank()) {
+                val currentTeamId = profile?.currentTeamId
+                if (profile == null || currentTeamId.isNullOrBlank()) {
                     if (isAdded && view != null) {
                         view?.let {
                             Snackbar.make(it, getString(R.string.error_group_not_found), Snackbar.LENGTH_LONG)
@@ -181,6 +182,11 @@ class ChatFragment : Fragment() {
                 }
             } catch (e: Exception) {
                 android.util.Log.e("ChatFragment", "Error observing profile: ${e.message}", e)
+                if (isAdded && view != null) {
+                    view?.let {
+                        Snackbar.make(it, "Ошибка загрузки профиля: ${e.message}", Snackbar.LENGTH_LONG).show()
+                    }
+                }
             }
         }
     }
@@ -204,7 +210,7 @@ class ChatFragment : Fragment() {
 
 
     private fun subscribeToMessages(profile: UserProfile) {
-        val teamId = profile.teamId ?: return
+        val teamId = profile.currentTeamId ?: return
         listenerRegistration?.remove()
         listenerRegistration = chatRepository.observeMessages(
             teamId,
@@ -341,7 +347,7 @@ class ChatFragment : Fragment() {
             android.util.Log.w("ChatFragment", "User profile is null, cannot show poll dialog")
             return
         }
-        val teamId = profile.teamId ?: run {
+        val teamId = profile.currentTeamId ?: run {
             android.util.Log.w("ChatFragment", "Team ID is null, cannot show poll dialog")
             return
         }
@@ -592,7 +598,7 @@ class ChatFragment : Fragment() {
     
     private fun handlePinMessage(messageId: String) {
         val profile = userProfile ?: return
-        val teamId = profile.teamId ?: return
+        val teamId = profile.currentTeamId ?: return
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 chatRepository.pinMessage(teamId, chatType, messageId, profile.uid)
@@ -609,7 +615,7 @@ class ChatFragment : Fragment() {
     
     private fun handleUnpinMessage(messageId: String) {
         val profile = userProfile ?: return
-        val teamId = profile.teamId ?: return
+        val teamId = profile.currentTeamId ?: return
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 chatRepository.unpinMessage(teamId, chatType, messageId)
@@ -626,7 +632,7 @@ class ChatFragment : Fragment() {
     
     private fun handleAddMaterial(message: ChatMessage) {
         val profile = userProfile ?: return
-        val teamId = profile.teamId ?: return
+        val teamId = profile.currentTeamId ?: return
         val attachmentId = message.attachmentId ?: return
         
         // Показываем диалог подтверждения
@@ -746,7 +752,7 @@ class ChatFragment : Fragment() {
         val text = messageEditText.text?.toString()?.trim().orEmpty()
         if (text.isBlank()) return
         messageEditText.text?.clear()
-        val teamId = profile.teamId ?: return
+        val teamId = profile.currentTeamId ?: return
         
         viewLifecycleOwner.lifecycleScope.launch {
             try {
@@ -779,7 +785,7 @@ class ChatFragment : Fragment() {
             }
             return
         }
-        val teamId = profile.teamId ?: run {
+        val teamId = profile.currentTeamId ?: run {
             android.util.Log.w("ChatFragment", "Team ID is null, cannot show dice roll dialog")
             view?.let {
                 Snackbar.make(it, "Команда не выбрана", Snackbar.LENGTH_SHORT).show()
@@ -871,7 +877,7 @@ class ChatFragment : Fragment() {
 
     private fun importCharacter(senderId: String, characterId: String, messageId: String) {
         val profile = userProfile ?: return
-        val teamId = profile.teamId ?: return
+        val teamId = profile.currentTeamId ?: return
         
         viewLifecycleOwner.lifecycleScope.launch {
             try {
@@ -904,7 +910,7 @@ class ChatFragment : Fragment() {
     
     private fun handleMaterialClick(message: ChatMessage) {
         val profile = userProfile ?: return
-        val teamId = profile.teamId ?: return
+        val teamId = profile.currentTeamId ?: return
         val attachmentId = message.attachmentId ?: return
         
         // Показываем диалог с опциями: открыть или добавить в материалы

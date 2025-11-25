@@ -69,7 +69,15 @@ class DocumentsFragment : Fragment() {
         
         adapter = DocumentsAdapter(
             onClick = { doc -> onDocumentClicked(doc) },
-            onLongClick = { doc -> if (isMaster) showDeleteDialog(doc) }
+            onLongClick = { doc -> 
+                // Для материалов в третьей вкладке показываем меню с удалением и отправкой
+                val selectedTab = binding.tabLayout.selectedTabPosition
+                if (selectedTab == 2 && isMaster && doc.downloadUrl.contains("/player_materials/")) {
+                    showMaterialMenu(doc)
+                } else if (isMaster) {
+                    showDeleteDialog(doc)
+                }
+            }
         )
         
         sheetsAdapter = com.fts.ttbros.charactersheets.CharacterSheetsAdapter(
@@ -117,7 +125,7 @@ class DocumentsFragment : Fragment() {
     }
     
     private fun setupTabs() {
-        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Документы"))
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Документы\n(Рулбуки и дополнения)"))
         binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Загруженные листы персонажей"))
         
         // Добавляем вкладки для материалов в зависимости от роли пользователя
@@ -169,17 +177,21 @@ class DocumentsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val profile = userRepository.currentProfile()
-                if (profile == null || profile.teamId.isNullOrBlank()) {
+                val currentTeamId = profile?.currentTeamId
+                if (profile == null || currentTeamId.isNullOrBlank()) {
                     binding.emptyView.text = "Join a team to view documents"
                     binding.emptyView.isVisible = true
                     binding.addDocumentFab.isVisible = false
                     return@launch
                 }
                 
-                currentTeamId = profile.teamId
+                this.currentTeamId = currentTeamId
                 currentUserId = profile.uid
                 currentUserName = profile.displayName
-                isMaster = profile.role == UserRole.MASTER
+                
+                // Определяем роль из текущей команды
+                val currentTeam = profile.teams.find { it.teamId == currentTeamId }
+                isMaster = currentTeam?.role == UserRole.MASTER
                 
                 // Setup tabs now that we know the user's role
                 if (binding.tabLayout.tabCount == 0) {
@@ -188,7 +200,7 @@ class DocumentsFragment : Fragment() {
                 
                 binding.addDocumentFab.isVisible = isMaster
                 
-                val teamId = profile.teamId
+                val teamId = currentTeamId
                 if (teamId == null) {
                     binding.emptyView.text = "Join a team to view documents"
                     binding.emptyView.isVisible = true
@@ -220,8 +232,16 @@ class DocumentsFragment : Fragment() {
                                 doc.downloadUrl.contains("/player_materials/") && doc.uploadedBy != currentUserId
                             }
                             
-                            // Загружаем листы персонажей
-                            allSheets = sheetRepository.getUserSheets(currentUserId)
+                            // Загружаем листы персонажей и фильтруем по системе команды
+                            val profile = userRepository.currentProfile()
+                            val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
+                            val teamSystem = currentTeam?.teamSystem
+                            val allUserSheets = sheetRepository.getUserSheets(currentUserId)
+                            allSheets = if (!teamSystem.isNullOrBlank()) {
+                                allUserSheets.filter { it.system == teamSystem }
+                            } else {
+                                allUserSheets
+                            }
                             
                             // Обновляем отображаемый список в зависимости от выбранной вкладки
                             val selectedTab = binding.tabLayout.selectedTabPosition
@@ -399,6 +419,21 @@ class DocumentsFragment : Fragment() {
                 }
             }
         }
+    }
+    
+    private fun showMaterialMenu(doc: Document) {
+        val context = context ?: return
+        if (!isAdded) return
+        MaterialAlertDialogBuilder(context)
+            .setTitle(doc.title)
+            .setItems(arrayOf("Отправить в общий чат", "Удалить")) { _, which ->
+                when (which) {
+                    0 -> sendMaterialToChat(doc)
+                    1 -> showDeleteDialog(doc)
+                }
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
     }
     
     private fun showDeleteDialog(doc: Document) {

@@ -87,15 +87,29 @@ class CharacterSheetsFragment : Fragment() {
             try {
                 if (!isAdded || view == null) return@launch
                 loadingView.isVisible = true
-                val sheets = sheetRepository.getUserSheets(userId)
+                
+                // Получаем систему команды для фильтрации
+                val profile = userRepository.currentProfile()
+                val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
+                val teamSystem = currentTeam?.teamSystem
+                
+                val allSheets = sheetRepository.getUserSheets(userId)
+                
+                // Фильтруем по системе команды, если она указана
+                val filteredSheets = if (!teamSystem.isNullOrBlank()) {
+                    allSheets.filter { it.system == teamSystem }
+                } else {
+                    allSheets
+                }
+                
                 if (!isAdded || view == null) return@launch
-                adapter.submitList(sheets)
-                emptyView.isVisible = sheets.isEmpty()
+                adapter.submitList(filteredSheets)
+                emptyView.isVisible = filteredSheets.isEmpty()
             } catch (e: Exception) {
                 android.util.Log.e("CharacterSheetsFragment", "Error loading sheets: ${e.message}", e)
                 if (isAdded && view != null) {
                     view?.let {
-                        Snackbar.make(it, "Ошибка загрузки листов: ${e.message}", Snackbar.LENGTH_LONG).show()
+                        Snackbar.make(it, getString(R.string.error_loading_sheets, e.message ?: ""), Snackbar.LENGTH_LONG).show()
                     }
                 }
             } finally {
@@ -111,7 +125,7 @@ class CharacterSheetsFragment : Fragment() {
         if (userId == null) {
             android.util.Log.e("CharacterSheetsFragment", "User not authenticated")
             view?.let {
-                Snackbar.make(it, "Ошибка: пользователь не авторизован", Snackbar.LENGTH_LONG).show()
+                Snackbar.make(it, getString(R.string.error_user_not_authenticated), Snackbar.LENGTH_LONG).show()
             }
             return
         }
@@ -137,7 +151,7 @@ class CharacterSheetsFragment : Fragment() {
                 
                 loadingView.isVisible = true
                 view?.let {
-                    Snackbar.make(it, "Проверка PDF...", Snackbar.LENGTH_SHORT).show()
+                    Snackbar.make(it, getString(R.string.checking_pdf), Snackbar.LENGTH_SHORT).show()
                 }
                 
                 // Сначала проверяем, что это действительно лист персонажа (до загрузки в Yandex.Disk)
@@ -147,7 +161,7 @@ class CharacterSheetsFragment : Fragment() {
                     android.util.Log.e("CharacterSheetsFragment", "Error validating PDF: ${e.message}", e)
                     if (isAdded && view != null) {
                         view?.let {
-                            Snackbar.make(it, "Ошибка проверки файла: ${e.message}", Snackbar.LENGTH_LONG).show()
+                            Snackbar.make(it, getString(R.string.error_checking_file, e.message ?: ""), Snackbar.LENGTH_LONG).show()
                         }
                         loadingView.isVisible = false
                     }
@@ -156,7 +170,7 @@ class CharacterSheetsFragment : Fragment() {
                 if (!validationResult.isValid) {
                     if (isAdded && view != null) {
                         view?.let {
-                            Snackbar.make(it, validationResult.errorMessage ?: "Этот файл не является листом персонажа", Snackbar.LENGTH_LONG).show()
+                            Snackbar.make(it, validationResult.errorMessage ?: getString(R.string.not_character_sheet), Snackbar.LENGTH_LONG).show()
                         }
                         loadingView.isVisible = false
                     }
@@ -170,7 +184,7 @@ class CharacterSheetsFragment : Fragment() {
                 }
                 
                 view?.let {
-                    Snackbar.make(it, "Загрузка PDF...", Snackbar.LENGTH_SHORT).show()
+                    Snackbar.make(it, getString(R.string.uploading_pdf), Snackbar.LENGTH_SHORT).show()
                 }
                 
                 // Upload PDF to Yandex.Disk (только если валидация прошла)
@@ -189,16 +203,16 @@ class CharacterSheetsFragment : Fragment() {
                 
                 // Save character sheet metadata to Firestore so it appears in Documents tab
                 val userProfile = userRepository.currentProfile()
-                val teamId = userProfile?.teamId
+                val teamId = userProfile?.currentTeamId
                 if (teamId != null) {
                     try {
                         documentRepository.uploadCharacterSheetMetadata(
                             teamId = teamId,
                             pdfUrl = pdfUrl,
-                            characterName = validationResult.characterName ?: "Unknown",
-                            system = validationResult.system ?: "unknown",
+                            characterName = validationResult.characterName ?: context.getString(R.string.unknown),
+                            system = validationResult.system ?: context.getString(R.string.unknown_system),
                             userId = userId,
-                            userName = auth.currentUser?.displayName ?: "Unknown"
+                            userName = auth.currentUser?.displayName ?: context.getString(R.string.unknown)
                         )
                         android.util.Log.d("CharacterSheetsFragment", "Character sheet metadata saved to Firestore")
                     } catch (e: Exception) {
@@ -208,7 +222,7 @@ class CharacterSheetsFragment : Fragment() {
                 }
                 
                 view?.let {
-                    Snackbar.make(it, "Парсинг PDF...", Snackbar.LENGTH_SHORT).show()
+                    Snackbar.make(it, getString(R.string.parsing_pdf), Snackbar.LENGTH_SHORT).show()
                 }
                 
                 // Parse PDF
@@ -228,7 +242,7 @@ class CharacterSheetsFragment : Fragment() {
                 // Получаем систему команды для названия
                 val profile = userRepository.currentProfile()
                 val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
-                val teamSystem = currentTeam?.teamSystem ?: (parsedData["system"] as? String ?: "unknown")
+                val teamSystem = currentTeam?.teamSystem ?: (parsedData["system"] as? String ?: context.getString(R.string.unknown_system))
                 
                 // Формируем название системы для отображения
                 val systemName = when (teamSystem) {
@@ -243,8 +257,8 @@ class CharacterSheetsFragment : Fragment() {
                 // Создаем CharacterSheet из загруженного PDF (как было раньше)
                 val sheet = CharacterSheet(
                     userId = userId,
-                    userName = auth.currentUser?.displayName ?: "Unknown",
-                    characterName = "Загруженный лист", // Фиксированное название вместо парсинга
+                    userName = auth.currentUser?.displayName ?: getString(R.string.unknown),
+                    characterName = getString(R.string.uploaded_sheet), // Фиксированное название вместо парсинга
                     system = teamSystem,
                     pdfUrl = pdfUrl,
                     parsedData = parsedData,
@@ -265,7 +279,7 @@ class CharacterSheetsFragment : Fragment() {
                 android.util.Log.e("CharacterSheetsFragment", "Error uploading PDF: ${e.message}", e)
                 if (isAdded && view != null) {
                     view?.let {
-                        Snackbar.make(it, "Ошибка загрузки: ${e.message}", Snackbar.LENGTH_LONG).show()
+                        Snackbar.make(it, getString(R.string.error_uploading, e.message ?: ""), Snackbar.LENGTH_LONG).show()
                     }
                 }
             } finally {
@@ -294,24 +308,24 @@ class CharacterSheetsFragment : Fragment() {
         return try {
             val inputStream = context.contentResolver.openInputStream(uri)
             inputStream?.use { stream ->
-                validatePdfContent(stream)
-            } ?: ValidationResult(false, "Не удалось прочитать файл")
+                validatePdfContent(stream, context)
+            } ?: ValidationResult(false, context.getString(R.string.error_reading_file))
         } catch (e: SecurityException) {
             android.util.Log.e("CharacterSheetsFragment", "SecurityException validating PDF: ${e.message}", e)
-            ValidationResult(false, "Нет доступа к файлу. Проверьте разрешения.")
+            ValidationResult(false, context.getString(R.string.error_file_access))
         } catch (e: java.io.FileNotFoundException) {
             android.util.Log.e("CharacterSheetsFragment", "FileNotFoundException validating PDF: ${e.message}", e)
-            ValidationResult(false, "Файл не найден")
+            ValidationResult(false, context.getString(R.string.file_not_found))
         } catch (e: Exception) {
             android.util.Log.e("CharacterSheetsFragment", "Error validating PDF: ${e.message}", e)
-            ValidationResult(false, "Ошибка проверки файла: ${e.message ?: "Неизвестная ошибка"}")
+            ValidationResult(false, context.getString(R.string.error_checking_file_unknown, e.message ?: context.getString(R.string.unknown_error)))
         }
     }
     
     /**
      * Проверяет содержимое PDF на наличие характерных для листов персонажей элементов
      */
-    private fun validatePdfContent(inputStream: InputStream): ValidationResult {
+    private fun validatePdfContent(inputStream: InputStream, context: Context): ValidationResult {
         var document: com.tom_roush.pdfbox.pdmodel.PDDocument? = null
         return try {
             // Читаем текст из PDF
@@ -345,7 +359,7 @@ class CharacterSheetsFragment : Fragment() {
             if (foundKeywords < 3) {
                 return ValidationResult(
                     false,
-                    "Файл не похож на лист персонажа. Не найдено достаточно характерных полей (найдено: $foundKeywords из ${requiredKeywords.size})"
+                    context.getString(R.string.file_not_character_sheet, foundKeywords, requiredKeywords.size)
                 )
             }
             
@@ -360,7 +374,7 @@ class CharacterSheetsFragment : Fragment() {
             if (!hasAttributes) {
                 return ValidationResult(
                     false,
-                    "В файле не найдены характеристики персонажа. Убедитесь, что это лист персонажа."
+                    context.getString(R.string.attributes_not_found)
                 )
             }
             
@@ -372,13 +386,13 @@ class CharacterSheetsFragment : Fragment() {
             if (!hasNameField) {
                 return ValidationResult(
                     false,
-                    "В файле не найдено поле имени персонажа."
+                    context.getString(R.string.name_field_not_found)
                 )
             }
             
             // Extract character name and system from text
-            val characterName = extractCharacterName(text)
-            val system = detectSystem(text)
+            val characterName = extractCharacterName(text, context)
+            val system = detectSystem(text, context)
             
             ValidationResult(
                 isValid = true,
@@ -399,7 +413,7 @@ class CharacterSheetsFragment : Fragment() {
     /**
      * Extract character name from PDF text
      */
-    private fun extractCharacterName(text: String): String {
+    private fun extractCharacterName(text: String, context: Context): String {
         // Try to find name after "name:" or "имя:" keywords
         val namePatterns = listOf(
             Regex("name[:\\s]+([^\\n]{1,50})", RegexOption.IGNORE_CASE),
@@ -414,13 +428,13 @@ class CharacterSheetsFragment : Fragment() {
             }
         }
         
-        return "Unknown Character"
+        return context.getString(R.string.unknown_character)
     }
     
     /**
      * Detect game system from PDF text
      */
-    private fun detectSystem(text: String): String {
+    private fun detectSystem(text: String, context: Context): String {
         return when {
             text.contains("vampire", ignoreCase = true) || 
             text.contains("clan", ignoreCase = true) ||
@@ -449,7 +463,7 @@ class CharacterSheetsFragment : Fragment() {
             text.contains("fate points", ignoreCase = true) ||
             text.contains("fortune points", ignoreCase = true) -> "whrp"
             
-            else -> "unknown"
+            else -> context.getString(R.string.unknown_system)
         }
     }
     
@@ -459,7 +473,7 @@ class CharacterSheetsFragment : Fragment() {
         return try {
             val inputStream = context.contentResolver.openInputStream(uri)
             inputStream?.use { stream ->
-                parsePdfContent(stream)
+                parsePdfContent(stream, context)
             } ?: emptyMap<String, Any>()
         } catch (e: SecurityException) {
             android.util.Log.e("CharacterSheetsFragment", "SecurityException parsing PDF: ${e.message}", e)
@@ -1199,7 +1213,7 @@ class CharacterSheetsFragment : Fragment() {
         }
     }
     
-    private fun parsePdfContent(inputStream: InputStream): Map<String, Any> {
+    private fun parsePdfContent(inputStream: InputStream, context: Context): Map<String, Any> {
         // This is a basic implementation
         // For production, you'd want to use a proper PDF parsing library
         // and extract structured data based on the character sheet format
@@ -1279,7 +1293,7 @@ class CharacterSheetsFragment : Fragment() {
                 (processedText.contains("career", ignoreCase = true) && processedText.contains("advance", ignoreCase = true)) ||
                 processedText.contains("fate points", ignoreCase = true) ||
                 processedText.contains("fortune points", ignoreCase = true) -> "whrp"
-                else -> "unknown"
+                else -> context.getString(R.string.unknown_system)
             }
             
             // 3. Извлекаем ВСЕ пары ключ-значение (универсальный паттерн)
@@ -1659,8 +1673,8 @@ class CharacterSheetsFragment : Fragment() {
                 android.util.Log.e("CharacterSheetsFragment", "Error closing PDF document: ${closeException.message}", closeException)
             }
             mapOf(
-                "name" to "Безымянный персонаж",
-                "system" to "unknown",
+                "name" to context.getString(R.string.unknown_character),
+                "system" to context.getString(R.string.unknown_system),
                 "attributes" to emptyMap<String, Int>(),
                 "skills" to emptyMap<String, Int>(),
                 "stats" to emptyMap<String, Any>()
@@ -1674,8 +1688,8 @@ class CharacterSheetsFragment : Fragment() {
                 android.util.Log.e("CharacterSheetsFragment", "Error closing PDF document: ${closeException.message}", closeException)
             }
             mapOf(
-                "name" to "Безымянный персонаж",
-                "system" to "unknown",
+                "name" to context.getString(R.string.unknown_character),
+                "system" to context.getString(R.string.unknown_system),
                 "attributes" to emptyMap<String, Int>(),
                 "skills" to emptyMap<String, Int>(),
                 "stats" to emptyMap<String, Any>()
@@ -1688,7 +1702,7 @@ class CharacterSheetsFragment : Fragment() {
         // For now, just show a toast
         val context = context
         if (context != null && isAdded) {
-            Toast.makeText(context, "Открытие листа: ${sheet.characterName}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, getString(R.string.opening_sheet, sheet.characterName), Toast.LENGTH_SHORT).show()
         }
         // TODO: Navigate to sheet editor fragment
     }
@@ -1696,12 +1710,12 @@ class CharacterSheetsFragment : Fragment() {
     private fun deleteSheet(sheet: CharacterSheet) {
         val context = context ?: return
         MaterialAlertDialogBuilder(context)
-            .setTitle("Удалить лист персонажа")
-            .setMessage("Вы уверены, что хотите удалить '${sheet.characterName}'? Это действие нельзя отменить.")
-            .setPositiveButton("Удалить") { _, _ ->
+            .setTitle(getString(R.string.delete_character_sheet))
+            .setMessage(getString(R.string.confirm_delete_sheet, sheet.characterName))
+            .setPositiveButton(getString(android.R.string.ok)) { _, _ ->
                 performDeleteSheet(sheet)
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(getString(android.R.string.cancel), null)
             .show()
     }
 
@@ -1711,11 +1725,11 @@ class CharacterSheetsFragment : Fragment() {
                 sheetRepository.deleteSheet(sheet.id)
                 loadSheets()
                 view?.let {
-                    Snackbar.make(it, "Лист удалён", Snackbar.LENGTH_SHORT).show()
+                    Snackbar.make(it, getString(R.string.sheet_deleted), Snackbar.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
                 view?.let {
-                    Snackbar.make(it, "Ошибка удаления: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                    Snackbar.make(it, getString(R.string.error_deleting, e.message ?: ""), Snackbar.LENGTH_SHORT).show()
                 }
             }
         }
@@ -1733,16 +1747,16 @@ class CharacterSheetsFragment : Fragment() {
         if (fragmentManager.isStateSaved) {
             android.util.Log.w("CharacterSheetsFragment", "FragmentManager state is saved, cannot show dialog")
             view?.let {
-                Snackbar.make(it, "Не удалось открыть диалог", Snackbar.LENGTH_SHORT).show()
+                Snackbar.make(it, getString(R.string.error_opening_dialog), Snackbar.LENGTH_SHORT).show()
             }
             return
         }
         
         try {
             MaterialAlertDialogBuilder(context)
-                .setTitle("Сохранить лист персонажа?")
-                .setMessage("PDF успешно распарсен. Хотите сохранить этот лист персонажа?\n\nНазвание: ${sheet.characterName}\nСистема: ${sheet.system}")
-                .setPositiveButton("Сохранить") { _, _ ->
+                .setTitle(getString(R.string.save_character_sheet))
+                .setMessage(getString(R.string.pdf_parsed_successfully, sheet.characterName, sheet.system))
+                .setPositiveButton(getString(android.R.string.ok)) { _, _ ->
                     if (isAdded && view != null) {
                         saveSheet(sheet)
                     }
@@ -1750,7 +1764,7 @@ class CharacterSheetsFragment : Fragment() {
                 .setNegativeButton("Отмена") { _, _ ->
                     if (isAdded && view != null) {
                         view?.let {
-                            Snackbar.make(it, "Лист не сохранён", Snackbar.LENGTH_SHORT).show()
+                            Snackbar.make(it, getString(R.string.sheet_not_saved), Snackbar.LENGTH_SHORT).show()
                         }
                     }
                 }
@@ -1759,12 +1773,12 @@ class CharacterSheetsFragment : Fragment() {
         } catch (e: IllegalStateException) {
             android.util.Log.e("CharacterSheetsFragment", "IllegalStateException showing dialog: ${e.message}", e)
             view?.let {
-                Snackbar.make(it, "Не удалось открыть диалог. Попробуйте еще раз.", Snackbar.LENGTH_SHORT).show()
+                Snackbar.make(it, getString(R.string.error_opening_dialog_retry), Snackbar.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
             android.util.Log.e("CharacterSheetsFragment", "Error showing dialog: ${e.message}", e)
             view?.let {
-                Snackbar.make(it, "Ошибка отображения диалога: ${e.message}", Snackbar.LENGTH_LONG).show()
+                Snackbar.make(it, getString(R.string.error_displaying_dialog, e.message ?: ""), Snackbar.LENGTH_LONG).show()
             }
         }
     }
@@ -1775,7 +1789,7 @@ class CharacterSheetsFragment : Fragment() {
                 sheetRepository.saveSheet(sheet)
                 if (isAdded && view != null) {
                     view?.let {
-                        Snackbar.make(it, "Лист персонажа сохранён! Теперь он доступен в разделе 'Документы' -> 'Загруженные листы персонажей'", Snackbar.LENGTH_LONG).show()
+                        Snackbar.make(it, getString(R.string.sheet_saved_successfully), Snackbar.LENGTH_LONG).show()
                     }
                     // Возвращаемся назад в DocumentsFragment после сохранения
                     kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -1792,7 +1806,7 @@ class CharacterSheetsFragment : Fragment() {
                 android.util.Log.e("CharacterSheetsFragment", "Error saving sheet: ${e.message}", e)
                 if (isAdded && view != null) {
                     view?.let {
-                        Snackbar.make(it, "Ошибка сохранения листа: ${e.message}", Snackbar.LENGTH_LONG).show()
+                        Snackbar.make(it, getString(R.string.error_saving_sheet, e.message ?: ""), Snackbar.LENGTH_LONG).show()
                     }
                 }
             }

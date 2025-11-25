@@ -351,4 +351,39 @@
     <string name="label_malignancies">Malignancies</string>
     <string name="label_mental_disorders">Mental Disorders</string>
 
+    <!-- Character Sheets Fragment -->
+    <string name="error_loading_sheets">Error loading character sheets: %s</string>
+    <string name="error_user_not_authenticated">Error: user not authenticated</string>
+    <string name="checking_pdf">Checking PDF…</string>
+    <string name="error_checking_file">Error checking file: %s</string>
+    <string name="not_character_sheet">This file is not a character sheet</string>
+    <string name="uploading_pdf">Uploading PDF…</string>
+    <string name="parsing_pdf">Parsing PDF…</string>
+    <string name="error_uploading">Error uploading: %s</string>
+    <string name="error_reading_file">Failed to read file</string>
+    <string name="error_file_access">No access to file. Check permissions.</string>
+    <string name="file_not_found">File not found</string>
+    <string name="error_checking_file_unknown">Error checking file: %s</string>
+    <string name="unknown_error">Unknown error</string>
+    <string name="file_not_character_sheet">File does not look like a character sheet. Not enough characteristic fields found (found: %1$d out of %2$d)</string>
+    <string name="attributes_not_found">Character attributes not found in file. Make sure this is a character sheet.</string>
+    <string name="name_field_not_found">Character name field not found in file.</string>
+    <string name="opening_sheet">Opening sheet: %s</string>
+    <string name="delete_character_sheet">Delete Character Sheet</string>
+    <string name="confirm_delete_sheet">Are you sure you want to delete \'%s\'? This action cannot be undone.</string>
+    <string name="sheet_deleted">Sheet deleted</string>
+    <string name="error_deleting">Error deleting: %s</string>
+    <string name="error_opening_dialog">Failed to open dialog</string>
+    <string name="save_character_sheet">Save Character Sheet?</string>
+    <string name="pdf_parsed_successfully">PDF successfully parsed. Do you want to save this character sheet?\n\nName: %1$s\nSystem: %2$s</string>
+    <string name="sheet_not_saved">Sheet not saved</string>
+    <string name="error_opening_dialog_retry">Failed to open dialog. Please try again.</string>
+    <string name="error_displaying_dialog">Error displaying dialog: %s</string>
+    <string name="sheet_saved_successfully">Character sheet saved! It is now available in \'Documents\' -> \'Uploaded Character Sheets\'</string>
+    <string name="error_saving_sheet">Error saving sheet: %s</string>
+    <string name="uploaded_sheet">Uploaded Sheet</string>
+    <string name="unknown_character">Unknown Character</string>
+    <string name="unknown">Unknown</string>
+    <string name="unknown_system">unknown</string>
+
 </resources>
