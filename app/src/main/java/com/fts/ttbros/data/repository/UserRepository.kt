@@ -1,5 +1,6 @@
 package com.fts.ttbros.data.repository
 
+import com.fts.ttbros.data.model.Team
 import com.fts.ttbros.data.model.TeamMembership
 import com.fts.ttbros.data.model.UserProfile
 import com.fts.ttbros.data.model.UserRole
@@ -28,7 +29,9 @@ class UserRepository(
 
     suspend fun currentProfile(): UserProfile? {
         val firebaseUser = auth.currentUser ?: return null
-        return getProfile(firebaseUser.uid)
+        val existing = getProfile(firebaseUser.uid)
+        if (existing != null) return existing
+        return rebuildProfileFromTeams(firebaseUser)
     }
 
     suspend fun ensureProfile(user: FirebaseUser): UserProfile {
@@ -120,7 +123,7 @@ class UserRepository(
         }
     }
     private suspend fun normalizeProfile(userId: String, profile: UserProfile): UserProfile {
-        val migratedTeams = if (profile.teams.isEmpty() && !profile.teamId.isNullOrBlank()) {
+        var migratedTeams = if (profile.teams.isEmpty() && !profile.teamId.isNullOrBlank()) {
             listOf(
                 TeamMembership(
                     teamId = profile.teamId,
@@ -132,6 +135,10 @@ class UserRepository(
             )
         } else {
             profile.teams
+        }
+        
+        if (migratedTeams.isEmpty()) {
+            migratedTeams = loadMembershipsFromTeams(userId)
         }
         
         val fallbackTeamId = profile.currentTeamId
@@ -148,5 +155,50 @@ class UserRepository(
         }
         
         return normalized
+    }
+    
+    private suspend fun rebuildProfileFromTeams(user: FirebaseUser): UserProfile? {
+        val memberships = loadMembershipsFromTeams(user.uid)
+        val displayName = user.displayName ?: user.email.orEmpty().substringBefore("@")
+        val profile = UserProfile(
+            uid = user.uid,
+            email = user.email.orEmpty(),
+            displayName = displayName,
+            role = UserRole.PLAYER,
+            currentTeamId = memberships.firstOrNull()?.teamId,
+            teams = memberships
+        )
+        saveProfile(profile)
+        return profile
+    }
+    
+    private suspend fun loadMembershipsFromTeams(userId: String): List<TeamMembership> {
+        return withContext(Dispatchers.IO) {
+            val memberships = mutableListOf<TeamMembership>()
+            try {
+                val teamDirs = yandexDisk.listResources("/TTBros/teams")
+                for (resource in teamDirs) {
+                    if (resource.type != "dir") continue
+                    val teamPath = "${resource.path}/team.json"
+                    val team = yandexDisk.readJson(teamPath, Team::class.java) ?: continue
+                    val member = team.members.find { it.uid == userId } ?: continue
+                    val role = if (member.role.equals(UserRole.MASTER.name, true)) {
+                        UserRole.MASTER
+                    } else {
+                        UserRole.PLAYER
+                    }
+                    memberships += TeamMembership(
+                        teamId = team.id,
+                        teamCode = team.code,
+                        teamSystem = team.system,
+                        role = role,
+                        teamName = "Team ${team.code}"
+                    )
+                }
+            } catch (_: Exception) {
+                // Ignore and return what we collected
+            }
+            memberships
+        }
     }
 }
