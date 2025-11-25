@@ -592,10 +592,10 @@ class CharacterSheetsFragment : Fragment() {
     private fun extractVtmSpecificFields(stats: MutableMap<String, Any>, lines: List<String>, fullText: String) {
         // Улучшенный парсинг трекеров - поддерживаем разные форматы
         val trackerPatterns = mapOf(
-            "Health" to listOf("Health", "Здоровье", "Health Tracker"),
-            "Willpower" to listOf("Willpower", "Сила воли", "Willpower Tracker", "WP"),
-            "Hunger" to listOf("Hunger", "Голод", "Hunger Tracker"),
-            "Humanity" to listOf("Humanity", "Человечность", "Humanity Tracker")
+            "health" to listOf("Health", "Здоровье", "Health Tracker"),
+            "willpower" to listOf("Willpower", "Сила воли", "Willpower Tracker", "WP"),
+            "hunger" to listOf("Hunger", "Голод", "Hunger Tracker"),
+            "humanity" to listOf("Humanity", "Человечность", "Humanity Tracker")
         )
         
         trackerPatterns.forEach { (trackerName, labels) ->
@@ -605,7 +605,8 @@ class CharacterSheetsFragment : Fragment() {
                 pattern1.findAll(fullText).forEach { match ->
                     val filled = match.groupValues[1].count { it in listOf('X', '✓', '■') }
                     if (filled > 0) {
-                        stats["${trackerName} Levels Filled"] = filled
+                        stats["${trackerName}_current"] = filled
+                        stats["${trackerName}_max"] = match.groupValues[1].length
                     }
                 }
                 
@@ -614,8 +615,8 @@ class CharacterSheetsFragment : Fragment() {
                 pattern2.findAll(fullText).forEach { match ->
                     val current = match.groupValues[1].toIntOrNull()
                     val max = match.groupValues[2].toIntOrNull()
-                    if (current != null) stats["${trackerName} Current"] = current
-                    if (max != null) stats["${trackerName} Max"] = max
+                    if (current != null) stats["${trackerName}_current"] = current
+                    if (max != null) stats["${trackerName}_max"] = max
                 }
                 
                 // Формат 3: Health: [5] или Health: 5
@@ -623,19 +624,24 @@ class CharacterSheetsFragment : Fragment() {
                 pattern3.findAll(fullText).forEach { match ->
                     val value = match.groupValues[1].toIntOrNull()
                     if (value != null && value <= 10) { // Разумное ограничение для трекеров
-                        stats["${trackerName} Value"] = value
+                        stats["${trackerName}_value"] = value
+                        if (stats["${trackerName}_current"] == null) {
+                            stats["${trackerName}_current"] = value
+                        }
                     }
                 }
                 
                 // Формат 4: Поиск по строкам - если на строке есть label и числа/квадраты
                 lines.forEach { line ->
-                    if (line.contains(label, ignoreCase = true)) {
+                    if (line.contains(label, ignoreCase = true) && !line.contains(":", ignoreCase = true)) {
                         // Ищем заполненные квадраты на этой строке
                         val squaresPattern = Regex("\\[([X✓■\\s]+)\\]")
                         squaresPattern.findAll(line).forEach { squareMatch ->
                             val filled = squareMatch.groupValues[1].count { it in listOf('X', '✓', '■') }
+                            val total = squareMatch.groupValues[1].length
                             if (filled > 0) {
-                                stats["${trackerName} Levels Filled"] = filled
+                                stats["${trackerName}_current"] = filled
+                                stats["${trackerName}_max"] = total
                             }
                         }
                     }
@@ -643,41 +649,173 @@ class CharacterSheetsFragment : Fragment() {
             }
         }
         
-        // Извлекаем все текстовые поля, которые могут быть пропущены - улучшенный парсинг
-        val textFields = mapOf(
-            "Chronicle Tenets" to listOf("Chronicle Tenets", "Tenets", "Заповеди хроники", "Chronicle"),
-            "Convictions" to listOf("Convictions", "Conviction", "Убеждения"),
-            "Touchstones" to listOf("Touchstones", "Touchstone", "Якоря"),
-            "Haven" to listOf("Haven", "Убежище", "Haven Location"),
-            "Domain" to listOf("Domain", "Домен", "Domain Location"),
-            "Coterie" to listOf("Coterie", "Котерия", "Coterie Name"),
-            "Mortal Identity" to listOf("Mortal Identity", "Mortal Name", "Смертная личность", "Mortal"),
-            "Mask" to listOf("Mask", "Маска", "Mask Identity")
+        // Извлекаем специфичные поля VTM с правильным разделением секций
+        val vtmFields = mapOf(
+            // Основная информация
+            "player" to listOf("Player", "Игрок"),
+            "chronicle" to listOf("Chronicle", "Хроника"),
+            "chronicle_tenets" to listOf("Chronicle Tenets", "Tenets", "Заповеди хроники"),
+            "concept" to listOf("Concept", "Концепция"),
+            "predator" to listOf("Predator", "Стиль охоты", "Predator Type"),
+            "clan" to listOf("Clan", "Клан"),
+            "generation" to listOf("Generation", "Поколение"),
+            "sire" to listOf("Sire", "Создатель"),
+            
+            // Цели
+            "ambition" to listOf("Ambition", "Амбиция"),
+            "desire" to listOf("Desire", "Желание"),
+            
+            // Убеждения
+            "convictions" to listOf("Convictions", "Conviction", "Убеждения"),
+            "touchstones" to listOf("Touchstones", "Touchstone", "Якоря"),
+            
+            // Личность
+            "mortal_identity" to listOf("Mortal Identity", "Mortal Name", "Смертная личность", "Mortal"),
+            "mask" to listOf("Mask", "Маска", "Mask Identity"),
+            
+            // Котерия и домен
+            "coterie" to listOf("Coterie", "Котерия", "Coterie Name"),
+            "haven" to listOf("Haven", "Убежище", "Haven Location"),
+            "domain" to listOf("Domain", "Домен", "Domain Location"),
+            
+            // Кровь
+            "blood_potency" to listOf("Blood Potency", "Мощь крови", "Potency"),
+            "blood_resonance" to listOf("Blood Resonance", "Резонанс крови", "Resonance"),
+            "blood_surge" to listOf("Blood Surge", "Прилив крови", "Surge"),
+            "mend_amount" to listOf("Mend Amount", "Восстановление", "Mend"),
+            "power_bonus" to listOf("Power Bonus", "Бонус силы", "Power"),
+            "rouse_re_roll" to listOf("Rouse Re-roll", "Повторный бросок пробуждения", "Rouse"),
+            "feeding_penalty" to listOf("Feeding Penalty", "Штраф за кормление", "Feeding"),
+            
+            // Опыт
+            "experience_total" to listOf("Experience Total", "Всего опыта", "Total XP"),
+            "experience_spent" to listOf("Experience Spent", "Потрачено опыта", "Spent XP"),
+            "experience_available" to listOf("Experience Available", "Доступно опыта", "Available XP"),
+            
+            // Секции с многострочным текстом - извлекаем по секциям
+            "advantages" to listOf("Advantages", "Достоинства", "Merits"),
+            "flaws" to listOf("Flaws", "Недостатки", "Flaw"),
+            "merits" to listOf("Merits", "Достоинства", "Merit"),
+            "notes" to listOf("Notes", "Заметки", "Note", "History", "История")
         )
         
-        textFields.forEach { (key, patterns) ->
+        // Извлекаем простые поля (однострочные)
+        vtmFields.filter { it.key !in listOf("advantages", "flaws", "merits", "notes", "convictions", "touchstones", "chronicle_tenets", "ambition", "desire") }.forEach { (key, patterns) ->
             patterns.forEach { pattern ->
-                // Улучшенный паттерн - ищем на отдельных строках
-                lines.forEach { line ->
-                    if (line.contains(pattern, ignoreCase = true)) {
-                        // Пытаемся извлечь значение после метки
-                        val regex = Regex("$pattern\\s*[:=]\\s*([^\\n\\r]{1,200})", RegexOption.IGNORE_CASE)
-                        regex.findAll(line).forEach { match ->
-                            val value = match.groupValues[1].trim()
-                            // Исключаем только числа и пустые значения
-                            if (value.isNotBlank() && !value.matches(Regex("^\\d+$")) && value.length > 1) {
-                                stats[key] = value
-                            }
-                        }
-                    }
-                }
-                
-                // Также ищем в полном тексте для многострочных полей
                 val regex = Regex("$pattern\\s*[:=]\\s*([^\\n\\r]{1,200})", RegexOption.IGNORE_CASE)
                 regex.findAll(fullText).forEach { match ->
                     val value = match.groupValues[1].trim()
                     if (value.isNotBlank() && !value.matches(Regex("^\\d+$")) && value.length > 1) {
+                        // Нормализуем ключ
+                        val normalizedKey = key.lowercase().replace(" ", "_")
+                        stats[normalizedKey] = value
                         stats[key] = value
+                    }
+                }
+            }
+        }
+        
+        // Извлекаем многострочные секции (достоинства, недостатки, заметки)
+        extractMultilineSection(lines, fullText, "advantages", listOf("Advantages", "Достоинства", "Merits"), stats)
+        extractMultilineSection(lines, fullText, "flaws", listOf("Flaws", "Недостатки", "Flaw"), stats)
+        extractMultilineSection(lines, fullText, "merits", listOf("Merits", "Достоинства", "Merit"), stats)
+        extractMultilineSection(lines, fullText, "notes", listOf("Notes", "Заметки", "Note", "History", "История"), stats)
+        extractMultilineSection(lines, fullText, "convictions", listOf("Convictions", "Conviction", "Убеждения"), stats)
+        extractMultilineSection(lines, fullText, "touchstones", listOf("Touchstones", "Touchstone", "Якоря"), stats)
+        extractMultilineSection(lines, fullText, "chronicle_tenets", listOf("Chronicle Tenets", "Tenets", "Заповеди хроники"), stats)
+        extractMultilineSection(lines, fullText, "ambition", listOf("Ambition", "Амбиция"), stats)
+        extractMultilineSection(lines, fullText, "desire", listOf("Desire", "Желание"), stats)
+    }
+    
+    /**
+     * Извлекает многострочную секцию из текста
+     */
+    private fun extractMultilineSection(lines: List<String>, fullText: String, key: String, labels: List<String>, stats: MutableMap<String, Any>) {
+        labels.forEach { label ->
+            // Ищем начало секции
+            var sectionStart = -1
+            lines.forEachIndexed { index, line ->
+                val trimmedLine = line.trim()
+                // Ищем строку, которая содержит метку и двоеточие/равно
+                if (trimmedLine.contains(label, ignoreCase = true) && 
+                    (trimmedLine.contains(":") || trimmedLine.contains("=")) &&
+                    !trimmedLine.matches(Regex(".*\\d+\\s*[:=].*"))) { // Исключаем строки типа "Health: 5"
+                    sectionStart = index
+                }
+            }
+            
+            if (sectionStart >= 0) {
+                // Извлекаем текст после метки до следующей секции
+                val sectionPattern = Regex("$label\\s*[:=]\\s*([^\\n\\r]+)", RegexOption.IGNORE_CASE)
+                val match = sectionPattern.find(lines[sectionStart])
+                if (match != null) {
+                    val startValue = match.groupValues[1].trim()
+                    val sectionText = StringBuilder(startValue)
+                    
+                    // Собираем следующие строки до следующей секции или пустой строки
+                    var i = sectionStart + 1
+                    // Список меток других секций, которые должны остановить сбор текста
+                    val nextSections = listOf(
+                        "Advantages", "Достоинства", "Merits", "Достоинства",
+                        "Flaws", "Недостатки",
+                        "Notes", "Заметки", "History", "История",
+                        "Blood Potency", "Мощь крови", "Potency",
+                        "Experience", "Опыт", "XP",
+                        "Convictions", "Убеждения",
+                        "Touchstones", "Якоря",
+                        "Chronicle Tenets", "Заповеди хроники",
+                        "Ambition", "Амбиция",
+                        "Desire", "Желание"
+                    )
+                    
+                    while (i < lines.size && i < sectionStart + 15) { // Увеличиваем до 15 строк
+                        val nextLine = lines[i].trim()
+                        if (nextLine.isBlank()) {
+                            // Если пустая строка после начала секции, продолжаем
+                            if (sectionText.isNotEmpty()) {
+                                i++
+                                continue
+                            } else {
+                                break
+                            }
+                        }
+                        // Проверяем, не началась ли следующая секция
+                        if (nextSections.any { nextLine.contains(it, ignoreCase = true) && 
+                            (nextLine.contains(":") || nextLine.contains("=")) &&
+                            !nextLine.matches(Regex(".*\\d+\\s*[:=].*")) }) {
+                            break
+                        }
+                        // Добавляем строку, если она не пустая и не является меткой другого поля
+                        if (nextLine.length > 2 && !nextLine.matches(Regex("^[А-Яа-яA-Z][^:]*[:=]\\s*\\d+$"))) {
+                            sectionText.append("\n").append(nextLine)
+                        }
+                        i++
+                    }
+                    
+                    val value = sectionText.toString().trim()
+                    // Очищаем от возможных остатков других полей в конце
+                    val cleaned = value.split(Regex("\\s*(?:Advantages|Достоинства|Flaws|Недостатки|Merits|Notes|Заметки|History|История|Blood Potency|Мощь крови|Experience|Опыт|Convictions|Убеждения|Touchstones|Якоря|Chronicle Tenets|Заповеди хроники|Ambition|Амбиция|Desire|Желание)\\s*[:=]")).firstOrNull()?.trim()
+                    
+                    if (cleaned != null && cleaned.isNotBlank() && cleaned.length > 2) {
+                        stats[key] = cleaned
+                        android.util.Log.d("CharacterSheetsFragment", "Extracted $key: ${cleaned.take(100)}...")
+                    }
+                }
+            }
+            
+            // Также ищем в полном тексте с более широким паттерном (резервный метод)
+            if (!stats.containsKey(key)) {
+                val widePattern = Regex("$label\\s*[:=]\\s*([^\\n\\r]{10,500})", RegexOption.IGNORE_CASE)
+                widePattern.findAll(fullText).forEach { match ->
+                    val value = match.groupValues[1].trim()
+                    if (value.isNotBlank() && value.length > 2) {
+                        // Очищаем от лишних полей - останавливаемся на следующей секции
+                        val stopPattern = Regex("(?:Advantages|Достоинства|Flaws|Недостатки|Merits|Notes|Заметки|History|История|Blood Potency|Мощь крови|Experience|Опыт|Convictions|Убеждения|Touchstones|Якоря|Chronicle Tenets|Заповеди хроники|Ambition|Амбиция|Desire|Желание)\\s*[:=]")
+                        val cleaned = stopPattern.split(value).firstOrNull()?.trim()
+                        if (cleaned != null && cleaned.isNotBlank() && cleaned.length > 2) {
+                            stats[key] = cleaned
+                            android.util.Log.d("CharacterSheetsFragment", "Extracted $key (wide pattern): ${cleaned.take(100)}...")
+                        }
                     }
                 }
             }

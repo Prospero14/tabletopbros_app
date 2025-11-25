@@ -276,10 +276,51 @@ class CharacterEditorFragment : Fragment() {
                             android.util.Log.d("CharacterEditor", "Copied skill: $key -> skill_$normalizedKey = $value")
                         }
                         
-                        // Копируем другие статистики из билдера
+                        // Копируем другие статистики из билдера с правильной нормализацией ключей
                         builder.stats.forEach { (key, value) ->
-                            formData[key.lowercase()] = value
-                            android.util.Log.d("CharacterEditor", "Copied stat: $key = $value")
+                            // Нормализуем ключ (убираем пробелы, приводим к нижнему регистру)
+                            val normalizedKey = key.lowercase().replace(" ", "_").replace("-", "_")
+                            
+                            // Специальная обработка для VTM полей
+                            val finalKey = when {
+                                // Трекеры
+                                normalizedKey.contains("health") && normalizedKey.contains("current") -> "health_current"
+                                normalizedKey.contains("health") && normalizedKey.contains("max") -> "health_max"
+                                normalizedKey.contains("willpower") && normalizedKey.contains("current") -> "willpower_current"
+                                normalizedKey.contains("willpower") && normalizedKey.contains("max") -> "willpower_max"
+                                normalizedKey.contains("hunger") -> "hunger"
+                                normalizedKey.contains("humanity") -> "humanity"
+                                
+                                // Кровь
+                                normalizedKey.contains("blood_potency") || normalizedKey.contains("мощь_крови") -> "blood_potency"
+                                normalizedKey.contains("blood_resonance") || normalizedKey.contains("резонанс_крови") -> "blood_resonance"
+                                normalizedKey.contains("blood_surge") || normalizedKey.contains("прилив_крови") -> "blood_surge"
+                                normalizedKey.contains("mend") -> "mend_amount"
+                                normalizedKey.contains("power_bonus") -> "power_bonus"
+                                normalizedKey.contains("rouse") -> "rouse_re_roll"
+                                normalizedKey.contains("feeding") -> "feeding_penalty"
+                                
+                                // Опыт
+                                normalizedKey.contains("experience_total") || normalizedKey.contains("всего_опыта") -> "experience_total"
+                                normalizedKey.contains("experience_spent") || normalizedKey.contains("потрачено_опыта") -> "experience_spent"
+                                normalizedKey.contains("experience_available") || normalizedKey.contains("доступно_опыта") -> "experience_available"
+                                
+                                // Секции
+                                normalizedKey.contains("flaws") || normalizedKey.contains("недостатки") -> "flaws"
+                                normalizedKey.contains("advantages") || normalizedKey.contains("merits") || normalizedKey.contains("достоинства") -> "advantages"
+                                normalizedKey.contains("notes") || normalizedKey.contains("заметки") || normalizedKey.contains("history") || normalizedKey.contains("история") -> "notes"
+                                normalizedKey.contains("convictions") || normalizedKey.contains("убеждения") -> "convictions"
+                                normalizedKey.contains("touchstones") || normalizedKey.contains("якоря") -> "touchstones"
+                                normalizedKey.contains("chronicle_tenets") || normalizedKey.contains("заповеди_хроники") -> "chronicle_tenets"
+                                normalizedKey.contains("ambition") || normalizedKey.contains("амбиция") -> "ambition"
+                                normalizedKey.contains("desire") || normalizedKey.contains("желание") -> "desire"
+                                
+                                // Другие поля
+                                else -> normalizedKey
+                            }
+                            
+                            formData[finalKey] = value
+                            android.util.Log.d("CharacterEditor", "Copied stat: $key -> $finalKey = $value")
                         }
                         
                         // Копируем parsedData если есть (приоритет над отдельными полями)
