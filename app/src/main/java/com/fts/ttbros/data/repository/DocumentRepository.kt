@@ -121,4 +121,46 @@ class DocumentRepository {
             yandexDisk.deleteFile(document.id)
         }
     }
+
+    suspend fun copyDocument(
+        teamId: String,
+        fromPath: String,
+        toFileName: String,
+        userId: String,
+        userName: String,
+        title: String
+    ): Document? {
+        try {
+            val toPath = "/TTBros/teams/$teamId/player_materials/$toFileName"
+            yandexDisk.copyResource(fromPath, toPath)
+            
+            // Patch metadata for the new copy
+            val metadata = mapOf(
+                "uploadedBy" to userId,
+                "uploadedByName" to userName,
+                "title" to title,
+                "teamId" to teamId
+            )
+            yandexDisk.patchResource(toPath, metadata)
+            
+            // Return a partial document object (downloadUrl requires publishing or listing, 
+            // but for now we just return success)
+            // To get full object we would need to call listResources or publishFile, 
+            // but let's just assume success and return what we know.
+            return Document(
+                id = toPath,
+                teamId = teamId,
+                title = title,
+                fileName = toFileName,
+                downloadUrl = "", // Will be populated on reload
+                uploadedBy = userId,
+                uploadedByName = userName,
+                timestamp = Timestamp.now(),
+                sizeBytes = 0
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("DocumentRepository", "Error copying document: ${e.message}", e)
+            throw e
+        }
+    }
 }

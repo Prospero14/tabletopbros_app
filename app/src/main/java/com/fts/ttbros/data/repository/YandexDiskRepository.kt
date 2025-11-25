@@ -307,6 +307,13 @@ class YandexDiskRepository {
     }
     
     /**
+     * Получить ссылку на скачивание (публикует файл если нужно)
+     */
+    suspend fun getDownloadUrl(remotePath: String): String = withContext(Dispatchers.IO) {
+        publishFile(remotePath)
+    }
+
+    /**
      * Опубликовать файл и получить прямую ссылку для скачивания
      */
     private fun publishFile(remotePath: String): String {
@@ -555,6 +562,32 @@ class YandexDiskRepository {
             Log.d("YandexDisk", "File deleted: $remotePath")
         } catch (e: Exception) {
             Log.e("YandexDisk", "Delete error: ${e.message}", e)
+            throw e
+        }
+    }
+
+    /**
+     * Копировать ресурс на Яндекс.Диске
+     */
+    suspend fun copyResource(fromPath: String, toPath: String) = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("$baseUrl/resources/copy?from=${Uri.encode(fromPath)}&path=${Uri.encode(toPath)}&overwrite=true")
+                .header("Authorization", "OAuth $oauthToken")
+                .post(okhttp3.RequestBody.create(null, ByteArray(0)))
+                .build()
+            
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                // Если ошибка, читаем тело ответа для деталей
+                val errorBody = response.body?.string()
+                Log.e("YandexDisk", "Copy failed: ${response.code} $errorBody")
+                throw Exception("Copy failed: ${response.code}")
+            }
+            response.close()
+            Log.d("YandexDisk", "Resource copied from $fromPath to $toPath")
+        } catch (e: Exception) {
+            Log.e("YandexDisk", "Copy error: ${e.message}", e)
             throw e
         }
     }

@@ -639,64 +639,26 @@ class ChatFragment : Fragment() {
             .setPositiveButton("Добавить") { _, _ ->
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
-                        // Получаем документ по attachmentId из Firestore
                         val documentRepository = com.fts.ttbros.data.repository.DocumentRepository()
-                        val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                        val docSnapshot = firestore.collection("teams")
-                            .document(teamId)
-                            .collection("documents")
-                            .document(attachmentId)
-                            .get()
-                            .await()
                         
-                        if (docSnapshot.exists()) {
-                            val targetDocument = docSnapshot.toObject(com.fts.ttbros.data.model.Document::class.java)
-                                ?.copy(id = docSnapshot.id)
-                            
-                            if (targetDocument != null) {
-                                // Скачиваем файл и загружаем заново как материал для текущего пользователя
-                                val downloadUrl = targetDocument.downloadUrl
-                                val fileName = targetDocument.fileName
-                                val title = targetDocument.title
-                                
-                                // Скачиваем файл во временный файл
-                                val contextForFile = context ?: return@launch
-                                if (!isAdded) return@launch
-                                val tempFile = java.io.File(contextForFile.cacheDir, "temp_material_${System.currentTimeMillis()}.pdf")
-                                java.net.URL(downloadUrl).openStream().use { input ->
-                                    java.io.FileOutputStream(tempFile).use { output ->
-                                        input.copyTo(output)
-                                    }
-                                }
-                                
-                                // Загружаем как материал
-                                val uri = android.net.Uri.fromFile(tempFile)
-                                documentRepository.uploadDocument(
-                                    teamId = teamId,
-                                    uri = uri,
-                                    title = title,
-                                    fileName = fileName,
-                                    userId = profile.uid,
-                                    userName = profile.displayName,
-                                    context = contextForFile,
-                                    isMaterial = true
-                                )
-                                
-                                // Удаляем временный файл
-                                tempFile.delete()
-                                
-                                view?.let {
-                                    Snackbar.make(it, "Материал добавлен в 'Материалы от мастера'", Snackbar.LENGTH_SHORT).show()
-                                }
-                            } else {
-                                view?.let {
-                                    Snackbar.make(it, "Документ не найден", Snackbar.LENGTH_SHORT).show()
-                                }
-                            }
-                        } else {
-                            view?.let {
-                                Snackbar.make(it, "Документ не найден", Snackbar.LENGTH_SHORT).show()
-                            }
+                        // Extract title from message text (remove clip icon if present)
+                        val title = message.text.removePrefix("📎 ").trim()
+                        
+                        // Extract filename from path (attachmentId)
+                        val fileName = attachmentId.substringAfterLast("/")
+                        
+                        // Copy document on Yandex.Disk
+                        documentRepository.copyDocument(
+                            teamId = teamId,
+                            fromPath = attachmentId,
+                            toFileName = "copy_${System.currentTimeMillis()}_$fileName",
+                            userId = profile.uid,
+                            userName = profile.displayName,
+                            title = title
+                        )
+                        
+                        view?.let {
+                            Snackbar.make(it, "Материал добавлен в 'Материалы от мастера'", Snackbar.LENGTH_SHORT).show()
                         }
                     } catch (e: Exception) {
                         android.util.Log.e("ChatFragment", "Error adding material: ${e.message}", e)
