@@ -148,7 +148,6 @@ class CharacterEditorFragment : Fragment() {
 
         
         // Mode Switch
-        val context = context ?: return
         val prefs = context.getSharedPreferences("ttbros_prefs", android.content.Context.MODE_PRIVATE)
         val savedMode = prefs.getBoolean("pref_lock_mode", false)
         val isNew = characterId == null

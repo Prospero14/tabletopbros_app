@@ -402,8 +402,8 @@ class CharactersFragment : Fragment() {
             
             val options = arrayOf("Team Chat", masterPlayerLabel)
             
-            val context = context ?: return
-            if (!isAdded) return
+            val context = context ?: return@launch
+            if (!isAdded) return@launch
             MaterialAlertDialogBuilder(context)
                 .setTitle("Share '${character.name}' to...")
                 .setItems(options) { _, which ->
