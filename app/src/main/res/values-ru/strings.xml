@@ -187,5 +187,20 @@
     <string name="language_russian">Русский</string>
     <string name="language_english">Английский</string>
     <string name="language_changed">Язык изменён. Пожалуйста, перезапустите приложение.</string>
+    <string name="error_loading_profile">Ошибка загрузки профиля: %s</string>
+    <string name="error_poll_index_required">Ошибка: требуется создать индекс в Firestore для опросов</string>
+    <string name="error_loading_polls">Ошибка загрузки опросов: %s</string>
+    <string name="error_cannot_open_dialog">Не удалось открыть диалог</string>
+    <string name="error_cannot_open_dialog_retry">Не удалось открыть диалог. Попробуйте еще раз.</string>
+    <string name="error_opening_dialog">Ошибка открытия диалога: %s</string>
+    <string name="menu_clear_cache">Очистить кэш</string>
+    <string name="clear_cache_title">Очистка кэша приложения</string>
+    <string name="clear_cache_message">Это очистит все кэшированные данные. Продолжить?</string>
+    <string name="cache_cleared">Кэш успешно очищен</string>
+    <string name="error_clearing_cache">Ошибка очистки кэша: %s</string>
+    <string name="menu_characters">Персонажи</string>
+    <string name="menu_notes">Заметки</string>
+    <string name="menu_documents">Документы</string>
+    <string name="menu_advanced_parser">Продвинутый парсер</string>
 
 </resources>

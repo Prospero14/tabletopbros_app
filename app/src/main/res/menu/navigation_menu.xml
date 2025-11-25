@@ -21,11 +21,11 @@
         <item
             android:id="@+id/charactersFragment"
             android:icon="@android:drawable/ic_menu_my_calendar"
-            android:title="Персонажи" />
+            android:title="@string/menu_characters" />
         <item
             android:id="@+id/notesFragment"
             android:icon="@android:drawable/ic_menu_edit"
-            android:title="Заметки" />
+            android:title="@string/menu_notes" />
         <item
             android:id="@+id/calendarFragment"
             android:icon="@android:drawable/ic_menu_today"
@@ -33,11 +33,11 @@
         <item
             android:id="@+id/documentsFragment"
             android:icon="@android:drawable/ic_menu_agenda"
-            android:title="Документы" />
+            android:title="@string/menu_documents" />
         <item
             android:id="@+id/advancedParserFragment"
             android:icon="@android:drawable/ic_menu_search"
-            android:title="Продвинутый парсер" />
+            android:title="@string/menu_advanced_parser" />
     </group>
 
     <item
@@ -51,7 +51,13 @@
         android:id="@+id/menu_language"
         android:checkable="false"
         android:icon="@android:drawable/ic_menu_sort_by_size"
-        android:title="Language / Язык" />
+        android:title="@string/menu_language" />
+
+    <item
+        android:id="@+id/menu_clear_cache"
+        android:checkable="false"
+        android:icon="@android:drawable/ic_menu_delete"
+        android:title="@string/menu_clear_cache" />
 
     <item
         android:id="@+id/menu_logout"

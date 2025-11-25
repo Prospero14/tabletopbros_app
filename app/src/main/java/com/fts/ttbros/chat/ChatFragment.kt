@@ -184,7 +184,7 @@ class ChatFragment : Fragment() {
                 android.util.Log.e("ChatFragment", "Error observing profile: ${e.message}", e)
                 if (isAdded && view != null) {
                     view?.let {
-                        Snackbar.make(it, "Ошибка загрузки профиля: ${e.message}", Snackbar.LENGTH_LONG).show()
+                        Snackbar.make(it, getString(R.string.error_loading_profile, e.message ?: ""), Snackbar.LENGTH_LONG).show()
                     }
                 }
             }
@@ -192,8 +192,12 @@ class ChatFragment : Fragment() {
     }
 
     private fun updateInputAvailability(profile: UserProfile) {
+        // Получаем роль из текущей команды
+        val currentTeam = profile.teams.find { it.teamId == profile.currentTeamId }
+        val userRole = currentTeam?.role ?: profile.role
+        
         val canSend = when (chatType) {
-            ChatType.ANNOUNCEMENTS -> profile.role == UserRole.MASTER
+            ChatType.ANNOUNCEMENTS -> userRole == UserRole.MASTER
             else -> true
         }
         
@@ -216,6 +220,9 @@ class ChatFragment : Fragment() {
             teamId,
             chatType,
             onEvent = { messages ->
+                // Проверяем, что фрагмент еще прикреплен и view существует
+                if (!isAdded || view == null) return@observeMessages
+                
                 // Handle pinned messages
                 val pinnedMessages = messages.filter { it.isPinned }
                 val latestPinned = pinnedMessages.maxByOrNull { it.pinnedAt ?: 0L }
@@ -234,7 +241,7 @@ class ChatFragment : Fragment() {
                 }
 
                 adapter.submitList(messages) {
-                    if (messages.isNotEmpty()) {
+                    if (messages.isNotEmpty() && isAdded && view != null) {
                         // Only scroll to bottom if we are already near bottom or it's initial load
                         // For now, simple behavior: scroll to bottom on new messages
                         // But we need to be careful not to disrupt scrolling if user is reading up
@@ -242,7 +249,9 @@ class ChatFragment : Fragment() {
                         messagesRecyclerView.scrollToPosition(messages.lastIndex)
                     }
                 }
-                emptyView.isVisible = messages.isEmpty()
+                if (isAdded && view != null) {
+                    emptyView.isVisible = messages.isEmpty()
+                }
             },
             onError = { error ->
                 view?.let {
@@ -277,9 +286,9 @@ class ChatFragment : Fragment() {
                     }
                     android.util.Log.e("ChatFragment", "Error loading polls: ${e.message}", e)
                     val errorMessage = if (e.message?.contains("index") == true || e.message?.contains("Index") == true) {
-                        "Ошибка: требуется создать индекс в Firestore для опросов"
+                        getString(R.string.error_poll_index_required)
                     } else {
-                        "Ошибка загрузки опросов: ${e.message}"
+                        getString(R.string.error_loading_polls, e.message ?: "")
                     }
                     view?.let {
                         Snackbar.make(it, errorMessage, Snackbar.LENGTH_LONG).show()
@@ -315,7 +324,7 @@ class ChatFragment : Fragment() {
                             } catch (e: Exception) {
                                 android.util.Log.e("ChatFragment", "Error on dice roll menu click: ${e.message}", e)
                                 this.view?.let {
-                                    Snackbar.make(it, "Ошибка: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                                    Snackbar.make(it, getString(R.string.error_unknown), Snackbar.LENGTH_SHORT).show()
                                 }
                             }
                             true
@@ -788,13 +797,16 @@ class ChatFragment : Fragment() {
         val teamId = profile.currentTeamId ?: run {
             android.util.Log.w("ChatFragment", "Team ID is null, cannot show dice roll dialog")
             view?.let {
-                Snackbar.make(it, "Команда не выбрана", Snackbar.LENGTH_SHORT).show()
+                Snackbar.make(it, getString(R.string.error_team_not_selected), Snackbar.LENGTH_SHORT).show()
             }
             return
         }
 
         try {
-            val isMaster = profile.role == UserRole.MASTER
+            // Получаем роль из текущей команды
+            val currentTeam = profile.teams.find { it.teamId == profile.currentTeamId }
+            val userRole = currentTeam?.role ?: profile.role
+            val isMaster = userRole == UserRole.MASTER
             val dialog = DiceRollDialog(isMaster) { rollResult, sendOptions ->
                 if (isAdded && view != null) {
                     sendDiceRollResult(rollResult, sendOptions, teamId, profile)
@@ -805,7 +817,7 @@ class ChatFragment : Fragment() {
             if (fragmentManager.isStateSaved) {
                 android.util.Log.w("ChatFragment", "FragmentManager state is saved, cannot show dialog")
                 view?.let {
-                    Snackbar.make(it, "Не удалось открыть диалог", Snackbar.LENGTH_SHORT).show()
+                    Snackbar.make(it, getString(R.string.error_cannot_open_dialog), Snackbar.LENGTH_SHORT).show()
                 }
                 return
             }
@@ -813,12 +825,12 @@ class ChatFragment : Fragment() {
         } catch (e: IllegalStateException) {
             android.util.Log.e("ChatFragment", "IllegalStateException showing dice roll dialog: ${e.message}", e)
             view?.let {
-                Snackbar.make(it, "Не удалось открыть диалог. Попробуйте еще раз.", Snackbar.LENGTH_SHORT).show()
+                Snackbar.make(it, getString(R.string.error_cannot_open_dialog_retry), Snackbar.LENGTH_SHORT).show()
             }
         } catch (e: Exception) {
             android.util.Log.e("ChatFragment", "Error showing dice roll dialog: ${e.message}", e)
             view?.let {
-                Snackbar.make(it, "Ошибка открытия диалога: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                Snackbar.make(it, getString(R.string.error_opening_dialog, e.message ?: ""), Snackbar.LENGTH_SHORT).show()
             }
         }
     }
@@ -848,7 +860,9 @@ class ChatFragment : Fragment() {
                 }
 
                 // Отправляем мастеру (MASTER_PLAYER), если выбрано
-                if (sendOptions.sendToMaster && profile.role != UserRole.MASTER) {
+                val currentTeam = profile.teams.find { it.teamId == profile.currentTeamId }
+                val userRole = currentTeam?.role ?: profile.role
+                if (sendOptions.sendToMaster && userRole != UserRole.MASTER) {
                     chatRepository.sendMessage(
                         teamId,
                         ChatType.MASTER_PLAYER,

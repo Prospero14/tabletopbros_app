@@ -11,6 +11,10 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
+import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
@@ -116,6 +120,11 @@ class MainActivity : AppCompatActivity() {
                 R.id.menu_language -> {
                     binding.drawerLayout.closeDrawer(GravityCompat.END)
                     showLanguageDialog()
+                    true
+                }
+                R.id.menu_clear_cache -> {
+                    binding.drawerLayout.closeDrawer(GravityCompat.END)
+                    showClearCacheDialog()
                     true
                 }
                 R.id.menu_logout -> {
@@ -553,6 +562,63 @@ private fun pickImageFromGallery() {
             .setNegativeButton(android.R.string.cancel, null)
             .setBackground(androidx.core.content.ContextCompat.getDrawable(this, R.drawable.bg_cloud_dialog))
             .show()
+    }
+    
+    private fun showClearCacheDialog() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.clear_cache_title)
+            .setMessage(R.string.clear_cache_message)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                clearCache()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+    
+    private fun clearCache() {
+        lifecycleScope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    // Очистка внутреннего кэша
+                    val cacheDir = cacheDir
+                    if (cacheDir.exists() && cacheDir.isDirectory) {
+                        cacheDir.listFiles()?.forEach { file ->
+                            try {
+                                if (file.isDirectory) {
+                                    file.deleteRecursively()
+                                } else {
+                                    file.delete()
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("MainActivity", "Error deleting cache file: ${file.name}", e)
+                            }
+                        }
+                    }
+                    
+                    // Очистка внешнего кэша
+                    val externalCacheDir = externalCacheDir
+                    if (externalCacheDir != null && externalCacheDir.exists() && externalCacheDir.isDirectory) {
+                        externalCacheDir.listFiles()?.forEach { file ->
+                            try {
+                                if (file.isDirectory) {
+                                    file.deleteRecursively()
+                                } else {
+                                    file.delete()
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("MainActivity", "Error deleting external cache file: ${file.name}", e)
+                            }
+                        }
+                    }
+                }
+                
+                // Показываем сообщение об успехе
+                Snackbar.make(binding.root, getString(R.string.cache_cleared), Snackbar.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Error clearing cache: ${e.message}", e)
+                Snackbar.make(binding.root, getString(R.string.error_clearing_cache, e.message ?: ""), Snackbar.LENGTH_LONG).show()
+            }
+        }
     }
     
     private fun logout() {

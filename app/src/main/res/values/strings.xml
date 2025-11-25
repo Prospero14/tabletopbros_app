@@ -389,5 +389,20 @@
     <string name="language_russian">Russian</string>
     <string name="language_english">English</string>
     <string name="language_changed">Language changed. Please restart the app.</string>
+    <string name="error_loading_profile">Error loading profile: %s</string>
+    <string name="error_poll_index_required">Error: Firestore index required for polls</string>
+    <string name="error_loading_polls">Error loading polls: %s</string>
+    <string name="error_cannot_open_dialog">Failed to open dialog</string>
+    <string name="error_cannot_open_dialog_retry">Failed to open dialog. Please try again.</string>
+    <string name="error_opening_dialog">Error opening dialog: %s</string>
+    <string name="menu_clear_cache">Clear Cache</string>
+    <string name="clear_cache_title">Clear Application Cache</string>
+    <string name="clear_cache_message">This will clear all cached data. Continue?</string>
+    <string name="cache_cleared">Cache cleared successfully</string>
+    <string name="error_clearing_cache">Error clearing cache: %s</string>
+    <string name="menu_characters">Characters</string>
+    <string name="menu_notes">Notes</string>
+    <string name="menu_documents">Documents</string>
+    <string name="menu_advanced_parser">Advanced Parser</string>
 
 </resources>
