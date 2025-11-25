@@ -177,20 +177,20 @@ class DocumentsFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val profile = userRepository.currentProfile()
-                val currentTeamId = profile?.currentTeamId
-                if (profile == null || currentTeamId.isNullOrBlank()) {
+                val teamIdValue = profile?.currentTeamId
+                if (profile == null || teamIdValue.isNullOrBlank()) {
                     binding.emptyView.text = "Join a team to view documents"
                     binding.emptyView.isVisible = true
                     binding.addDocumentFab.isVisible = false
                     return@launch
                 }
                 
-                this.currentTeamId = currentTeamId
+                this.currentTeamId = teamIdValue
                 currentUserId = profile.uid
                 currentUserName = profile.displayName
                 
                 // Определяем роль из текущей команды
-                val currentTeam = profile.teams.find { it.teamId == currentTeamId }
+                val currentTeam = profile.teams.find { it.teamId == teamIdValue }
                 isMaster = currentTeam?.role == UserRole.MASTER
                 
                 // Setup tabs now that we know the user's role
@@ -200,12 +200,7 @@ class DocumentsFragment : Fragment() {
                 
                 binding.addDocumentFab.isVisible = isMaster
                 
-                val teamId = currentTeamId
-                if (teamId == null) {
-                    binding.emptyView.text = "Join a team to view documents"
-                    binding.emptyView.isVisible = true
-                    return@launch
-                }
+                val teamId = teamIdValue
                 
                 try {
                     documentRepository.getDocuments(teamId).collect { docs ->
