@@ -590,60 +590,93 @@ class CharacterSheetsFragment : Fragment() {
      * Извлекает специфичные для VTM 5e поля
      */
     private fun extractVtmSpecificFields(stats: MutableMap<String, Any>, lines: List<String>, fullText: String) {
-        // Извлекаем Health Tracker (может быть в формате "Health: [X][X][ ][ ][ ]")
-        val healthPattern = Regex("Health\\s*[:=]?\\s*\\[([X\\s]+)\\]", RegexOption.IGNORE_CASE)
-        healthPattern.findAll(fullText).forEach { match ->
-            val healthLevels = match.groupValues[1].count { it == 'X' }
-            if (healthLevels > 0) {
-                stats["Health Levels Filled"] = healthLevels
+        // Улучшенный парсинг трекеров - поддерживаем разные форматы
+        val trackerPatterns = mapOf(
+            "Health" to listOf("Health", "Здоровье", "Health Tracker"),
+            "Willpower" to listOf("Willpower", "Сила воли", "Willpower Tracker", "WP"),
+            "Hunger" to listOf("Hunger", "Голод", "Hunger Tracker"),
+            "Humanity" to listOf("Humanity", "Человечность", "Humanity Tracker")
+        )
+        
+        trackerPatterns.forEach { (trackerName, labels) ->
+            labels.forEach { label ->
+                // Формат 1: [X][X][ ][ ][ ] или [✓][✓][ ][ ][ ] или [■][■][ ][ ][ ]
+                val pattern1 = Regex("$label\\s*[:=]?\\s*\\[([X✓■\\s]+)\\]", RegexOption.IGNORE_CASE)
+                pattern1.findAll(fullText).forEach { match ->
+                    val filled = match.groupValues[1].count { it in listOf('X', '✓', '■') }
+                    if (filled > 0) {
+                        stats["${trackerName} Levels Filled"] = filled
+                    }
+                }
+                
+                // Формат 2: Health: 5/7 или Health: 5 из 7
+                val pattern2 = Regex("$label\\s*[:=]?\\s*(\\d+)\\s*/\\s*(\\d+)", RegexOption.IGNORE_CASE)
+                pattern2.findAll(fullText).forEach { match ->
+                    val current = match.groupValues[1].toIntOrNull()
+                    val max = match.groupValues[2].toIntOrNull()
+                    if (current != null) stats["${trackerName} Current"] = current
+                    if (max != null) stats["${trackerName} Max"] = max
+                }
+                
+                // Формат 3: Health: [5] или Health: 5
+                val pattern3 = Regex("$label\\s*[:=]?\\s*\\[?(\\d+)\\]?", RegexOption.IGNORE_CASE)
+                pattern3.findAll(fullText).forEach { match ->
+                    val value = match.groupValues[1].toIntOrNull()
+                    if (value != null && value <= 10) { // Разумное ограничение для трекеров
+                        stats["${trackerName} Value"] = value
+                    }
+                }
+                
+                // Формат 4: Поиск по строкам - если на строке есть label и числа/квадраты
+                lines.forEach { line ->
+                    if (line.contains(label, ignoreCase = true)) {
+                        // Ищем заполненные квадраты на этой строке
+                        val squaresPattern = Regex("\\[([X✓■\\s]+)\\]")
+                        squaresPattern.findAll(line).forEach { squareMatch ->
+                            val filled = squareMatch.groupValues[1].count { it in listOf('X', '✓', '■') }
+                            if (filled > 0) {
+                                stats["${trackerName} Levels Filled"] = filled
+                            }
+                        }
+                    }
+                }
             }
         }
         
-        // Извлекаем Willpower Tracker
-        val willpowerPattern = Regex("Willpower\\s*[:=]?\\s*\\[([X\\s]+)\\]", RegexOption.IGNORE_CASE)
-        willpowerPattern.findAll(fullText).forEach { match ->
-            val willpowerLevels = match.groupValues[1].count { it == 'X' }
-            if (willpowerLevels > 0) {
-                stats["Willpower Levels Filled"] = willpowerLevels
-            }
-        }
-        
-        // Извлекаем Hunger Tracker
-        val hungerPattern = Regex("Hunger\\s*[:=]?\\s*\\[([X\\s]+)\\]", RegexOption.IGNORE_CASE)
-        hungerPattern.findAll(fullText).forEach { match ->
-            val hungerLevels = match.groupValues[1].count { it == 'X' }
-            if (hungerLevels > 0) {
-                stats["Hunger Levels Filled"] = hungerLevels
-            }
-        }
-        
-        // Извлекаем Humanity Tracker
-        val humanityPattern = Regex("Humanity\\s*[:=]?\\s*\\[([X\\s]+)\\]", RegexOption.IGNORE_CASE)
-        humanityPattern.findAll(fullText).forEach { match ->
-            val humanityLevels = match.groupValues[1].count { it == 'X' }
-            if (humanityLevels > 0) {
-                stats["Humanity Levels Filled"] = humanityLevels
-            }
-        }
-        
-        // Извлекаем все текстовые поля, которые могут быть пропущены
+        // Извлекаем все текстовые поля, которые могут быть пропущены - улучшенный парсинг
         val textFields = mapOf(
-            "Chronicle Tenets" to listOf("Chronicle Tenets", "Tenets", "Заповеди хроники"),
+            "Chronicle Tenets" to listOf("Chronicle Tenets", "Tenets", "Заповеди хроники", "Chronicle"),
             "Convictions" to listOf("Convictions", "Conviction", "Убеждения"),
             "Touchstones" to listOf("Touchstones", "Touchstone", "Якоря"),
             "Haven" to listOf("Haven", "Убежище", "Haven Location"),
             "Domain" to listOf("Domain", "Домен", "Domain Location"),
             "Coterie" to listOf("Coterie", "Котерия", "Coterie Name"),
-            "Mortal Identity" to listOf("Mortal Identity", "Mortal Name", "Смертная личность"),
+            "Mortal Identity" to listOf("Mortal Identity", "Mortal Name", "Смертная личность", "Mortal"),
             "Mask" to listOf("Mask", "Маска", "Mask Identity")
         )
         
         textFields.forEach { (key, patterns) ->
             patterns.forEach { pattern ->
+                // Улучшенный паттерн - ищем на отдельных строках
+                lines.forEach { line ->
+                    if (line.contains(pattern, ignoreCase = true)) {
+                        // Пытаемся извлечь значение после метки
+                        val regex = Regex("$pattern\\s*[:=]\\s*([^\\n\\r]{1,200})", RegexOption.IGNORE_CASE)
+                        regex.findAll(line).forEach { match ->
+                            val value = match.groupValues[1].trim()
+                            // Исключаем только числа и пустые значения
+                            if (value.isNotBlank() && !value.matches(Regex("^\\d+$")) && value.length > 1) {
+                                stats[key] = value
+                            }
+                        }
+                    }
+                }
+                
+                // Также ищем в полном тексте для многострочных полей
                 val regex = Regex("$pattern\\s*[:=]\\s*([^\\n\\r]{1,200})", RegexOption.IGNORE_CASE)
                 regex.findAll(fullText).forEach { match ->
                     val value = match.groupValues[1].trim()
-                    if (value.isNotBlank() && !value.matches(Regex("^\\d+$"))) {
+                    if (value.isNotBlank() && !value.matches(Regex("^\\d+$")) && value.length > 1) {
                         stats[key] = value
                     }
                 }
@@ -929,7 +962,16 @@ class CharacterSheetsFragment : Fragment() {
             }
             
             val stripper = try {
-                com.tom_roush.pdfbox.text.PDFTextStripper()
+                val customStripper = com.tom_roush.pdfbox.text.PDFTextStripper()
+                // Улучшаем разделение строк - добавляем больше пробелов между словами
+                customStripper.setParagraphStart("\n")
+                customStripper.setParagraphEnd("\n")
+                customStripper.setPageStart("\n")
+                customStripper.setPageEnd("\n")
+                customStripper.setLineSeparator("\n")
+                customStripper.setWordSeparator(" ")
+                customStripper.setSuppressDuplicateOverlappingText(true)
+                customStripper
             } catch (e: Exception) {
                 android.util.Log.e("CharacterSheetsFragment", "Error creating PDFTextStripper: ${e.message}", e)
                 document?.close()
@@ -944,13 +986,22 @@ class CharacterSheetsFragment : Fragment() {
                 throw e
             }
             
+            // Дополнительная обработка текста для лучшего разделения строк
+            // Заменяем множественные пробелы на один, но сохраняем переносы строк
+            val processedText = text
+                .replace(Regex("([^\\n])\\s{2,}([^\\n])"), "$1 $2") // Множественные пробелы в одной строке
+                .replace(Regex("([A-ZА-Я])([a-zа-я])"), "$1 $2") // Разделяем слипшиеся слова (заглавная+строчная)
+                .replace(Regex("([a-zа-я])([A-ZА-Я])"), "$1 $2") // Разделяем слипшиеся слова (строчная+заглавная)
+                .replace(Regex("([0-9])([A-ZА-Яa-zа-я])"), "$1 $2") // Разделяем число и букву
+                .replace(Regex("([A-ZА-Яa-zа-я])([0-9])"), "$1 $2") // Разделяем букву и число
+            
             document.close()
             document = null
             
-            android.util.Log.d("CharacterSheetsFragment", "PDF text extracted, length: ${text.length} characters")
+            android.util.Log.d("CharacterSheetsFragment", "PDF text extracted, length: ${processedText.length} characters")
             
             // ПОЛНЫЙ ПАРСИНГ - извлекаем ВСЕ данные из PDF
-            val lines = text.lines()
+            val lines = processedText.lines()
             val parsedData = mutableMapOf<String, Any>()
             
             // 1. Извлекаем имя персонажа
@@ -959,20 +1010,20 @@ class CharacterSheetsFragment : Fragment() {
             
             // 2. Определяем систему
             parsedData["system"] = when {
-                text.contains("D&D", ignoreCase = true) || text.contains("Dungeons", ignoreCase = true) || text.contains("DnD", ignoreCase = true) -> "dnd_5e"
-                text.contains("Vampire", ignoreCase = true) || text.contains("VTM", ignoreCase = true) || text.contains("VtM", ignoreCase = true) -> "vtm_5e"
-                text.contains("Viedzmin", ignoreCase = true) || text.contains("Ведьмак", ignoreCase = true) -> "viedzmin_2e"
-                text.contains("dark heresy", ignoreCase = true) ||
-                text.contains("imperium", ignoreCase = true) ||
-                text.contains("inquisition", ignoreCase = true) ||
-                text.contains("acolyte", ignoreCase = true) ||
-                text.contains("throne agent", ignoreCase = true) -> "wh_darkheresy"
-                text.contains("warhammer fantasy roleplay", ignoreCase = true) ||
-                text.contains("whrp", ignoreCase = true) ||
-                text.contains("warhammer roleplay", ignoreCase = true) ||
-                (text.contains("career", ignoreCase = true) && text.contains("advance", ignoreCase = true)) ||
-                text.contains("fate points", ignoreCase = true) ||
-                text.contains("fortune points", ignoreCase = true) -> "whrp"
+                processedText.contains("D&D", ignoreCase = true) || processedText.contains("Dungeons", ignoreCase = true) || processedText.contains("DnD", ignoreCase = true) -> "dnd_5e"
+                processedText.contains("Vampire", ignoreCase = true) || processedText.contains("VTM", ignoreCase = true) || processedText.contains("VtM", ignoreCase = true) -> "vtm_5e"
+                processedText.contains("Viedzmin", ignoreCase = true) || processedText.contains("Ведьмак", ignoreCase = true) -> "viedzmin_2e"
+                processedText.contains("dark heresy", ignoreCase = true) ||
+                processedText.contains("imperium", ignoreCase = true) ||
+                processedText.contains("inquisition", ignoreCase = true) ||
+                processedText.contains("acolyte", ignoreCase = true) ||
+                processedText.contains("throne agent", ignoreCase = true) -> "wh_darkheresy"
+                processedText.contains("warhammer fantasy roleplay", ignoreCase = true) ||
+                processedText.contains("whrp", ignoreCase = true) ||
+                processedText.contains("warhammer roleplay", ignoreCase = true) ||
+                (processedText.contains("career", ignoreCase = true) && processedText.contains("advance", ignoreCase = true)) ||
+                processedText.contains("fate points", ignoreCase = true) ||
+                processedText.contains("fortune points", ignoreCase = true) -> "whrp"
                 else -> "unknown"
             }
             
@@ -1028,7 +1079,7 @@ class CharacterSheetsFragment : Fragment() {
                 "Сила", "Ловкость", "Выносливость", "Интеллект", "Мудрость", "Харизма",
                 "STR", "DEX", "CON", "INT", "WIS", "CHA"
             )
-            extractAttributes(dndAttributes, attributes, lines, text)
+            extractAttributes(dndAttributes, attributes, lines, processedText)
             
             // Атрибуты VTM 5e (ПОЛНЫЙ СПИСОК - все категории)
             // Mental Attributes
@@ -1049,7 +1100,7 @@ class CharacterSheetsFragment : Fragment() {
                 "Присутствие", "Манипуляция", "Самообладание",
                 "PRE", "MAN", "COM"
             )
-            extractAttributes(vtmMentalAttributes + vtmPhysicalAttributes + vtmSocialAttributes, attributes, lines, text)
+            extractAttributes(vtmMentalAttributes + vtmPhysicalAttributes + vtmSocialAttributes, attributes, lines, processedText)
             
             // Атрибуты WHRP (Warhammer Fantasy Roleplay)
             val whrpAttributes = listOf(
@@ -1058,7 +1109,7 @@ class CharacterSheetsFragment : Fragment() {
                 "Навык владения оружием", "Навык стрельбы", "Сила", "Выносливость", "Инициатива", "Ловкость", "Интеллект", "Сила воли", "Общительность",
                 "Мощь", "Точность", "Стойкость", "Реакция", "Интеллект", "Воля", "Харизма"
             )
-            extractAttributes(whrpAttributes, attributes, lines, text)
+            extractAttributes(whrpAttributes, attributes, lines, processedText)
             
             // Атрибуты WH: Dark Heresy
             val darkHeresyAttributes = listOf(
@@ -1067,7 +1118,7 @@ class CharacterSheetsFragment : Fragment() {
                 "Навык владения оружием", "Навык стрельбы", "Сила", "Выносливость", "Ловкость", "Интеллект", "Восприятие", "Сила воли", "Общительность",
                 "Мощь", "Точность", "Стойкость", "Реакция", "Интеллект", "Восприятие", "Воля", "Харизма"
             )
-            extractAttributes(darkHeresyAttributes, attributes, lines, text)
+            extractAttributes(darkHeresyAttributes, attributes, lines, processedText)
             
             // 6. Извлекаем навыки (ПОЛНЫЙ СПИСОК для всех систем)
             // D&D 5e Skills
@@ -1119,7 +1170,7 @@ class CharacterSheetsFragment : Fragment() {
             )
             
             val allSkills = dndSkills + vtmMentalSkills + vtmPhysicalSkills + vtmSocialSkills + whrpSkills + darkHeresySkills
-            extractSkills(allSkills, skills, lines, text)
+            extractSkills(allSkills, skills, lines, processedText)
             
             // 7. Извлекаем дисциплины VTM 5e
             val vtmDisciplines = listOf(
@@ -1130,7 +1181,7 @@ class CharacterSheetsFragment : Fragment() {
                 "Animalism", "Auspex", "Blood Sorcery", "Celerity", "Dominate", "Fortitude",
                 "Obfuscate", "Potence", "Presence", "Protean", "Thin-Blood Alchemy"
             )
-            extractSkills(vtmDisciplines, disciplines, lines, text)
+            extractSkills(vtmDisciplines, disciplines, lines, processedText)
             
             // 8. Извлекаем статистики (расширенный список для всех систем)
             val statPatterns = mapOf(
@@ -1270,26 +1321,26 @@ class CharacterSheetsFragment : Fragment() {
             )
             
             // Извлекаем статистики с улучшенными паттернами
-            extractStats(statPatterns, stats, lines, text)
+            extractStats(statPatterns, stats, lines, processedText)
             
             // 9. Дополнительный парсинг для VTM 5e - извлекаем все текстовые поля
             if (parsedData["system"] == "vtm_5e") {
-                extractVtmSpecificFields(stats, lines, text)
+                extractVtmSpecificFields(stats, lines, processedText)
             }
             
             // 10. Дополнительный парсинг для D&D 5e
             if (parsedData["system"] == "dnd_5e") {
-                extractDndSpecificFields(stats, lines, text)
+                extractDndSpecificFields(stats, lines, processedText)
             }
             
             // 11. Дополнительный парсинг для WHRP
             if (parsedData["system"] == "whrp") {
-                extractWhrpSpecificFields(stats, lines, text)
+                extractWhrpSpecificFields(stats, lines, processedText)
             }
             
             // 12. Дополнительный парсинг для WH: Dark Heresy
             if (parsedData["system"] == "wh_darkheresy") {
-                extractDarkHeresySpecificFields(stats, lines, text)
+                extractDarkHeresySpecificFields(stats, lines, processedText)
             }
             
             // 8. Извлекаем разделы (заголовки и их содержимое)
