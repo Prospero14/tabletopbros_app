@@ -1,19 +1,32 @@
 package com.fts.ttbros.chat.data
 
 import com.google.firebase.Timestamp
-import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.Query
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
 import com.fts.ttbros.chat.model.ChatMessage
 import com.fts.ttbros.chat.model.ChatType
-import kotlinx.coroutines.tasks.await
+import com.fts.ttbros.data.repository.YandexDiskRepository
+import com.google.gson.Gson
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 
 class ChatRepository(
-    private val firestore: FirebaseFirestore = Firebase.firestore
+    private val yandexDiskRepository: YandexDiskRepository = YandexDiskRepository(),
+    private val ioScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 ) {
+
+    private val gson = Gson()
+    private val chatMutexes = ConcurrentHashMap<String, Mutex>()
+    private val pollIntervalMs = 3_000L
+    private val maxMessages = 500
 
     fun observeMessages(
         teamId: String,
@@ -21,97 +34,167 @@ class ChatRepository(
         onEvent: (List<ChatMessage>) -> Unit,
         onError: (Exception) -> Unit
     ): ListenerRegistration {
-        return messagesCollection(teamId, chatType)
-            .orderBy(FIELD_TIMESTAMP, Query.Direction.ASCENDING)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    onError(error)
-                    return@addSnapshotListener
+        val key = chatKey(teamId, chatType)
+        val job = ioScope.launch {
+            while (isActive) {
+                try {
+                    val messages = loadMessages(teamId, chatType)
+                    withContext(Dispatchers.Main) {
+                        onEvent(messages)
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        onError(e)
+                    }
                 }
-                val messages = snapshot?.documents?.map { doc ->
-                    ChatMessage(
-                        id = doc.id,
-                        senderId = doc.getString(FIELD_SENDER_ID).orEmpty(),
-                        senderName = doc.getString(FIELD_SENDER_NAME).orEmpty(),
-                        text = doc.getString(FIELD_TEXT).orEmpty(),
-                        imageUrl = doc.getString(FIELD_IMAGE_URL),
-                        type = doc.getString(FIELD_TYPE) ?: "text",
-                        attachmentId = doc.getString(FIELD_ATTACHMENT_ID),
-                        timestamp = doc.getTimestamp(FIELD_TIMESTAMP) ?: Timestamp.now(),
-                        isPinned = doc.getBoolean(FIELD_IS_PINNED) ?: false,
-                        pinnedBy = doc.getString(FIELD_PINNED_BY),
-                        pinnedAt = doc.getLong(FIELD_PINNED_AT),
-                        importedBy = (doc.get(FIELD_IMPORTED_BY) as? List<String>) ?: emptyList()
-                    )
-                }
-                onEvent(messages ?: emptyList())
+                delay(pollIntervalMs)
             }
+        }
+        return object : ListenerRegistration {
+            override fun remove() {
+                job.cancel()
+            }
+        }
     }
 
     suspend fun sendMessage(teamId: String, chatType: ChatType, message: ChatMessage) {
-        val data = mutableMapOf<String, Any>(
-            FIELD_SENDER_ID to message.senderId,
-            FIELD_SENDER_NAME to message.senderName,
-            FIELD_TEXT to message.text,
-            FIELD_TYPE to message.type,
-            FIELD_TIMESTAMP to FieldValue.serverTimestamp()
-        )
-        message.imageUrl?.let {
-            data[FIELD_IMAGE_URL] = it
+        val mutex = mutexFor(teamId, chatType)
+        mutex.withLock {
+            val current = getStoredMessages(teamId, chatType).toMutableList()
+            val now = System.currentTimeMillis()
+            val messageId = if (message.id.isBlank()) UUID.randomUUID().toString() else message.id
+            val storedMessage = StoredChatMessage(
+                id = messageId,
+                senderId = message.senderId,
+                senderName = message.senderName,
+                text = message.text,
+                imageUrl = message.imageUrl,
+                type = message.type,
+                attachmentId = message.attachmentId,
+                timestamp = now,
+                isPinned = message.isPinned,
+                pinnedBy = message.pinnedBy,
+                pinnedAt = message.pinnedAt,
+                importedBy = message.importedBy
+            )
+            current.add(storedMessage)
+            val trimmed = current.takeLast(maxMessages)
+            saveMessages(teamId, chatType, trimmed)
         }
-        message.attachmentId?.let {
-            data[FIELD_ATTACHMENT_ID] = it
-        }
-        messagesCollection(teamId, chatType).add(data).await()
     }
 
-    private fun messagesCollection(teamId: String, chatType: ChatType) =
-        firestore.collection(COLLECTION_TEAMS)
-            .document(teamId)
-            .collection(COLLECTION_CHATS)
-            .document(chatType.key)
-            .collection(COLLECTION_MESSAGES)
-
     suspend fun pinMessage(teamId: String, chatType: ChatType, messageId: String, userId: String) {
-        val messageRef = messagesCollection(teamId, chatType).document(messageId)
-        val updates = mapOf<String, Any>(
-            FIELD_IS_PINNED to true,
-            FIELD_PINNED_BY to userId,
-            FIELD_PINNED_AT to System.currentTimeMillis()
-        )
-        messageRef.update(updates).await()
+        updateMessage(teamId, chatType, messageId) { message ->
+            message.copy(
+                isPinned = true,
+                pinnedBy = userId,
+                pinnedAt = System.currentTimeMillis()
+            )
+        }
     }
 
     suspend fun unpinMessage(teamId: String, chatType: ChatType, messageId: String) {
-        val messageRef = messagesCollection(teamId, chatType).document(messageId)
-        val updates = mutableMapOf<String, Any>(
-            FIELD_IS_PINNED to false
-        )
-        updates[FIELD_PINNED_BY] = FieldValue.delete()
-        updates[FIELD_PINNED_AT] = FieldValue.delete()
-        messageRef.update(updates).await()
+        updateMessage(teamId, chatType, messageId) { message ->
+            message.copy(
+                isPinned = false,
+                pinnedBy = null,
+                pinnedAt = null
+            )
+        }
     }
 
     suspend fun markAsImported(teamId: String, chatType: ChatType, messageId: String, userId: String) {
-        val messageRef = messagesCollection(teamId, chatType).document(messageId)
-        messageRef.update(FIELD_IMPORTED_BY, FieldValue.arrayUnion(userId)).await()
+        updateMessage(teamId, chatType, messageId) { message ->
+            if (message.importedBy.contains(userId)) {
+                message
+            } else {
+                message.copy(importedBy = message.importedBy + userId)
+            }
+        }
     }
 
-    companion object {
-        private const val COLLECTION_TEAMS = "teams"
-        private const val COLLECTION_CHATS = "chats"
-        private const val COLLECTION_MESSAGES = "messages"
-        private const val FIELD_SENDER_ID = "senderId"
-        private const val FIELD_SENDER_NAME = "senderName"
-        private const val FIELD_TEXT = "text"
-        private const val FIELD_IMAGE_URL = "imageUrl"
-        private const val FIELD_TYPE = "type"
-        private const val FIELD_ATTACHMENT_ID = "attachmentId"
-        private const val FIELD_TIMESTAMP = "timestamp"
-        private const val FIELD_IS_PINNED = "isPinned"
-        private const val FIELD_PINNED_BY = "pinnedBy"
-        private const val FIELD_PINNED_AT = "pinnedAt"
-        private const val FIELD_IMPORTED_BY = "importedBy"
+    private suspend fun loadMessages(teamId: String, chatType: ChatType): List<ChatMessage> {
+        val storedMessages = getStoredMessages(teamId, chatType)
+        return storedMessages
+            .sortedBy { it.timestamp }
+            .map { it.toChatMessage() }
+    }
+
+    private suspend fun getStoredMessages(teamId: String, chatType: ChatType): List<StoredChatMessage> {
+        val path = messagesPath(teamId, chatType)
+        val container = yandexDiskRepository.readJson(path, StoredChatMessages::class.java)
+        return container?.messages ?: emptyList()
+    }
+
+    private suspend fun saveMessages(teamId: String, chatType: ChatType, messages: List<StoredChatMessage>) {
+        val path = messagesPath(teamId, chatType)
+        val container = StoredChatMessages(messages)
+        val json = gson.toJson(container)
+        yandexDiskRepository.uploadJson(path, json)
+    }
+
+    private suspend fun updateMessage(
+        teamId: String,
+        chatType: ChatType,
+        messageId: String,
+        transform: (StoredChatMessage) -> StoredChatMessage
+    ) {
+        val mutex = mutexFor(teamId, chatType)
+        mutex.withLock {
+            val messages = getStoredMessages(teamId, chatType).toMutableList()
+            val index = messages.indexOfFirst { it.id == messageId }
+            if (index != -1) {
+                messages[index] = transform(messages[index])
+                saveMessages(teamId, chatType, messages)
+            }
+        }
+    }
+
+    private fun chatKey(teamId: String, chatType: ChatType) = "$teamId-${chatType.key}"
+
+    private fun mutexFor(teamId: String, chatType: ChatType): Mutex {
+        val key = chatKey(teamId, chatType)
+        return chatMutexes.getOrPut(key) { Mutex() }
+    }
+
+    private fun messagesPath(teamId: String, chatType: ChatType): String {
+        return "/TTBros/teams/$teamId/chats/${chatType.key}/messages.json"
+    }
+
+    private data class StoredChatMessages(
+        val messages: List<StoredChatMessage> = emptyList()
+    )
+
+    private data class StoredChatMessage(
+        val id: String,
+        val senderId: String,
+        val senderName: String,
+        val text: String,
+        val imageUrl: String? = null,
+        val type: String = "text",
+        val attachmentId: String? = null,
+        val timestamp: Long = System.currentTimeMillis(),
+        val isPinned: Boolean = false,
+        val pinnedBy: String? = null,
+        val pinnedAt: Long? = null,
+        val importedBy: List<String> = emptyList()
+    ) {
+        fun toChatMessage(): ChatMessage {
+            val date = java.util.Date(timestamp)
+            return ChatMessage(
+                id = id,
+                senderId = senderId,
+                senderName = senderName,
+                text = text,
+                imageUrl = imageUrl,
+                type = type,
+                attachmentId = attachmentId,
+                timestamp = Timestamp(date),
+                isPinned = isPinned,
+                pinnedBy = pinnedBy,
+                pinnedAt = pinnedAt,
+                importedBy = importedBy
+            )
+        }
     }
 }
-

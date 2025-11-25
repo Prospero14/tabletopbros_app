@@ -11,6 +11,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.logging.HttpLoggingInterceptor
 import java.io.File
 import java.io.FileOutputStream
@@ -36,6 +37,12 @@ data class YandexResource(
     val public_url: String?,
     val file: String?, // Direct link
     val custom_properties: Map<String, String>?
+)
+
+data class CharacterSheetUploadResult(
+    val publicUrl: String,
+    val remotePath: String,
+    val fileName: String
 )
 
 data class CustomProperties(
@@ -366,7 +373,7 @@ class YandexDiskRepository {
         userId: String,
         pdfUri: Uri,
         context: Context
-    ): String = withContext(Dispatchers.IO) {
+    ): CharacterSheetUploadResult = withContext(Dispatchers.IO) {
         try {
             // 1. Создать путь на Яндекс.Диске
             val fileName = "character_sheet_${userId}_${System.currentTimeMillis()}.pdf"
@@ -391,7 +398,11 @@ class YandexDiskRepository {
             val publicUrl = publishFile(remotePath)
             Log.d("YandexDisk", "Public character sheet URL: $publicUrl")
             
-            publicUrl
+            CharacterSheetUploadResult(
+                publicUrl = publicUrl,
+                remotePath = remotePath,
+                fileName = fileName
+            )
         } catch (e: Exception) {
             Log.e("YandexDisk", "Character sheet upload error: ${e.message}", e)
             throw e
@@ -423,6 +434,27 @@ class YandexDiskRepository {
         } catch (e: Exception) {
             Log.e("YandexDisk", "List resources error: ${e.message}", e)
             emptyList()
+        }
+    }
+
+    suspend fun getResource(path: String): YandexResource? = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("$baseUrl/resources?path=${Uri.encode(path)}&fields=name,path,created,modified,type,mime_type,size,public_url,file,custom_properties")
+                .header("Authorization", "OAuth $oauthToken")
+                .get()
+                .build()
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                if (response.code == 404) return@withContext null
+                throw Exception("Get resource failed: ${response.code} ${response.message}")
+            }
+            val body = response.body?.string() ?: return@withContext null
+            response.close()
+            gson.fromJson(body, YandexResource::class.java)
+        } catch (e: Exception) {
+            Log.e("YandexDisk", "Get resource error: ${e.message}", e)
+            null
         }
     }
 
@@ -530,7 +562,7 @@ class YandexDiskRepository {
             val request = Request.Builder()
                 .url("$baseUrl/resources?path=${Uri.encode(path)}")
                 .header("Authorization", "OAuth $oauthToken")
-                .patch(jsonBody.asRequestBody("application/json".toMediaType()))
+                .patch(jsonBody.toRequestBody("application/json".toMediaType()))
                 .build()
             
             val response = client.newCall(request).execute()

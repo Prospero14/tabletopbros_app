@@ -20,8 +20,6 @@ import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
-import com.google.firebase.firestore.FirebaseFirestore
-import kotlinx.coroutines.tasks.await
 import com.fts.ttbros.GroupActivity
 import com.fts.ttbros.R
 import com.fts.ttbros.chat.data.ChatRepository
@@ -32,8 +30,11 @@ import com.fts.ttbros.data.model.Poll
 import com.fts.ttbros.data.model.UserProfile
 import com.fts.ttbros.data.model.UserRole
 import com.fts.ttbros.data.repository.UserRepository
+import com.fts.ttbros.data.repository.DocumentRepository
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class ChatFragment : Fragment() {
 
@@ -49,6 +50,7 @@ class ChatFragment : Fragment() {
     private val chatRepository = ChatRepository()
     private val userRepository = UserRepository()
     private val pollRepository = com.fts.ttbros.data.repository.PollRepository()
+    private val documentRepository = DocumentRepository()
     private val auth by lazy { Firebase.auth }
     private var listenerRegistration: com.google.firebase.firestore.ListenerRegistration? = null
     private var userProfile: UserProfile? = null
@@ -398,6 +400,7 @@ class ChatFragment : Fragment() {
     private fun showPollDetailsDialog(pollId: String) {
         if (!isAdded) return
         val profile = userProfile ?: return
+        val teamId = profile.teamId ?: return
         
         viewLifecycleOwner.lifecycleScope.launch {
             if (!isAdded || view == null) return@launch
@@ -407,7 +410,7 @@ class ChatFragment : Fragment() {
             if (poll == null) {
                 // Fetch from repo
                 try {
-                    poll = pollRepository.getPoll(pollId)
+                    poll = pollRepository.getPoll(teamId, pollId)
                 } catch (e: Exception) {
                     android.util.Log.e("ChatFragment", "Error loading poll: ${e.message}", e)
                     view?.let {
@@ -505,6 +508,7 @@ class ChatFragment : Fragment() {
         if (!isAdded) return
         val profile = userProfile ?: return
         val view = view ?: return
+        val teamId = profile.teamId ?: return
         
         // Optimistically update UI immediately
         val currentPolls = pollsAdapter.currentList.toMutableList()
@@ -544,7 +548,7 @@ class ChatFragment : Fragment() {
                 // If not found, try to fetch from repository
                 if (poll == null) {
                     android.util.Log.d("ChatFragment", "Poll not in list, fetching from repository: $pollId")
-                    poll = pollRepository.getPoll(pollId)
+                    poll = pollRepository.getPoll(teamId, pollId)
                 }
                 
                 if (poll == null) {
@@ -564,6 +568,7 @@ class ChatFragment : Fragment() {
                 android.util.Log.d("ChatFragment", "Voting for poll: $pollId, option: $optionId, isAnonymous: ${poll.isAnonymous}")
                 
                 pollRepository.vote(
+                    teamId = teamId,
                     pollId = pollId,
                     userId = profile.uid,
                     userName = profile.displayName.ifBlank { profile.email },
@@ -639,8 +644,6 @@ class ChatFragment : Fragment() {
             .setPositiveButton("Добавить") { _, _ ->
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
-                        val documentRepository = com.fts.ttbros.data.repository.DocumentRepository()
-                        
                         // Extract title from message text (remove clip icon if present)
                         val title = message.text.removePrefix("📎 ").trim()
                         
@@ -674,9 +677,10 @@ class ChatFragment : Fragment() {
     
     private fun handlePinPoll(pollId: String) {
         val profile = userProfile ?: return
+        val teamId = profile.teamId ?: return
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                pollRepository.pinPoll(pollId, profile.uid)
+                pollRepository.pinPoll(teamId, pollId, profile.uid)
                 view?.let {
                     Snackbar.make(it, getString(R.string.poll_pinned), Snackbar.LENGTH_SHORT).show()
                 }
@@ -689,9 +693,10 @@ class ChatFragment : Fragment() {
     }
     
     private fun handleUnpinPoll(pollId: String) {
+        val teamId = userProfile?.teamId ?: return
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                pollRepository.unpinPoll(pollId)
+                pollRepository.unpinPoll(teamId, pollId)
                 view?.let {
                     Snackbar.make(it, getString(R.string.poll_unpinned), Snackbar.LENGTH_SHORT).show()
                 }
@@ -866,7 +871,6 @@ class ChatFragment : Fragment() {
     
     private fun handleMaterialClick(message: ChatMessage) {
         val profile = userProfile ?: return
-        val teamId = profile.teamId ?: return
         val attachmentId = message.attachmentId ?: return
         
         // Показываем диалог с опциями: открыть или добавить в материалы
@@ -879,7 +883,7 @@ class ChatFragment : Fragment() {
                 when (which) {
                     0 -> {
                         // Открыть материал
-                        openMaterial(teamId, attachmentId)
+                        openMaterial(attachmentId)
                     }
                     1 -> {
                         // Добавить в материалы
@@ -891,46 +895,34 @@ class ChatFragment : Fragment() {
             .show()
     }
     
-    private fun openMaterial(teamId: String, documentId: String) {
+    private fun openMaterial(documentPath: String) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                val docSnapshot = firestore.collection("teams")
-                    .document(teamId)
-                    .collection("documents")
-                    .document(documentId)
-                    .get()
-                    .await()
-                
-                if (docSnapshot.exists()) {
-                    val document = docSnapshot.toObject(com.fts.ttbros.data.model.Document::class.java)
-                        ?.copy(id = docSnapshot.id)
-                    
-                    if (document != null) {
-                        // Скачиваем и открываем файл
-                        val contextForDocs = context ?: return@launch
-                        if (!isAdded) return@launch
-                        val docsDir = java.io.File(contextForDocs.filesDir, "documents")
-                        docsDir.mkdirs()
-                        val file = java.io.File(docsDir, "${document.id}_${document.fileName}")
-                        
-                        if (file.exists()) {
-                            openDocument(file)
-                        } else {
-                            // Скачиваем файл
-                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                java.net.URL(document.downloadUrl).openStream().use { input ->
-                                    java.io.FileOutputStream(file).use { output ->
-                                        input.copyTo(output)
-                                    }
-                                }
-                            }
-                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                                if (isAdded && view != null) {
-                                    openDocument(file)
-                                }
+                val document = documentRepository.getDocumentByPath(documentPath)
+                if (document == null) {
+                    view?.let {
+                        Snackbar.make(it, "Материал не найден", Snackbar.LENGTH_SHORT).show()
+                    }
+                    return@launch
+                }
+                val contextForDocs = context ?: return@launch
+                if (!isAdded) return@launch
+                val docsDir = java.io.File(contextForDocs.filesDir, "documents")
+                docsDir.mkdirs()
+                val safeId = document.id.substringAfterLast("/")
+                val file = java.io.File(docsDir, "${safeId}_${document.fileName}")
+                if (!file.exists()) {
+                    withContext(Dispatchers.IO) {
+                        java.net.URL(document.downloadUrl).openStream().use { input ->
+                            java.io.FileOutputStream(file).use { output ->
+                                input.copyTo(output)
                             }
                         }
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    if (isAdded && view != null) {
+                        openDocument(file)
                     }
                 }
             } catch (e: Exception) {

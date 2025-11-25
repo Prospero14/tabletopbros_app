@@ -1,5 +1,6 @@
 package com.fts.ttbros.data.repository
 
+import com.fts.ttbros.data.model.TeamMembership
 import com.fts.ttbros.data.model.UserProfile
 import com.fts.ttbros.data.model.UserRole
 import com.google.firebase.auth.FirebaseAuth
@@ -54,7 +55,7 @@ class UserRepository(
         // Check if already in team
         if (profile.teams.any { it.teamId == teamId }) return
         
-        val newTeamInfo = com.fts.ttbros.data.model.UserTeamInfo(
+        val newTeamInfo = TeamMembership(
             teamId = teamId,
             teamCode = teamCode,
             role = role,
@@ -68,6 +69,25 @@ class UserRepository(
         )
         
         saveProfile(updatedProfile)
+    }
+
+    suspend fun updateTeamInfo(teamId: String, teamCode: String, role: UserRole, teamSystem: String? = null, teamName: String = "") {
+        addTeam(teamId, teamCode, role, teamSystem, teamName)
+    }
+    
+    suspend fun switchTeam(teamId: String) {
+        updateCurrentTeam(teamId)
+    }
+    
+    suspend fun updateAvatarUrl(avatarUrl: String?) {
+        val firebaseUser = auth.currentUser ?: return
+        val profile = getProfile(firebaseUser.uid) ?: return
+        val updatedProfile = profile.copy(avatarUrl = avatarUrl)
+        saveProfile(updatedProfile)
+    }
+    
+    fun signOut() {
+        auth.signOut()
     }
     
     suspend fun updateCurrentTeam(teamId: String) {

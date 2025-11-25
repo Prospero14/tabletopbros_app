@@ -413,10 +413,9 @@ class DocumentsFragment : Fragment() {
     }
     
     private fun deleteDocument(doc: Document) {
-        val teamId = currentTeamId ?: return
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                documentRepository.deleteDocument(teamId, doc.id, doc.downloadUrl)
+                documentRepository.deleteDocument(doc)
                 Snackbar.make(binding.root, "Document deleted", Snackbar.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Snackbar.make(binding.root, "Delete failed: ${e.message}", Snackbar.LENGTH_SHORT).show()
@@ -630,7 +629,7 @@ class DocumentsFragment : Fragment() {
                     }
                     return@launch
                 }
-                sheetRepository.deleteSheet(teamId, sheet.id, sheet.pdfUrl)
+                sheetRepository.deleteSheet(sheet.id, teamId)
                 if (isAdded && view != null) {
                     Snackbar.make(binding.root, "Лист персонажа удалён", Snackbar.LENGTH_SHORT).show()
                 }

@@ -173,9 +173,10 @@ class CharactersFragment : Fragment() {
             
             // Загружаем доступные билдеры (загруженные листы персонажей)
             val userId = Firebase.auth.currentUser?.uid
-            if (userId != null) {
+            val teamId = currentTeam?.teamId
+            if (userId != null && !teamId.isNullOrBlank()) {
                 try {
-                    val sheets = sheetRepository.getUserSheets(userId)
+                    val sheets = sheetRepository.getUserSheets(userId, teamId)
                     if (sheets.isNotEmpty()) {
                         popup.menu.add(0, 2, 1, "Загруженный лист персонажа")
                     }
@@ -249,7 +250,14 @@ class CharactersFragment : Fragment() {
                     return@launch
                 }
                 
-                val sheets = sheetRepository.getUserSheets(userId)
+                val profile = userRepository.currentProfile()
+                val teamId = profile?.currentTeamId ?: profile?.teamId
+                if (teamId.isNullOrBlank()) {
+                    Snackbar.make(binding.root, "Команда не выбрана", Snackbar.LENGTH_SHORT).show()
+                    return@launch
+                }
+                
+                val sheets = sheetRepository.getUserSheets(userId, teamId)
                 if (sheets.isEmpty()) {
                     Snackbar.make(binding.root, "Нет загруженных листов персонажей", Snackbar.LENGTH_SHORT).show()
                     return@launch
@@ -270,7 +278,7 @@ class CharactersFragment : Fragment() {
                             if (which >= 0 && which < sheets.size) {
                                 val selectedSheet = sheets[which]
                                 if (selectedSheet.id.isNotBlank()) {
-                                    openCharacterEditorFromBuilder(selectedSheet.id)
+                                    openCharacterEditorFromBuilder(selectedSheet.id, teamId)
                                 } else {
                                     if (isAdded && view != null) {
                                         Snackbar.make(binding.root, "Ошибка: неверный лист персонажа", Snackbar.LENGTH_SHORT).show()
@@ -295,12 +303,13 @@ class CharactersFragment : Fragment() {
         }
     }
     
-    private fun openCharacterEditorFromBuilder(builderId: String) {
+    private fun openCharacterEditorFromBuilder(builderId: String, teamId: String) {
         try {
             val bundle = Bundle().apply {
                 putString("characterId", null)
                 putString("system", null) // Система будет определена из билдера
                 putString("builderId", builderId)
+                putString("teamId", teamId)
             }
             findNavController().navigate(R.id.action_charactersFragment_to_characterEditorFragment, bundle)
         } catch (e: Exception) {

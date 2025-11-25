@@ -1,103 +1,132 @@
 package com.fts.ttbros.data.repository
 
 import com.fts.ttbros.data.model.Poll
-import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
+import com.google.gson.Gson
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import java.util.UUID
 
-class PollRepository {
-    private val db = FirebaseFirestore.getInstance()
-    private val pollsCollection = db.collection("polls")
+class PollRepository(
+    private val yandexDiskRepository: YandexDiskRepository = YandexDiskRepository(),
+    private val ioScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+) {
+    private val gson = Gson()
+    private val pollIntervalMs = 5_000L
 
     suspend fun createPoll(poll: Poll): String {
-        val docRef = pollsCollection.document()
-        val pollWithId = poll.copy(id = docRef.id)
-        docRef.set(pollWithId).await()
-        return docRef.id
+        val pollId = if (poll.id.isBlank()) UUID.randomUUID().toString() else poll.id
+        val pollWithId = poll.copy(id = pollId, createdAt = System.currentTimeMillis())
+        val path = pollPath(poll.teamId, pollId)
+        val json = gson.toJson(pollWithId)
+        yandexDiskRepository.uploadJson(path, json)
+        return pollId
     }
 
-    suspend fun getPoll(pollId: String): Poll? {
-        return try {
-            pollsCollection.document(pollId).get().await().toObject(Poll::class.java)
-        } catch (e: Exception) {
-            null
-        }
+    suspend fun getPoll(teamId: String, pollId: String): Poll? {
+        val path = pollPath(teamId, pollId)
+        return yandexDiskRepository.readJson(path, Poll::class.java)
     }
 
     fun getChatPolls(teamId: String, chatType: String): Flow<List<Poll>> = callbackFlow {
-        val listener = pollsCollection
-            .whereEqualTo("teamId", teamId)
-            .whereEqualTo("chatType", chatType)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    // Log error but don't close - try to continue
-                    android.util.Log.e("PollRepository", "Error loading polls: ${error.message}", error)
+        val job = ioScope.launch {
+            while (isActive) {
+                try {
+                    val polls = loadPolls(teamId, chatType)
+                    trySend(polls)
+                } catch (e: Exception) {
+                    android.util.Log.e("PollRepository", "Error loading polls: ${e.message}", e)
                     trySend(emptyList())
-                    return@addSnapshotListener
                 }
-                val polls = snapshot?.documents?.mapNotNull { doc ->
-                    try {
-                        doc.toObject(Poll::class.java)
-                    } catch (e: Exception) {
-                        android.util.Log.e("PollRepository", "Error parsing poll ${doc.id}: ${e.message}", e)
-                        null
-                    }
-                }?.sortedWith(compareBy<Poll>(
-                    { !it.isPinned }, // Pinned first
-                    { if (it.isPinned) -(it.pinnedAt ?: 0L) else -it.createdAt } // Most recent first within each group
-                )).orEmpty()
-                trySend(polls)
+                delay(pollIntervalMs)
             }
-        awaitClose { listener.remove() }
+        }
+        awaitClose { job.cancel() }
     }
 
-    suspend fun vote(pollId: String, userId: String, userName: String, optionId: String, isAnonymous: Boolean) {
-        val pollRef = pollsCollection.document(pollId)
-        db.runTransaction { transaction ->
-            val poll = transaction.get(pollRef).toObject(Poll::class.java)
-                ?: throw IllegalStateException("Poll not found")
-
-            val updatedVotes = poll.votes.toMutableMap()
-            updatedVotes[userId] = optionId
-
-            val updates = mutableMapOf<String, Any>(
-                "votes" to updatedVotes
+    suspend fun vote(
+        teamId: String,
+        pollId: String,
+        userId: String,
+        userName: String,
+        optionId: String,
+        isAnonymous: Boolean
+    ) {
+        updatePoll(teamId, pollId) { poll ->
+            val updatedVotes = poll.votes.toMutableMap().apply {
+                put(userId, optionId)
+            }
+            val updatedVoterNames = if (!isAnonymous) {
+                poll.voterNames.toMutableMap().apply {
+                    put(userId, userName)
+                }
+            } else {
+                poll.voterNames
+            }
+            poll.copy(
+                votes = updatedVotes,
+                voterNames = updatedVoterNames
             )
+        }
+    }
 
-            if (!isAnonymous) {
-                val updatedVoterNames = poll.voterNames.toMutableMap()
-                updatedVoterNames[userId] = userName
-                updates["voterNames"] = updatedVoterNames
+    suspend fun deletePoll(teamId: String, pollId: String) {
+        val path = pollPath(teamId, pollId)
+        yandexDiskRepository.deleteFile(path)
+    }
+
+    suspend fun pinPoll(teamId: String, pollId: String, userId: String) {
+        updatePoll(teamId, pollId) { poll ->
+            poll.copy(
+                isPinned = true,
+                pinnedBy = userId,
+                pinnedAt = System.currentTimeMillis()
+            )
+        }
+    }
+
+    suspend fun unpinPoll(teamId: String, pollId: String) {
+        updatePoll(teamId, pollId) { poll ->
+            poll.copy(
+                isPinned = false,
+                pinnedBy = null,
+                pinnedAt = null
+            )
+        }
+    }
+
+    private suspend fun loadPolls(teamId: String, chatType: String): List<Poll> {
+        val resources = yandexDiskRepository.listResources("/TTBros/teams/$teamId/polls")
+        val polls = resources.mapNotNull { resource ->
+            try {
+                yandexDiskRepository.readJson(resource.path, Poll::class.java)
+            } catch (e: Exception) {
+                null
             }
+        }.filter { it.chatType == chatType }
 
-            transaction.update(pollRef, updates)
-        }.await()
+        return polls.sortedWith(compareBy<Poll>(
+            { !it.isPinned },
+            { if (it.isPinned) -(it.pinnedAt ?: 0L) else -it.createdAt }
+        ))
     }
 
-    suspend fun deletePoll(pollId: String) {
-        pollsCollection.document(pollId).delete().await()
+    private suspend fun updatePoll(teamId: String, pollId: String, transform: (Poll) -> Poll) {
+        val path = pollPath(teamId, pollId)
+        val poll = yandexDiskRepository.readJson(path, Poll::class.java)
+            ?: throw IllegalStateException("Poll not found")
+        val updated = transform(poll)
+        val json = gson.toJson(updated)
+        yandexDiskRepository.uploadJson(path, json)
     }
 
-    suspend fun pinPoll(pollId: String, userId: String) {
-        val updates = mapOf<String, Any>(
-            "isPinned" to true,
-            "pinnedBy" to userId,
-            "pinnedAt" to System.currentTimeMillis()
-        )
-        pollsCollection.document(pollId).update(updates).await()
-    }
-
-    suspend fun unpinPoll(pollId: String) {
-        val updates = mutableMapOf<String, Any>(
-            "isPinned" to false
-        )
-        updates["pinnedBy"] = FieldValue.delete()
-        updates["pinnedAt"] = FieldValue.delete()
-        pollsCollection.document(pollId).update(updates).await()
+    private fun pollPath(teamId: String, pollId: String): String {
+        return "/TTBros/teams/$teamId/polls/$pollId.json"
     }
 }

@@ -61,6 +61,11 @@ class DocumentRepository {
                 "title" to title,
                 "teamId" to teamId
             )
+            val remotePath = if (isMaterial) {
+                "/TTBros/teams/$teamId/player_materials/$fileName"
+            } else {
+                "/TTBros/teams/$teamId/documents/$fileName"
+            }
             
             val downloadUrl = yandexDisk.uploadFile(
                 teamId = teamId,
@@ -75,7 +80,7 @@ class DocumentRepository {
                 .openFileDescriptor(uri, "r")?.use { it.statSize } ?: 0L
 
             return Document(
-                id = "", // Will be filled on reload
+                id = remotePath,
                 teamId = teamId,
                 title = title,
                 fileName = fileName,
@@ -119,6 +124,37 @@ class DocumentRepository {
         // Document ID is now the path
         if (document.id.isNotEmpty()) {
             yandexDisk.deleteFile(document.id)
+        }
+    }
+
+    suspend fun getDocumentByPath(remotePath: String): Document? {
+        return try {
+            val resource = yandexDisk.getResource(remotePath) ?: return null
+            val metadata = resource.custom_properties ?: emptyMap()
+            val downloadUrl = resource.public_url
+                ?: resource.file
+                ?: yandexDisk.getDownloadUrl(remotePath)
+            val timestamp = try {
+                val date = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US)
+                    .parse(resource.created) ?: java.util.Date()
+                Timestamp(date)
+            } catch (e: Exception) {
+                Timestamp.now()
+            }
+            Document(
+                id = resource.path,
+                teamId = metadata["teamId"] ?: "",
+                title = metadata["title"] ?: resource.name,
+                fileName = resource.name,
+                downloadUrl = downloadUrl,
+                uploadedBy = metadata["uploadedBy"] ?: "",
+                uploadedByName = metadata["uploadedByName"] ?: "Unknown",
+                timestamp = timestamp,
+                sizeBytes = resource.size ?: 0L
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("DocumentRepository", "Error fetching document by path: ${e.message}", e)
+            null
         }
     }
 

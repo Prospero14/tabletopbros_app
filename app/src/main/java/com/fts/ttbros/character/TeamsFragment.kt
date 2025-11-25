@@ -216,13 +216,13 @@ class TeamsFragment : Fragment() {
 
     private fun createTeamWithSystem(system: String, teamName: String) {
         viewLifecycleOwner.lifecycleScope.launch {
+            val currentView = view
             try {
                 val user = userRepository.currentProfile() ?: return@launch
                 val currentUser = Firebase.auth.currentUser
-                val view = view
                 if (currentUser == null) {
-                    if (isAdded && view != null) {
-                        Snackbar.make(view, "User not authenticated", Snackbar.LENGTH_LONG).show()
+                    if (isAdded && currentView != null) {
+                        Snackbar.make(currentView, "User not authenticated", Snackbar.LENGTH_LONG).show()
                     }
                     return@launch
                 }
@@ -232,14 +232,12 @@ class TeamsFragment : Fragment() {
                 userRepository.addTeam(team.id, team.code, UserRole.MASTER, team.system, finalTeamName)
                 
                 loadData()
-                val view = view
-                if (isAdded && view != null) {
-                    Snackbar.make(view, "Team created", Snackbar.LENGTH_SHORT).show()
+                if (isAdded && currentView != null) {
+                    Snackbar.make(currentView, "Team created", Snackbar.LENGTH_SHORT).show()
                 }
             } catch (error: Exception) {
-                val view = view
-                if (isAdded && view != null) {
-                    Snackbar.make(view, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
+                if (isAdded && currentView != null) {
+                    Snackbar.make(currentView, error.localizedMessage ?: getString(R.string.error_unknown), Snackbar.LENGTH_LONG).show()
                 }
             }
         }
