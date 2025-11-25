@@ -139,6 +139,8 @@ class CharacterSheetsFragment : Fragment() {
         }
         
         viewLifecycleOwner.lifecycleScope.launch {
+            var uploadedPath: String? = null
+            var uploadedFileName: String? = null
             try {
                 // Проверяем что фрагмент все еще прикреплен перед началом операций
                 if (!isAdded || view == null) {
@@ -180,10 +182,13 @@ class CharacterSheetsFragment : Fragment() {
                     return@launch
                 }
                 
-                val profile = userRepository.currentProfile()
-                val teamId = profile?.currentTeamId ?: profile?.teamId
+                val profile = userRepository.currentProfile() ?: run {
+                    view?.let { Snackbar.make(it, "Профиль не найден", Snackbar.LENGTH_LONG).show() }
+                    return@launch
+                }
+                val teamId = profile.currentTeamId ?: profile.teamId
                 if (teamId.isNullOrBlank()) {
-                    Snackbar.make(binding.root, "Команда не выбрана", Snackbar.LENGTH_LONG).show()
+                    view?.let { Snackbar.make(it, "Команда не выбрана", Snackbar.LENGTH_LONG).show() }
                     return@launch
                 }
                 val userName = profile.displayName.ifBlank { profile.email }
@@ -208,7 +213,7 @@ class CharacterSheetsFragment : Fragment() {
                 }
                 
                 // Получаем систему команды для названия
-                val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
+                val currentTeam = profile.teams.find { it.teamId == profile.currentTeamId }
                 val teamSystem = currentTeam?.teamSystem ?: (parsedData["system"] as? String ?: "unknown")
                 
                 // Формируем название системы для отображения

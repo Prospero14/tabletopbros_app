@@ -104,7 +104,8 @@ class UserRepository(
         return withContext(Dispatchers.IO) {
             try {
                 val path = "/TTBros/users/$userId/profile.json"
-                yandexDisk.readJson(path, UserProfile::class.java)
+                val rawProfile = yandexDisk.readJson(path, UserProfile::class.java)
+                rawProfile?.let { normalizeProfile(userId, it) }
             } catch (e: Exception) {
                 null
             }
@@ -117,5 +118,35 @@ class UserRepository(
             val json = gson.toJson(profile)
             yandexDisk.uploadJson(path, json)
         }
+    }
+    private suspend fun normalizeProfile(userId: String, profile: UserProfile): UserProfile {
+        val migratedTeams = if (profile.teams.isEmpty() && !profile.teamId.isNullOrBlank()) {
+            listOf(
+                TeamMembership(
+                    teamId = profile.teamId,
+                    teamCode = profile.teamCode ?: "",
+                    teamSystem = profile.teamSystem ?: "unknown",
+                    role = profile.role,
+                    teamName = ""
+                )
+            )
+        } else {
+            profile.teams
+        }
+        
+        val fallbackTeamId = profile.currentTeamId
+            ?: profile.teamId
+            ?: migratedTeams.firstOrNull()?.teamId
+        
+        val normalized = profile.copy(
+            currentTeamId = fallbackTeamId,
+            teams = migratedTeams
+        )
+        
+        if (normalized != profile) {
+            saveProfile(normalized)
+        }
+        
+        return normalized
     }
 }
