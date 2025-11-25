@@ -24,7 +24,6 @@ import com.fts.ttbros.databinding.FragmentDocumentsBinding
 import com.fts.ttbros.databinding.ItemDocumentBinding
 import com.fts.ttbros.utils.NotificationHelper
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.snackbar.Snackbar
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -611,7 +610,9 @@ class DocumentsFragment : Fragment() {
                     binding.progressBar.isVisible = true
                     val pdfUrl = sheet.pdfUrl
                     if (pdfUrl.isBlank()) {
-                        Snackbar.make(binding.root, "PDF не найден", Snackbar.LENGTH_SHORT).show()
+                        if (isAdded && view != null) {
+                            NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.pdf_not_found))
+                        }
                         binding.progressBar.isVisible = false
                         return@launch
                     }
@@ -683,7 +684,7 @@ class DocumentsFragment : Fragment() {
                 android.util.Log.e("DocumentsFragment", "Error deleting sheet: ${e.message}", e)
                 if (isAdded && view != null) {
                     NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_deleting_sheet, e.message ?: ""))
-                    Snackbar.make(binding.root, "Ошибка удаления: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                    NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_deleting_sheet, e.message ?: ""))
                 }
             }
         }
