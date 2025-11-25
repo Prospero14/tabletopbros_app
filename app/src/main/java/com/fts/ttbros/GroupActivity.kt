@@ -18,9 +18,14 @@ import com.google.firebase.ktx.Firebase
 import com.fts.ttbros.data.model.UserRole
 import com.fts.ttbros.data.repository.TeamRepository
 import com.fts.ttbros.data.repository.UserRepository
+import com.fts.ttbros.utils.LocaleHelper
 import kotlinx.coroutines.launch
 
 class GroupActivity : AppCompatActivity() {
+    
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.applySavedLanguage(newBase))
+    }
 
     private lateinit var groupCodeEditText: TextInputEditText
     private lateinit var joinGroupButton: MaterialButton

@@ -15,10 +15,16 @@ import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import com.fts.ttbros.data.model.UserProfile
 import com.fts.ttbros.data.repository.UserRepository
+import com.fts.ttbros.utils.LocaleHelper
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import android.content.Context
 
 class LoginActivity : AppCompatActivity() {
+    
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.applySavedLanguage(newBase))
+    }
 
     private lateinit var emailEditText: TextInputEditText
     private lateinit var passwordEditText: TextInputEditText

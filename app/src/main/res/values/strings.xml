@@ -385,5 +385,9 @@
     <string name="unknown_character">Unknown Character</string>
     <string name="unknown">Unknown</string>
     <string name="unknown_system">unknown</string>
+    <string name="menu_language">Language</string>
+    <string name="language_russian">Russian</string>
+    <string name="language_english">English</string>
+    <string name="language_changed">Language changed. Please restart the app.</string>
 
 </resources>

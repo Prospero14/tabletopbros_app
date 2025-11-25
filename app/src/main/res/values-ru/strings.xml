@@ -183,5 +183,9 @@
     <string name="unknown_character">Неизвестный персонаж</string>
     <string name="unknown">Неизвестно</string>
     <string name="unknown_system">неизвестно</string>
+    <string name="menu_language">Язык</string>
+    <string name="language_russian">Русский</string>
+    <string name="language_english">Английский</string>
+    <string name="language_changed">Язык изменён. Пожалуйста, перезапустите приложение.</string>
 
 </resources>

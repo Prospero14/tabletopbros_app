@@ -36,6 +36,7 @@ import com.fts.ttbros.data.repository.UserRepository
 import com.fts.ttbros.databinding.ActivityMainBinding
 import com.fts.ttbros.notifications.EventNotificationScheduler
 import com.fts.ttbros.notifications.NotificationHelper
+import com.fts.ttbros.utils.LocaleHelper
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
@@ -66,6 +67,10 @@ class MainActivity : AppCompatActivity() {
     private val auth by lazy { Firebase.auth }
     private var userProfile: UserProfile? = null
 
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.applySavedLanguage(newBase))
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -106,6 +111,11 @@ class MainActivity : AppCompatActivity() {
                 R.id.menu_show_code -> {
                     binding.drawerLayout.closeDrawer(GravityCompat.END)
                     showCodeDialog()
+                    true
+                }
+                R.id.menu_language -> {
+                    binding.drawerLayout.closeDrawer(GravityCompat.END)
+                    showLanguageDialog()
                     true
                 }
                 R.id.menu_logout -> {
@@ -519,6 +529,30 @@ private fun pickImageFromGallery() {
     private fun navigateTo(destination: Class<*>) {
         startActivity(Intent(this, destination))
         finish()
+    }
+    
+    private fun showLanguageDialog() {
+        val currentLanguage = LocaleHelper.getCurrentLanguage(this)
+        val options = arrayOf(
+            getString(R.string.language_russian),
+            getString(R.string.language_english)
+        )
+        val selectedIndex = if (currentLanguage == "ru") 0 else 1
+        
+        MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.menu_language))
+            .setSingleChoiceItems(options, selectedIndex) { dialog, which ->
+                val newLanguage = if (which == 0) "ru" else "en"
+                if (newLanguage != currentLanguage) {
+                    LocaleHelper.saveLanguage(this, newLanguage)
+                    // Пересоздаем активность для применения языка
+                    recreate()
+                }
+                dialog.dismiss()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .setBackground(androidx.core.content.ContextCompat.getDrawable(this, R.drawable.bg_cloud_dialog))
+            .show()
     }
     
     private fun logout() {

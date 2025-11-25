@@ -7,10 +7,16 @@ import androidx.lifecycle.lifecycleScope
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
 import com.fts.ttbros.data.repository.UserRepository
+import com.fts.ttbros.utils.LocaleHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import android.content.Context
 
 class SplashActivity : AppCompatActivity() {
+    
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(LocaleHelper.applySavedLanguage(newBase))
+    }
 
     private val auth by lazy { Firebase.auth }
     private val userRepository = UserRepository()

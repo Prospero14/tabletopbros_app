@@ -48,6 +48,12 @@
         android:visible="false" />
 
     <item
+        android:id="@+id/menu_language"
+        android:checkable="false"
+        android:icon="@android:drawable/ic_menu_sort_by_size"
+        android:title="Language / Язык" />
+
+    <item
         android:id="@+id/menu_logout"
         android:checkable="false"
         android:icon="@android:drawable/ic_lock_power_off"
