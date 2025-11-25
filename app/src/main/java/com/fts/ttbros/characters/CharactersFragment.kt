@@ -78,66 +78,39 @@ class CharactersFragment : Fragment() {
     private fun setupTabs() {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val profile = userRepository.currentProfile()
-                val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
-                val teamSystem = currentTeam?.teamSystem
+                // Clear existing tabs
+                binding.tabLayout.removeAllTabs()
                 
-                // Tab 1: "Чарники" - все чарники
-                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Чарники"))
+                // Add single tab "Листы персонажей"
+                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Листы персонажей"))
                 
-                // Tab 2: "[System]" - чарники с фильтром по системе команды
-                if (!teamSystem.isNullOrBlank()) {
-                    val systemName = when (teamSystem) {
-                        "vtm_5e" -> "VTM"
-                        "dnd_5e" -> "D&D"
-                        "viedzmin_2e" -> "Viedzmin"
-                        "whrp" -> "WHRP"
-                        "wh_darkheresy" -> "Dark Heresy"
-                        else -> teamSystem
-                    }
-                    binding.tabLayout.addTab(binding.tabLayout.newTab().setText(systemName))
-                }
-                
-                binding.tabLayout.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
-                    override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
-                        filterList(teamSystem)
-                    }
-                    override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
-                    override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
-                })
+                // Disable tab indicator or make it static since there's only one tab
+                // We don't need a listener anymore as there's only one tab
             } catch (e: Exception) {
                 android.util.Log.e("CharactersFragment", "Error setting up tabs: ${e.message}", e)
-                // Fallback
-                binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Чарники"))
-                binding.tabLayout.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
-                    override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
-                        filterList(null)
-                    }
-                    override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
-                    override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
-                })
             }
         }
     }
     
     private fun filterList(teamSystem: String?) {
-        val selectedTabPosition = binding.tabLayout.selectedTabPosition
-        val filteredList = when (selectedTabPosition) {
-            0 -> allCharacters // "Все" tab
-            1 -> {
-                // Second tab is the team's system
-                if (!teamSystem.isNullOrBlank()) {
-                    allCharacters.filter { it.system == teamSystem }
-                } else {
-                    allCharacters
-                }
-            }
-            else -> allCharacters
+        // Always filter by team system if available
+        val filteredList = if (!teamSystem.isNullOrBlank()) {
+            allCharacters.filter { it.system == teamSystem }
+        } else {
+            allCharacters
         }
+        
         binding.charactersRecyclerView.adapter = adapter
         adapter.submitList(filteredList)
         binding.emptyView.isVisible = filteredList.isEmpty()
-        binding.emptyView.text = "Нет персонажей. Создайте первого!"
+        
+        if (filteredList.isEmpty()) {
+            if (!teamSystem.isNullOrBlank()) {
+                binding.emptyView.text = "Нет персонажей системы $teamSystem. Создайте первого!"
+            } else {
+                binding.emptyView.text = "Нет персонажей. Создайте первого!"
+            }
+        }
     }
     
     private fun loadCharacters() {

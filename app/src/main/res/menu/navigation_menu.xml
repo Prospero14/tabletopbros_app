@@ -34,6 +34,10 @@
             android:id="@+id/documentsFragment"
             android:icon="@android:drawable/ic_menu_agenda"
             android:title="Документы" />
+        <item
+            android:id="@+id/advancedParserFragment"
+            android:icon="@android:drawable/ic_menu_search"
+            android:title="Продвинутый парсер" />
     </group>
 
     <item

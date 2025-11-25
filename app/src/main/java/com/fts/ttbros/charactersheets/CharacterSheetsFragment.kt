@@ -716,6 +716,10 @@ class CharacterSheetsFragment : Fragment() {
         }
         
         // Извлекаем многострочные секции (достоинства, недостатки, заметки)
+        // Сначала пробуем извлечь из секции "Other Traits" если она есть
+        extractOtherTraitsSection(lines, fullText, stats)
+        
+        // Затем извлекаем отдельные секции (если не были найдены в Other Traits)
         extractMultilineSection(lines, fullText, "advantages", listOf("Advantages", "Достоинства", "Merits"), stats)
         extractMultilineSection(lines, fullText, "flaws", listOf("Flaws", "Недостатки", "Flaw"), stats)
         extractMultilineSection(lines, fullText, "merits", listOf("Merits", "Достоинства", "Merit"), stats)
@@ -725,6 +729,118 @@ class CharacterSheetsFragment : Fragment() {
         extractMultilineSection(lines, fullText, "chronicle_tenets", listOf("Chronicle Tenets", "Tenets", "Заповеди хроники"), stats)
         extractMultilineSection(lines, fullText, "ambition", listOf("Ambition", "Амбиция"), stats)
         extractMultilineSection(lines, fullText, "desire", listOf("Desire", "Желание"), stats)
+    }
+    
+    /**
+     * Извлекает содержимое секции "Other Traits" и её подсекций
+     */
+    private fun extractOtherTraitsSection(lines: List<String>, fullText: String, stats: MutableMap<String, Any>) {
+        // Ищем секцию "Other Traits"
+        val otherTraitsLabels = listOf("Other Traits", "Другие черты", "Other")
+        var sectionStart = -1
+        var sectionEnd = lines.size
+        
+        lines.forEachIndexed { index, line ->
+            val trimmedLine = line.trim()
+            // Ищем начало секции "Other Traits"
+            if (otherTraitsLabels.any { trimmedLine.contains(it, ignoreCase = true) }) {
+                if (sectionStart == -1) {
+                    sectionStart = index
+                }
+            }
+            // Ищем конец секции (следующая большая секция или конец документа)
+            if (sectionStart >= 0 && index > sectionStart) {
+                // Секции, которые означают конец Other Traits
+                val endSections = listOf(
+                    "Equipment", "Снаряжение",
+                    "Weapons", "Оружие",
+                    "Armor", "Броня",
+                    "Spells", "Заклинания",
+                    "Features", "Особенности",
+                    "Background", "Предыстория"
+                )
+                if (endSections.any { trimmedLine.contains(it, ignoreCase = true) && trimmedLine.contains(":") }) {
+                    sectionEnd = index
+                }
+            }
+        }
+        
+        if (sectionStart >= 0) {
+            // Извлекаем текст секции Other Traits
+            val sectionLines = lines.subList(sectionStart, minOf(sectionEnd, lines.size))
+            val sectionText = sectionLines.joinToString("\n")
+            
+            android.util.Log.d("CharacterSheetsFragment", "Found Other Traits section from line $sectionStart to $sectionEnd")
+            
+            // Теперь ищем подсекции внутри Other Traits
+            extractSubsectionFromOtherTraits(sectionLines, "advantages", listOf("Advantages", "Достоинства"), stats)
+            extractSubsectionFromOtherTraits(sectionLines, "flaws", listOf("Flaws", "Недостатки", "Flaw"), stats)
+            extractSubsectionFromOtherTraits(sectionLines, "merits", listOf("Merits", "Достоинства", "Merit"), stats)
+            extractSubsectionFromOtherTraits(sectionLines, "notes", listOf("Notes", "Заметки", "Note"), stats)
+        }
+    }
+    
+    /**
+     * Извлекает подсекцию из секции Other Traits
+     */
+    private fun extractSubsectionFromOtherTraits(lines: List<String>, key: String, labels: List<String>, stats: MutableMap<String, Any>) {
+        // Если уже есть значение, не перезаписываем
+        if (stats.containsKey(key)) return
+        
+        labels.forEach { label ->
+            var subsectionStart = -1
+            lines.forEachIndexed { index, line ->
+                val trimmedLine = line.trim()
+                // Ищем подсекцию
+                if (trimmedLine.contains(label, ignoreCase = true) && 
+                    (trimmedLine.contains(":") || trimmedLine.contains("="))) {
+                    subsectionStart = index
+                }
+            }
+            
+            if (subsectionStart >= 0) {
+                val sectionText = StringBuilder()
+                
+                // Извлекаем текст после метки на той же строке
+                val firstLine = lines[subsectionStart]
+                val pattern = Regex("$label\\s*[:=]\\s*([^\\n\\r]+)", RegexOption.IGNORE_CASE)
+                val match = pattern.find(firstLine)
+                if (match != null) {
+                    sectionText.append(match.groupValues[1].trim())
+                }
+                
+                // Собираем следующие строки до следующей подсекции
+                var i = subsectionStart + 1
+                val stopLabels = listOf("Advantages", "Достоинства", "Flaws", "Недостатки", "Merits", "Notes", "Заметки")
+                
+                while (i < lines.size && i < subsectionStart + 20) {
+                    val nextLine = lines[i].trim()
+                    
+                    // Останавливаемся на следующей подсекции
+                    if (stopLabels.any { nextLine.contains(it, ignoreCase = true) && 
+                        (nextLine.contains(":") || nextLine.contains("=")) }) {
+                        break
+                    }
+                    
+                    // Добавляем непустые строки
+                    if (nextLine.isNotBlank() && nextLine.length > 2) {
+                        if (sectionText.isNotEmpty()) {
+                            sectionText.append("\n")
+                        }
+                        sectionText.append(nextLine)
+                    }
+                    
+                    i++
+                }
+                
+                val value = sectionText.toString().trim()
+                if (value.isNotBlank() && value.length > 2) {
+                    stats[key] = value
+                    android.util.Log.d("CharacterSheetsFragment", "Extracted $key from Other Traits: ${value.take(100)}...")
+                    return
+                }
+            }
+        }
     }
     
     /**

@@ -89,6 +89,15 @@ class ChatAdapter(
             }
             messageCard.setCardBackgroundColor(bubbleColor)
             
+            // Apply shape appearance
+            val shapeStyle = if (isMine) R.style.ShapeAppearance_App_Chat_Sent else R.style.ShapeAppearance_App_Chat_Received
+            val shapeAppearanceModel = com.google.android.material.shape.ShapeAppearanceModel.builder(
+                context,
+                shapeStyle,
+                0
+            ).build()
+            messageCard.shapeAppearanceModel = shapeAppearanceModel
+            
             // Debug logging
             if (message.type == "poll") {
                 android.util.Log.d("ChatAdapter", "Binding poll message: ${message.text}, id: ${message.id}")

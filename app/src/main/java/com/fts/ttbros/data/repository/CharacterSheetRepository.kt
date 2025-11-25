@@ -70,6 +70,48 @@ class CharacterSheetRepository {
             .await()
     }
 
+    private val yandexDisk = YandexDiskRepository()
+
+    suspend fun uploadSheet(
+        userId: String,
+        userName: String,
+        characterName: String,
+        system: String,
+        pdfUri: android.net.Uri,
+        context: android.content.Context,
+        parsedData: Map<String, Any> = emptyMap(),
+        attributes: Map<String, Int> = emptyMap(),
+        skills: Map<String, Int> = emptyMap(),
+        stats: Map<String, Any> = emptyMap()
+    ): CharacterSheet {
+        // 1. Upload to Yandex.Disk
+        val downloadUrl = yandexDisk.uploadCharacterSheet(userId, pdfUri, context)
+        
+        // 2. Create Sheet object
+        val sheet = CharacterSheet(
+            id = UUID.randomUUID().toString(),
+            userId = userId,
+            userName = userName,
+            characterName = characterName,
+            system = system,
+            pdfUrl = downloadUrl,
+            parsedData = parsedData,
+            attributes = attributes,
+            skills = skills,
+            stats = stats,
+            createdAt = Timestamp.now(),
+            updatedAt = Timestamp.now()
+        )
+        
+        // 3. Save to Firestore
+        db.collection(collection)
+            .document(sheet.id)
+            .set(sheet)
+            .await()
+            
+        return sheet
+    }
+
     suspend fun updateSheet(sheet: CharacterSheet) {
         val updatedSheet = sheet.copy(updatedAt = Timestamp.now())
         db.collection(collection)
