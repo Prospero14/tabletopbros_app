@@ -5,6 +5,7 @@ import com.google.firebase.Timestamp
 data class CharacterSheet(
     val id: String = "",
     val userId: String = "",
+    val userName: String = "",
     val characterName: String = "",
     val system: String = "", // e.g., "dnd_5e", "vtm_5e"
     val pdfUrl: String = "", // Original PDF file URL
