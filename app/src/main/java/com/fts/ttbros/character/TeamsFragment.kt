@@ -143,9 +143,11 @@ class TeamsFragment : Fragment() {
         val options = arrayOf(
             getString(R.string.vampire_masquerade),
             getString(R.string.dungeons_dragons),
-            getString(R.string.viedzmin_2e)
+            getString(R.string.viedzmin_2e),
+            "Warhammer Fantasy Roleplay",
+            "Warhammer 40k: Dark Heresy"
         )
-        val values = arrayOf("vtm_5e", "dnd_5e", "viedzmin_2e")
+        val values = arrayOf("vtm_5e", "dnd_5e", "viedzmin_2e", "whrp", "wh_darkheresy")
         var selectedIndex = 0
         
         MaterialAlertDialogBuilder(requireContext())
@@ -275,6 +277,8 @@ class TeamsFragment : Fragment() {
                     "vtm_5e" -> context.getString(R.string.vampire_masquerade)
                     "dnd_5e" -> context.getString(R.string.dungeons_dragons)
                     "viedzmin_2e" -> context.getString(R.string.viedzmin_2e)
+                    "whrp" -> "Warhammer Fantasy Roleplay"
+                    "wh_darkheresy" -> "Warhammer 40k: Dark Heresy"
                     else -> team.teamSystem
                 }
             }

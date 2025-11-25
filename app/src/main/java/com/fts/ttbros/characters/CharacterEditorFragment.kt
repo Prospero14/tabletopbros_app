@@ -15,6 +15,8 @@ import com.fts.ttbros.characters.form.FormAdapter
 import com.fts.ttbros.characters.templates.VtmTemplate
 import com.fts.ttbros.characters.templates.ViedzminTemplate
 import com.fts.ttbros.characters.templates.DndTemplate
+import com.fts.ttbros.characters.templates.WhrpTemplate
+import com.fts.ttbros.characters.templates.DarkHeresyTemplate
 import com.fts.ttbros.data.model.Character
 import com.fts.ttbros.data.model.CharacterSheet
 import com.fts.ttbros.data.repository.CharacterRepository
@@ -333,6 +335,8 @@ class CharacterEditorFragment : Fragment() {
             "vtm_5e" -> VtmTemplate.generate(formData, contextWithLocale)
             "viedzmin_2e" -> ViedzminTemplate.generate(formData, contextWithLocale)
             "dnd_5e", "dnd" -> DndTemplate.generate(formData, contextWithLocale)
+            "whrp" -> WhrpTemplate.generate(formData, contextWithLocale)
+            "wh_darkheresy" -> DarkHeresyTemplate.generate(formData, contextWithLocale)
             else -> VtmTemplate.generate(formData, contextWithLocale)
         }
         adapter.submitList(items)

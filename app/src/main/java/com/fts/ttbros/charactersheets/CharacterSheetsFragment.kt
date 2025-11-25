@@ -235,6 +235,8 @@ class CharacterSheetsFragment : Fragment() {
                     "vtm_5e" -> "VTM"
                     "dnd_5e" -> "D&D"
                     "viedzmin_2e" -> "Viedzmin"
+                    "whrp" -> "WHRP"
+                    "wh_darkheresy" -> "Dark Heresy"
                     else -> teamSystem
                 }
                 
@@ -432,6 +434,20 @@ class CharacterSheetsFragment : Fragment() {
             text.contains("viedzmin", ignoreCase = true) ||
             text.contains("ведьмак", ignoreCase = true) -> "viedzmin_2e"
             
+            text.contains("dark heresy", ignoreCase = true) ||
+            text.contains("dark heresy", ignoreCase = true) ||
+            text.contains("imperium", ignoreCase = true) ||
+            text.contains("inquisition", ignoreCase = true) ||
+            text.contains("acolyte", ignoreCase = true) ||
+            text.contains("throne agent", ignoreCase = true) -> "wh_darkheresy"
+            
+            text.contains("warhammer fantasy roleplay", ignoreCase = true) ||
+            text.contains("whrp", ignoreCase = true) ||
+            text.contains("warhammer roleplay", ignoreCase = true) ||
+            text.contains("career", ignoreCase = true) && text.contains("advance", ignoreCase = true) ||
+            text.contains("fate points", ignoreCase = true) ||
+            text.contains("fortune points", ignoreCase = true) -> "whrp"
+            
             else -> "unknown"
         }
     }
@@ -456,6 +472,442 @@ class CharacterSheetsFragment : Fragment() {
         } catch (e: Exception) {
             android.util.Log.e("CharacterSheetsFragment", "Error parsing PDF: ${e.message}", e)
             emptyMap<String, Any>()
+        }
+    }
+    
+    /**
+     * Извлекает атрибуты из текста PDF
+     */
+    private fun extractAttributes(
+        attributeNames: List<String>,
+        attributes: MutableMap<String, Int>,
+        lines: List<String>,
+        fullText: String
+    ) {
+        attributeNames.forEach { attr ->
+            // Паттерн 1: "Attribute: 3" или "Attribute = 3"
+            val pattern1 = Regex("$attr\\s*[:=]\\s*(\\d+)", RegexOption.IGNORE_CASE)
+            // Паттерн 2: "Attribute 3" (без разделителя)
+            val pattern2 = Regex("$attr\\s+(\\d+)", RegexOption.IGNORE_CASE)
+            // Паттерн 3: Поиск в полном тексте с контекстом
+            val pattern3 = Regex("(?:^|\\n|\\r)\\s*$attr\\s*[:=]?\\s*(\\d+)", RegexOption.IGNORE_CASE)
+            
+            // Пробуем все паттерны
+            listOf(pattern1, pattern2, pattern3).forEach { pattern ->
+                pattern.findAll(fullText).forEach { match ->
+                    val value = match.groupValues[1].toIntOrNull()
+                    if (value != null && value > 0 && value <= 10) {
+                        attributes[attr] = value
+                        // Также сохраняем нормализованное имя
+                        attributes[attr.lowercase().replace(" ", "_")] = value
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Извлекает навыки из текста PDF
+     */
+    private fun extractSkills(
+        skillNames: List<String>,
+        skills: MutableMap<String, Int>,
+        lines: List<String>,
+        fullText: String
+    ) {
+        skillNames.forEach { skill ->
+            // Паттерн 1: "Skill: 3" или "Skill = 3"
+            val pattern1 = Regex("$skill\\s*[:=]\\s*(\\d+)", RegexOption.IGNORE_CASE)
+            // Паттерн 2: "Skill 3" (без разделителя)
+            val pattern2 = Regex("$skill\\s+(\\d+)", RegexOption.IGNORE_CASE)
+            // Паттерн 3: Поиск в полном тексте
+            val pattern3 = Regex("(?:^|\\n|\\r)\\s*$skill\\s*[:=]?\\s*(\\d+)", RegexOption.IGNORE_CASE)
+            
+            listOf(pattern1, pattern2, pattern3).forEach { pattern ->
+                pattern.findAll(fullText).forEach { match ->
+                    val value = match.groupValues[1].toIntOrNull()
+                    if (value != null && value >= 0 && value <= 5) {
+                        skills[skill] = value
+                        // Также сохраняем нормализованное имя
+                        skills[skill.lowercase().replace(" ", "_")] = value
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Извлекает статистики из текста PDF
+     */
+    private fun extractStats(
+        statPatterns: Map<String, List<String>>,
+        stats: MutableMap<String, Any>,
+        lines: List<String>,
+        fullText: String
+    ) {
+        statPatterns.forEach { (statKey, patterns) ->
+            patterns.forEach { pattern ->
+                // Паттерн 1: "Stat: value" или "Stat = value"
+                val pattern1 = Regex("$pattern\\s*[:=]\\s*([^\\n\\r]+)", RegexOption.IGNORE_CASE)
+                // Паттерн 2: "Stat value" (без разделителя)
+                val pattern2 = Regex("$pattern\\s+([^\\n\\r]+)", RegexOption.IGNORE_CASE)
+                // Паттерн 3: Многострочный поиск
+                val pattern3 = Regex("(?:^|\\n|\\r)\\s*$pattern\\s*[:=]?\\s*([^\\n\\r]+)", RegexOption.IGNORE_CASE)
+                
+                listOf(pattern1, pattern2, pattern3).forEach { regex ->
+                    regex.findAll(fullText).forEach { match ->
+                        val value = match.groupValues[1].trim()
+                        if (value.isNotBlank()) {
+                            // Пытаемся определить тип значения
+                            val numericValue = value.toIntOrNull()
+                            val doubleValue = value.toDoubleOrNull()
+                            
+                            when {
+                                numericValue != null -> {
+                                    // Если это число, сохраняем как число
+                                    if (stats[statKey] !is String) {
+                                        stats[statKey] = numericValue
+                                    }
+                                }
+                                doubleValue != null -> {
+                                    stats[statKey] = doubleValue
+                                }
+                                else -> {
+                                    // Текстовое значение
+                                    if (stats[statKey] !is Number) {
+                                        stats[statKey] = value
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Извлекает специфичные для VTM 5e поля
+     */
+    private fun extractVtmSpecificFields(stats: MutableMap<String, Any>, lines: List<String>, fullText: String) {
+        // Извлекаем Health Tracker (может быть в формате "Health: [X][X][ ][ ][ ]")
+        val healthPattern = Regex("Health\\s*[:=]?\\s*\\[([X\\s]+)\\]", RegexOption.IGNORE_CASE)
+        healthPattern.findAll(fullText).forEach { match ->
+            val healthLevels = match.groupValues[1].count { it == 'X' }
+            if (healthLevels > 0) {
+                stats["Health Levels Filled"] = healthLevels
+            }
+        }
+        
+        // Извлекаем Willpower Tracker
+        val willpowerPattern = Regex("Willpower\\s*[:=]?\\s*\\[([X\\s]+)\\]", RegexOption.IGNORE_CASE)
+        willpowerPattern.findAll(fullText).forEach { match ->
+            val willpowerLevels = match.groupValues[1].count { it == 'X' }
+            if (willpowerLevels > 0) {
+                stats["Willpower Levels Filled"] = willpowerLevels
+            }
+        }
+        
+        // Извлекаем Hunger Tracker
+        val hungerPattern = Regex("Hunger\\s*[:=]?\\s*\\[([X\\s]+)\\]", RegexOption.IGNORE_CASE)
+        hungerPattern.findAll(fullText).forEach { match ->
+            val hungerLevels = match.groupValues[1].count { it == 'X' }
+            if (hungerLevels > 0) {
+                stats["Hunger Levels Filled"] = hungerLevels
+            }
+        }
+        
+        // Извлекаем Humanity Tracker
+        val humanityPattern = Regex("Humanity\\s*[:=]?\\s*\\[([X\\s]+)\\]", RegexOption.IGNORE_CASE)
+        humanityPattern.findAll(fullText).forEach { match ->
+            val humanityLevels = match.groupValues[1].count { it == 'X' }
+            if (humanityLevels > 0) {
+                stats["Humanity Levels Filled"] = humanityLevels
+            }
+        }
+        
+        // Извлекаем все текстовые поля, которые могут быть пропущены
+        val textFields = mapOf(
+            "Chronicle Tenets" to listOf("Chronicle Tenets", "Tenets", "Заповеди хроники"),
+            "Convictions" to listOf("Convictions", "Conviction", "Убеждения"),
+            "Touchstones" to listOf("Touchstones", "Touchstone", "Якоря"),
+            "Haven" to listOf("Haven", "Убежище", "Haven Location"),
+            "Domain" to listOf("Domain", "Домен", "Domain Location"),
+            "Coterie" to listOf("Coterie", "Котерия", "Coterie Name"),
+            "Mortal Identity" to listOf("Mortal Identity", "Mortal Name", "Смертная личность"),
+            "Mask" to listOf("Mask", "Маска", "Mask Identity")
+        )
+        
+        textFields.forEach { (key, patterns) ->
+            patterns.forEach { pattern ->
+                val regex = Regex("$pattern\\s*[:=]\\s*([^\\n\\r]{1,200})", RegexOption.IGNORE_CASE)
+                regex.findAll(fullText).forEach { match ->
+                    val value = match.groupValues[1].trim()
+                    if (value.isNotBlank() && !value.matches(Regex("^\\d+$"))) {
+                        stats[key] = value
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Извлекает специфичные для D&D 5e поля
+     */
+    private fun extractDndSpecificFields(stats: MutableMap<String, Any>, lines: List<String>, fullText: String) {
+        // Извлекаем Saving Throws
+        val savingThrows = listOf("Strength", "Dexterity", "Constitution", "Intelligence", "Wisdom", "Charisma")
+        savingThrows.forEach { attr ->
+            val pattern = Regex("$attr\\s+Saving\\s+Throw\\s*[:=]?\\s*([+-]?\\d+)", RegexOption.IGNORE_CASE)
+            pattern.findAll(fullText).forEach { match ->
+                val value = match.groupValues[1].toIntOrNull()
+                if (value != null) {
+                    stats["${attr} Saving Throw"] = value
+                }
+            }
+        }
+        
+        // Извлекаем Skill Proficiencies
+        val skillProficiencies = listOf(
+            "Acrobatics", "Animal Handling", "Arcana", "Athletics", "Deception", "History",
+            "Insight", "Intimidation", "Investigation", "Medicine", "Nature", "Perception",
+            "Performance", "Persuasion", "Religion", "Sleight of Hand", "Stealth", "Survival"
+        )
+        skillProficiencies.forEach { skill ->
+            val pattern = Regex("$skill\\s*[:=]?\\s*([+-]?\\d+)\\s*(?:✓|X|\\*)", RegexOption.IGNORE_CASE)
+            pattern.findAll(fullText).forEach { match ->
+                val value = match.groupValues[1].toIntOrNull()
+                if (value != null) {
+                    stats["${skill} Proficiency"] = value
+                }
+            }
+        }
+        
+        // Извлекаем Ability Scores и Modifiers
+        val abilities = listOf("STR", "DEX", "CON", "INT", "WIS", "CHA")
+        abilities.forEach { abbr ->
+            val pattern = Regex("$abbr\\s*[:=]?\\s*(\\d+)\\s*\\(([+-]?\\d+)\\)", RegexOption.IGNORE_CASE)
+            pattern.findAll(fullText).forEach { match ->
+                val score = match.groupValues[1].toIntOrNull()
+                val modifier = match.groupValues[2].toIntOrNull()
+                if (score != null) stats["${abbr} Score"] = score
+                if (modifier != null) stats["${abbr} Modifier"] = modifier
+            }
+        }
+    }
+    
+    /**
+     * Извлекает специфичные для WHRP поля
+     */
+    private fun extractWhrpSpecificFields(stats: MutableMap<String, Any>, lines: List<String>, fullText: String) {
+        // Извлекаем Wound Tracker (может быть в формате "[X][X][ ][ ][ ]")
+        val woundPattern = Regex("Wounds?\\s*[:=]?\\s*\\[([X\\s]+)\\]", RegexOption.IGNORE_CASE)
+        woundPattern.findAll(fullText).forEach { match ->
+            val woundLevels = match.groupValues[1].count { it == 'X' }
+            if (woundLevels > 0) {
+                stats["Wound Levels Filled"] = woundLevels
+            }
+        }
+        
+        // Извлекаем Career Advances
+        val careerPattern = Regex("Career\\s+Advance\\s*[:=]?\\s*([^\\n\\r]+)", RegexOption.IGNORE_CASE)
+        careerPattern.findAll(fullText).forEach { match ->
+            val value = match.groupValues[1].trim()
+            if (value.isNotBlank()) {
+                stats["Career Advances"] = value
+            }
+        }
+        
+        // Извлекаем Talents и Traits (могут быть списками)
+        val talentPattern = Regex("Talent[s]?\\s*[:=]\\s*([^\\n\\r]{1,500})", RegexOption.IGNORE_CASE)
+        talentPattern.findAll(fullText).forEach { match ->
+            val value = match.groupValues[1].trim()
+            if (value.isNotBlank()) {
+                stats["Talents List"] = value
+            }
+        }
+        
+        val traitPattern = Regex("Trait[s]?\\s*[:=]\\s*([^\\n\\r]{1,500})", RegexOption.IGNORE_CASE)
+        traitPattern.findAll(fullText).forEach { match ->
+            val value = match.groupValues[1].trim()
+            if (value.isNotBlank()) {
+                stats["Traits List"] = value
+            }
+        }
+        
+        // Извлекаем Money (может быть в формате "Xgc Xs Xp")
+        val moneyPattern = Regex("(?:Money|Gold|Crowns)\\s*[:=]?\\s*(\\d+)\\s*(?:gc|GC|gold|crowns)?\\s*(?:\\s*(\\d+)\\s*(?:s|S|shillings)?)?\\s*(?:\\s*(\\d+)\\s*(?:p|P|pennies)?)?", RegexOption.IGNORE_CASE)
+        moneyPattern.findAll(fullText).forEach { match ->
+            val gold = match.groupValues[1].toIntOrNull() ?: 0
+            val silver = match.groupValues[2].toIntOrNull() ?: 0
+            val copper = match.groupValues[3].toIntOrNull() ?: 0
+            if (gold > 0 || silver > 0 || copper > 0) {
+                stats["Money Gold"] = gold
+                stats["Money Silver"] = silver
+                stats["Money Copper"] = copper
+            }
+        }
+        
+        // Извлекаем Armour по частям тела
+        val armourPatterns = mapOf(
+            "Armour Head" to listOf("Head", "Helmet", "Голова"),
+            "Armour Body" to listOf("Body", "Torso", "Тело"),
+            "Armour Arms" to listOf("Arms", "Hands", "Руки"),
+            "Armour Legs" to listOf("Legs", "Feet", "Ноги")
+        )
+        
+        armourPatterns.forEach { (key, patterns) ->
+            patterns.forEach { pattern ->
+                val regex = Regex("(?:Armour|Armor)\\s+$pattern\\s*[:=]?\\s*(\\d+)", RegexOption.IGNORE_CASE)
+                regex.findAll(fullText).forEach { match ->
+                    val value = match.groupValues[1].toIntOrNull()
+                    if (value != null) {
+                        stats[key] = value
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Извлекает специфичные для WH: Dark Heresy поля
+     */
+    private fun extractDarkHeresySpecificFields(stats: MutableMap<String, Any>, lines: List<String>, fullText: String) {
+        // Извлекаем Wound Tracker
+        val woundPattern = Regex("Wounds?\\s*[:=]?\\s*\\[([X\\s]+)\\]", RegexOption.IGNORE_CASE)
+        woundPattern.findAll(fullText).forEach { match ->
+            val woundLevels = match.groupValues[1].count { it == 'X' }
+            if (woundLevels > 0) {
+                stats["Wound Levels Filled"] = woundLevels
+            }
+        }
+        
+        // Извлекаем Insanity Tracker
+        val insanityPattern = Regex("Insanity\\s*[:=]?\\s*\\[([X\\s]+)\\]", RegexOption.IGNORE_CASE)
+        insanityPattern.findAll(fullText).forEach { match ->
+            val insanityLevels = match.groupValues[1].count { it == 'X' }
+            if (insanityLevels > 0) {
+                stats["Insanity Levels Filled"] = insanityLevels
+            }
+        }
+        
+        // Извлекаем Corruption Tracker
+        val corruptionPattern = Regex("Corruption\\s*[:=]?\\s*\\[([X\\s]+)\\]", RegexOption.IGNORE_CASE)
+        corruptionPattern.findAll(fullText).forEach { match ->
+            val corruptionLevels = match.groupValues[1].count { it == 'X' }
+            if (corruptionLevels > 0) {
+                stats["Corruption Levels Filled"] = corruptionLevels
+            }
+        }
+        
+        // Извлекаем Psychic Powers
+        val psychicPattern = Regex("Psychic\\s+Power[s]?\\s*[:=]\\s*([^\\n\\r]{1,500})", RegexOption.IGNORE_CASE)
+        psychicPattern.findAll(fullText).forEach { match ->
+            val value = match.groupValues[1].trim()
+            if (value.isNotBlank()) {
+                stats["Psychic Powers List"] = value
+            }
+        }
+        
+        // Извлекаем Talents
+        val talentPattern = Regex("Talent[s]?\\s*[:=]\\s*([^\\n\\r]{1,500})", RegexOption.IGNORE_CASE)
+        talentPattern.findAll(fullText).forEach { match ->
+            val value = match.groupValues[1].trim()
+            if (value.isNotBlank()) {
+                stats["Talents List"] = value
+            }
+        }
+        
+        // Извлекаем Traits
+        val traitPattern = Regex("Trait[s]?\\s*[:=]\\s*([^\\n\\r]{1,500})", RegexOption.IGNORE_CASE)
+        traitPattern.findAll(fullText).forEach { match ->
+            val value = match.groupValues[1].trim()
+            if (value.isNotBlank()) {
+                stats["Traits List"] = value
+            }
+        }
+        
+        // Извлекаем Malignancies
+        val malignancyPattern = Regex("Malignanc[y|ies]\\s*[:=]\\s*([^\\n\\r]{1,500})", RegexOption.IGNORE_CASE)
+        malignancyPattern.findAll(fullText).forEach { match ->
+            val value = match.groupValues[1].trim()
+            if (value.isNotBlank()) {
+                stats["Malignancies List"] = value
+            }
+        }
+        
+        // Извлекаем Mutations
+        val mutationPattern = Regex("Mutation[s]?\\s*[:=]\\s*([^\\n\\r]{1,500})", RegexOption.IGNORE_CASE)
+        mutationPattern.findAll(fullText).forEach { match ->
+            val value = match.groupValues[1].trim()
+            if (value.isNotBlank()) {
+                stats["Mutations List"] = value
+            }
+        }
+        
+        // Извлекаем Mental Disorders
+        val disorderPattern = Regex("(?:Mental\\s+)?Disorder[s]?\\s*[:=]\\s*([^\\n\\r]{1,500})", RegexOption.IGNORE_CASE)
+        disorderPattern.findAll(fullText).forEach { match ->
+            val value = match.groupValues[1].trim()
+            if (value.isNotBlank()) {
+                stats["Mental Disorders List"] = value
+            }
+        }
+        
+        // Извлекаем Forbidden Lore
+        val forbiddenLorePattern = Regex("Forbidden\\s+Lore\\s*[:=]\\s*([^\\n\\r]{1,500})", RegexOption.IGNORE_CASE)
+        forbiddenLorePattern.findAll(fullText).forEach { match ->
+            val value = match.groupValues[1].trim()
+            if (value.isNotBlank()) {
+                stats["Forbidden Lore List"] = value
+            }
+        }
+        
+        // Извлекаем Scholastic Lore
+        val scholasticLorePattern = Regex("Scholastic\\s+Lore\\s*[:=]\\s*([^\\n\\r]{1,500})", RegexOption.IGNORE_CASE)
+        scholasticLorePattern.findAll(fullText).forEach { match ->
+            val value = match.groupValues[1].trim()
+            if (value.isNotBlank()) {
+                stats["Scholastic Lore List"] = value
+            }
+        }
+        
+        // Извлекаем Common Lore
+        val commonLorePattern = Regex("Common\\s+Lore\\s*[:=]\\s*([^\\n\\r]{1,500})", RegexOption.IGNORE_CASE)
+        commonLorePattern.findAll(fullText).forEach { match ->
+            val value = match.groupValues[1].trim()
+            if (value.isNotBlank()) {
+                stats["Common Lore List"] = value
+            }
+        }
+        
+        // Извлекаем Thrones (деньги)
+        val thronesPattern = Regex("(?:Thrones?|Throne\\s+Gelt)\\s*[:=]?\\s*(\\d+)", RegexOption.IGNORE_CASE)
+        thronesPattern.findAll(fullText).forEach { match ->
+            val value = match.groupValues[1].toIntOrNull()
+            if (value != null) {
+                stats["Thrones"] = value
+            }
+        }
+        
+        // Извлекаем Armour по частям тела
+        val armourPatterns = mapOf(
+            "Armour Head" to listOf("Head", "Helmet", "Голова"),
+            "Armour Body" to listOf("Body", "Torso", "Тело"),
+            "Armour Arms" to listOf("Arms", "Hands", "Руки"),
+            "Armour Legs" to listOf("Legs", "Feet", "Ноги")
+        )
+        
+        armourPatterns.forEach { (key, patterns) ->
+            patterns.forEach { pattern ->
+                val regex = Regex("(?:Armour|Armor)\\s+$pattern\\s*[:=]?\\s*(\\d+)", RegexOption.IGNORE_CASE)
+                regex.findAll(fullText).forEach { match ->
+                    val value = match.groupValues[1].toIntOrNull()
+                    if (value != null) {
+                        stats[key] = value
+                    }
+                }
+            }
         }
     }
     
@@ -510,6 +962,17 @@ class CharacterSheetsFragment : Fragment() {
                 text.contains("D&D", ignoreCase = true) || text.contains("Dungeons", ignoreCase = true) || text.contains("DnD", ignoreCase = true) -> "dnd_5e"
                 text.contains("Vampire", ignoreCase = true) || text.contains("VTM", ignoreCase = true) || text.contains("VtM", ignoreCase = true) -> "vtm_5e"
                 text.contains("Viedzmin", ignoreCase = true) || text.contains("Ведьмак", ignoreCase = true) -> "viedzmin_2e"
+                text.contains("dark heresy", ignoreCase = true) ||
+                text.contains("imperium", ignoreCase = true) ||
+                text.contains("inquisition", ignoreCase = true) ||
+                text.contains("acolyte", ignoreCase = true) ||
+                text.contains("throne agent", ignoreCase = true) -> "wh_darkheresy"
+                text.contains("warhammer fantasy roleplay", ignoreCase = true) ||
+                text.contains("whrp", ignoreCase = true) ||
+                text.contains("warhammer roleplay", ignoreCase = true) ||
+                (text.contains("career", ignoreCase = true) && text.contains("advance", ignoreCase = true)) ||
+                text.contains("fate points", ignoreCase = true) ||
+                text.contains("fortune points", ignoreCase = true) -> "whrp"
                 else -> "unknown"
             }
             
@@ -556,87 +1019,277 @@ class CharacterSheetsFragment : Fragment() {
             // 5. Извлекаем атрибуты (специфичные для систем)
             val attributes = mutableMapOf<String, Int>()
             val skills = mutableMapOf<String, Int>()
+            val disciplines = mutableMapOf<String, Int>() // VTM дисциплины
             val stats = mutableMapOf<String, Any>()
             
-            // Атрибуты D&D 5e
-            val dndAttributes = listOf("Strength", "Dexterity", "Constitution", "Intelligence", "Wisdom", "Charisma",
-                "Сила", "Ловкость", "Выносливость", "Интеллект", "Мудрость", "Харизма")
-            dndAttributes.forEach { attr ->
-                val pattern = Regex("$attr\\s*[:=]?\\s*(\\d+)", RegexOption.IGNORE_CASE)
-                lines.forEach { line ->
-                    pattern.find(line)?.let { match ->
-                        val value = match.groupValues[1].toIntOrNull() ?: 0
-                        attributes[attr] = value
-                    }
-                }
-            }
+            // Атрибуты D&D 5e (полный список)
+            val dndAttributes = listOf(
+                "Strength", "Dexterity", "Constitution", "Intelligence", "Wisdom", "Charisma",
+                "Сила", "Ловкость", "Выносливость", "Интеллект", "Мудрость", "Харизма",
+                "STR", "DEX", "CON", "INT", "WIS", "CHA"
+            )
+            extractAttributes(dndAttributes, attributes, lines, text)
             
-            // Атрибуты VTM 5e
-            val vtmAttributes = listOf("Intelligence", "Wits", "Resolve", "Strength", "Dexterity", "Stamina",
-                "Presence", "Manipulation", "Composure", "Интеллект", "Сообразительность", "Решимость",
-                "Сила", "Ловкость", "Выносливость", "Присутствие", "Манипуляция", "Самообладание")
-            vtmAttributes.forEach { attr ->
-                val pattern = Regex("$attr\\s*[:=]?\\s*(\\d+)", RegexOption.IGNORE_CASE)
-                lines.forEach { line ->
-                    pattern.find(line)?.let { match ->
-                        val value = match.groupValues[1].toIntOrNull() ?: 0
-                        attributes[attr] = value
-                    }
-                }
-            }
+            // Атрибуты VTM 5e (ПОЛНЫЙ СПИСОК - все категории)
+            // Mental Attributes
+            val vtmMentalAttributes = listOf(
+                "Intelligence", "Wits", "Resolve",
+                "Интеллект", "Сообразительность", "Решимость",
+                "INT", "WIT", "RES"
+            )
+            // Physical Attributes
+            val vtmPhysicalAttributes = listOf(
+                "Strength", "Dexterity", "Stamina",
+                "Сила", "Ловкость", "Выносливость",
+                "STR", "DEX", "STA"
+            )
+            // Social Attributes
+            val vtmSocialAttributes = listOf(
+                "Presence", "Manipulation", "Composure",
+                "Присутствие", "Манипуляция", "Самообладание",
+                "PRE", "MAN", "COM"
+            )
+            extractAttributes(vtmMentalAttributes + vtmPhysicalAttributes + vtmSocialAttributes, attributes, lines, text)
             
-            // 6. Извлекаем навыки (все возможные)
-            val allSkills = listOf(
-                // D&D
+            // Атрибуты WHRP (Warhammer Fantasy Roleplay)
+            val whrpAttributes = listOf(
+                "Weapon Skill", "Ballistic Skill", "Strength", "Toughness", "Initiative", "Agility", "Dexterity", "Intelligence", "Willpower", "Fellowship",
+                "WS", "BS", "S", "T", "I", "Ag", "Dex", "Int", "WP", "Fel",
+                "Навык владения оружием", "Навык стрельбы", "Сила", "Выносливость", "Инициатива", "Ловкость", "Интеллект", "Сила воли", "Общительность",
+                "Мощь", "Точность", "Стойкость", "Реакция", "Интеллект", "Воля", "Харизма"
+            )
+            extractAttributes(whrpAttributes, attributes, lines, text)
+            
+            // Атрибуты WH: Dark Heresy
+            val darkHeresyAttributes = listOf(
+                "Weapon Skill", "Ballistic Skill", "Strength", "Toughness", "Agility", "Intelligence", "Perception", "Willpower", "Fellowship",
+                "WS", "BS", "S", "T", "Ag", "Int", "Per", "WP", "Fel",
+                "Навык владения оружием", "Навык стрельбы", "Сила", "Выносливость", "Ловкость", "Интеллект", "Восприятие", "Сила воли", "Общительность",
+                "Мощь", "Точность", "Стойкость", "Реакция", "Интеллект", "Восприятие", "Воля", "Харизма"
+            )
+            extractAttributes(darkHeresyAttributes, attributes, lines, text)
+            
+            // 6. Извлекаем навыки (ПОЛНЫЙ СПИСОК для всех систем)
+            // D&D 5e Skills
+            val dndSkills = listOf(
                 "Acrobatics", "Animal Handling", "Arcana", "Athletics", "Deception", "History",
                 "Insight", "Intimidation", "Investigation", "Medicine", "Nature", "Perception",
                 "Performance", "Persuasion", "Religion", "Sleight of Hand", "Stealth", "Survival",
-                // VTM
-                "Academics", "Animal Ken", "Awareness", "Brawl", "Craft", "Drive", "Etiquette",
-                "Firearms", "Larceny", "Leadership", "Melee", "Occult", "Science", "Streetwise",
-                "Subterfuge"
+                "Акробатика", "Уход за животными", "Магия", "Атлетика", "Обман", "История",
+                "Проницательность", "Запугивание", "Расследование", "Медицина", "Природа", "Восприятие",
+                "Выступление", "Убеждение", "Религия", "Ловкость рук", "Скрытность", "Выживание"
             )
-            allSkills.forEach { skill ->
-                val pattern = Regex("$skill\\s*[:=]?\\s*(\\d+)", RegexOption.IGNORE_CASE)
-                lines.forEach { line ->
-                    pattern.find(line)?.let { match ->
-                        val value = match.groupValues[1].toIntOrNull() ?: 0
-                        skills[skill] = value
-                    }
-                }
+            
+            // VTM 5e Skills - Mental
+            val vtmMentalSkills = listOf(
+                "Academics", "Awareness", "Finance", "Investigation", "Medicine", "Occult", "Politics", "Science", "Technology",
+                "Академические знания", "Внимательность", "Финансы", "Расследование", "Медицина", "Оккультизм", "Политика", "Наука", "Технологии"
+            )
+            
+            // VTM 5e Skills - Physical
+            val vtmPhysicalSkills = listOf(
+                "Athletics", "Brawl", "Craft", "Drive", "Firearms", "Larceny", "Melee", "Stealth", "Survival",
+                "Атлетика", "Рукопашный бой", "Ремесло", "Вождение", "Стрельба", "Воровство", "Холодное оружие", "Скрытность", "Выживание"
+            )
+            
+            // VTM 5e Skills - Social
+            val vtmSocialSkills = listOf(
+                "Animal Ken", "Etiquette", "Insight", "Intimidation", "Leadership", "Performance", "Persuasion", "Streetwise", "Subterfuge",
+                "Общение с животными", "Этикет", "Проницательность", "Запугивание", "Лидерство", "Выступление", "Убеждение", "Уличное чутье", "Скрытность"
+            )
+            
+            // WHRP Skills (Warhammer Fantasy Roleplay)
+            val whrpSkills = listOf(
+                // Basic Skills
+                "Animal Care", "Art", "Athletics", "Bribery", "Charm", "Climb", "Consume Alcohol", "Cool", "Dodge", "Drive", "Endurance", "Entertain", "Gamble", "Gossip", "Haggle", "Heal", "Intimidate", "Intuition", "Language", "Leadership", "Melee", "Navigation", "Outdoor Survival", "Perception", "Ride", "Row", "Stealth", "Swim",
+                // Advanced Skills
+                "Animal Training", "Artistic", "Channelling", "Charm Animal", "Command", "Commerce", "Evaluate", "Folklore", "Gamble", "Guile", "Haggle", "Heal", "Intimidate", "Intuition", "Language", "Leadership", "Lore", "Melee", "Navigation", "Outdoor Survival", "Perception", "Perform", "Play", "Pray", "Ranged", "Research", "Sail", "Secret Signs", "Set Trap", "Sleight of Hand", "Stealth", "Swim", "Track", "Trade", "Ventriloquism",
+                // Русские названия
+                "Уход за животными", "Искусство", "Атлетика", "Взятка", "Обаяние", "Лазание", "Употребление алкоголя", "Хладнокровие", "Уклонение", "Вождение", "Выносливость", "Развлечение", "Азартные игры", "Сплетни", "Торговля", "Лечение", "Запугивание", "Интуиция", "Язык", "Лидерство", "Ближний бой", "Навигация", "Выживание", "Восприятие", "Верховая езда", "Гребля", "Скрытность", "Плавание"
+            )
+            
+            // WH: Dark Heresy Skills
+            val darkHeresySkills = listOf(
+                // Basic Skills
+                "Awareness", "Barter", "Carouse", "Charm", "Climb", "Concealment", "Contortionist", "Deceive", "Disguise", "Dodge", "Drive", "Evaluate", "Gamble", "Inquiry", "Interrogation", "Intimidate", "Logic", "Scrutiny", "Search", "Silent Move", "Speak Language", "Swim", "Trade",
+                // Advanced Skills
+                "Acrobatics", "Awareness", "Barter", "Blather", "Carouse", "Charm", "Chem-Use", "Ciphers", "Climb", "Command", "Commerce", "Common Lore", "Concealment", "Contortionist", "Deceive", "Demolition", "Disguise", "Dodge", "Drive", "Evaluate", "Forbidden Lore", "Gamble", "Inquiry", "Interrogation", "Intimidate", "Literacy", "Logic", "Medicae", "Navigate", "Operate", "Parry", "Performer", "Pilot", "Psyniscience", "Scholastic Lore", "Scrutiny", "Search", "Secret Tongue", "Security", "Shadowing", "Silent Move", "Sleight of Hand", "Speak Language", "Survival", "Swim", "Tech-Use", "Trade", "Tracking", "Wrangling",
+                // Русские названия
+                "Внимательность", "Торговля", "Пьянство", "Обаяние", "Лазание", "Скрытие", "Акробатика", "Обман", "Маскировка", "Уклонение", "Вождение", "Оценка", "Азартные игры", "Допрос", "Запугивание", "Логика", "Осмотр", "Поиск", "Тихий шаг", "Языки", "Плавание", "Ремесло"
+            )
+            
+            val allSkills = dndSkills + vtmMentalSkills + vtmPhysicalSkills + vtmSocialSkills + whrpSkills + darkHeresySkills
+            extractSkills(allSkills, skills, lines, text)
+            
+            // 7. Извлекаем дисциплины VTM 5e
+            val vtmDisciplines = listOf(
+                "Animalism", "Auspex", "Blood Sorcery", "Celerity", "Dominate", "Fortitude",
+                "Obfuscate", "Potence", "Presence", "Protean", "Thin-Blood Alchemy",
+                "Animalism", "Ауспекс", "Кровавая магия", "Целерити", "Доминат", "Фортитуд",
+                "Обфускат", "Потенс", "Презенс", "Протей", "Алхимия тонкокровых",
+                "Animalism", "Auspex", "Blood Sorcery", "Celerity", "Dominate", "Fortitude",
+                "Obfuscate", "Potence", "Presence", "Protean", "Thin-Blood Alchemy"
+            )
+            extractSkills(vtmDisciplines, disciplines, lines, text)
+            
+            // 8. Извлекаем статистики (расширенный список для всех систем)
+            val statPatterns = mapOf(
+                // D&D 5e
+                "HP" to listOf("HP", "Hit Points", "Здоровье", "ХП", "Health", "Hit Points Maximum", "Максимум здоровья"),
+                "AC" to listOf("AC", "Armor Class", "Класс защиты", "КЗ", "Armor", "Armor Class (AC)"),
+                "Level" to listOf("Level", "Уровень", "Lvl", "Character Level"),
+                "Class" to listOf("Class", "Класс", "Character Class"),
+                "Race" to listOf("Race", "Раса", "Species"),
+                "Background" to listOf("Background", "Предыстория", "Character Background"),
+                "Proficiency Bonus" to listOf("Proficiency Bonus", "Бонус мастерства", "Prof Bonus", "PB"),
+                "Initiative" to listOf("Initiative", "Инициатива", "Init"),
+                "Speed" to listOf("Speed", "Скорость", "Movement", "Movement Speed"),
+                "Experience Points" to listOf("Experience Points", "XP", "Опыт", "Experience"),
+                
+                // VTM 5e
+                "Humanity" to listOf("Humanity", "Humanity Rating", "Человечность", "Humanity/Path", "Humanity Path"),
+                "Willpower" to listOf("Willpower", "Willpower Rating", "Сила воли", "Willpower Maximum", "Максимум силы воли"),
+                "Blood Potency" to listOf("Blood Potency", "Кровная мощь", "Blood Potency Rating", "BP"),
+                "Clan" to listOf("Clan", "Клан", "Clan/Bloodline"),
+                "Concept" to listOf("Concept", "Концепция", "Character Concept"),
+                "Predator" to listOf("Predator", "Стиль охоты", "Predator Type", "Predator Type/Feeding", "Predator Type/Feeding Preference"),
+                "Generation" to listOf("Generation", "Поколение", "Gen", "Generation/Blood"),
+                "Sire" to listOf("Sire", "Сир", "Sire Name"),
+                "Chronicle" to listOf("Chronicle", "Хроника", "Chronicle Name"),
+                "Ambition" to listOf("Ambition", "Амбиция", "Character Ambition"),
+                "Desire" to listOf("Desire", "Желание", "Character Desire"),
+                "Touchstones" to listOf("Touchstones", "Якоря", "Touchstone", "Touchstone Name"),
+                "Chronicle Tenets" to listOf("Chronicle Tenets", "Заповеди хроники", "Tenets"),
+                "Convictions" to listOf("Convictions", "Убеждения", "Conviction"),
+                "Stains" to listOf("Stains", "Пятна", "Stain"),
+                "Health" to listOf("Health", "Здоровье", "Health Maximum", "Health Tracker", "Health Levels"),
+                "Hunger" to listOf("Hunger", "Голод", "Hunger Rating", "Hunger Tracker"),
+                "Resonance" to listOf("Resonance", "Резонанс", "Resonance Type"),
+                "Advantages" to listOf("Advantages", "Преимущества", "Advantage"),
+                "Flaws" to listOf("Flaws", "Недостатки", "Flaw"),
+                "Merits" to listOf("Merits", "Достоинства", "Merit"),
+                "Loresheet" to listOf("Loresheet", "Лоршит", "Loresheet Name"),
+                "Coterie" to listOf("Coterie", "Котерия", "Coterie Name"),
+                "Haven" to listOf("Haven", "Убежище", "Haven Location"),
+                "Resources" to listOf("Resources", "Ресурсы", "Resource"),
+                "Allies" to listOf("Allies", "Союзники", "Ally"),
+                "Contacts" to listOf("Contacts", "Контакты", "Contact"),
+                "Fame" to listOf("Fame", "Слава", "Fame Rating"),
+                "Herd" to listOf("Herd", "Стадо", "Herd Rating"),
+                "Influence" to listOf("Influence", "Влияние", "Influence Rating"),
+                "Mask" to listOf("Mask", "Маска", "Mask Identity"),
+                "Mortal Identity" to listOf("Mortal Identity", "Смертная личность", "Mortal Name"),
+                "Retainers" to listOf("Retainers", "Слуги", "Retainer"),
+                "Status" to listOf("Status", "Статус", "Status Rating"),
+                "Domain" to listOf("Domain", "Домен", "Domain Location"),
+                
+                // Viedzmin 2e
+                "Profession" to listOf("Profession", "Профессия", "Character Profession"),
+                "Race" to listOf("Race", "Раса", "Character Race"),
+                "Age" to listOf("Age", "Возраст", "Character Age"),
+                "Height" to listOf("Height", "Рост", "Character Height"),
+                "Weight" to listOf("Weight", "Вес", "Character Weight"),
+                "Hair" to listOf("Hair", "Волосы", "Hair Color"),
+                "Eyes" to listOf("Eyes", "Глаза", "Eye Color"),
+                
+                // WHRP (Warhammer Fantasy Roleplay)
+                "Career" to listOf("Career", "Профессия", "Career Path", "Career Class"),
+                "Career Level" to listOf("Career Level", "Уровень профессии", "Career Rank", "Level"),
+                "Wounds" to listOf("Wounds", "Раны", "Wound Points", "WP", "Wound Maximum", "Максимум ран"),
+                "Fate Points" to listOf("Fate Points", "Очки судьбы", "Fate", "FP"),
+                "Fortune Points" to listOf("Fortune Points", "Очки удачи", "Fortune", "Fortune"),
+                "Resilience" to listOf("Resilience", "Устойчивость", "Resilience Bonus"),
+                "Resolve" to listOf("Resolve", "Решимость", "Resolve Points"),
+                "Advancement" to listOf("Advancement", "Развитие", "Advancement Points", "AP", "Experience Points", "XP"),
+                "Movement" to listOf("Movement", "Движение", "Move", "Movement Rate", "Скорость движения"),
+                "Armour Points" to listOf("Armour Points", "Очки брони", "Armour", "AP", "Armour Rating"),
+                "Armour Head" to listOf("Armour Head", "Броня головы", "Head Armour"),
+                "Armour Body" to listOf("Armour Body", "Броня тела", "Body Armour"),
+                "Armour Arms" to listOf("Armour Arms", "Броня рук", "Arms Armour"),
+                "Armour Legs" to listOf("Armour Legs", "Броня ног", "Legs Armour"),
+                "Weapon" to listOf("Weapon", "Оружие", "Weapons"),
+                "Trappings" to listOf("Trappings", "Снаряжение", "Equipment", "Gear"),
+                "Money" to listOf("Money", "Деньги", "Gold", "Crowns", "Shillings", "Pennies"),
+                "Social Standing" to listOf("Social Standing", "Социальное положение", "Social Class"),
+                "Corruption" to listOf("Corruption", "Порча", "Corruption Points"),
+                "Mutation" to listOf("Mutation", "Мутация", "Mutations"),
+                "Psychology" to listOf("Psychology", "Психология", "Mental Disorders"),
+                "Talents" to listOf("Talents", "Таланты", "Talent"),
+                "Traits" to listOf("Traits", "Черты", "Trait"),
+                "Species" to listOf("Species", "Вид", "Race", "Species Type"),
+                "Age" to listOf("Age", "Возраст", "Character Age"),
+                "Height" to listOf("Height", "Рост", "Character Height"),
+                "Hair" to listOf("Hair", "Волосы", "Hair Color"),
+                "Eyes" to listOf("Eyes", "Глаза", "Eye Color"),
+                "Distinguishing Marks" to listOf("Distinguishing Marks", "Отличительные черты", "Marks"),
+                "Birthplace" to listOf("Birthplace", "Место рождения", "Origin"),
+                "Star Sign" to listOf("Star Sign", "Знак зодиака", "Zodiac"),
+                "Number of Siblings" to listOf("Number of Siblings", "Количество братьев и сестер", "Siblings"),
+                "Motivation" to listOf("Motivation", "Мотивация", "Character Motivation"),
+                
+                // WH: Dark Heresy
+                "Home World" to listOf("Home World", "Родной мир", "Homeworld", "Origin World"),
+                "Background" to listOf("Background", "Происхождение", "Character Background", "Origin"),
+                "Role" to listOf("Role", "Роль", "Character Role", "Acolyte Role"),
+                "Rank" to listOf("Rank", "Ранг", "Character Rank", "Throne Agent Rank"),
+                "Divination" to listOf("Divination", "Дивинация", "Divination Quote"),
+                "Wounds" to listOf("Wounds", "Раны", "Wound Points", "WP", "Wound Maximum", "Максимум ран"),
+                "Fate Points" to listOf("Fate Points", "Очки судьбы", "Fate", "FP"),
+                "Insanity Points" to listOf("Insanity Points", "Очки безумия", "Insanity", "IP", "Insanity Rating"),
+                "Corruption Points" to listOf("Corruption Points", "Очки порчи", "Corruption", "CP", "Corruption Rating"),
+                "Movement" to listOf("Movement", "Движение", "Move", "Movement Rate", "Скорость движения"),
+                "Armour Points" to listOf("Armour Points", "Очки брони", "Armour", "AP", "Armour Rating"),
+                "Armour Head" to listOf("Armour Head", "Броня головы", "Head Armour"),
+                "Armour Body" to listOf("Armour Body", "Броня тела", "Body Armour"),
+                "Armour Arms" to listOf("Armour Arms", "Броня рук", "Arms Armour"),
+                "Armour Legs" to listOf("Armour Legs", "Броня ног", "Legs Armour"),
+                "Weapon" to listOf("Weapon", "Оружие", "Weapons"),
+                "Gear" to listOf("Gear", "Снаряжение", "Equipment", "Trappings"),
+                "Thrones" to listOf("Thrones", "Троны", "Money", "Throne Gelt"),
+                "Experience Points" to listOf("Experience Points", "Очки опыта", "XP", "Experience"),
+                "Spent Experience" to listOf("Spent Experience", "Потраченный опыт", "Spent XP"),
+                "Available Experience" to listOf("Available Experience", "Доступный опыт", "Available XP"),
+                "Talents" to listOf("Talents", "Таланты", "Talent"),
+                "Traits" to listOf("Traits", "Черты", "Trait"),
+                "Psychic Powers" to listOf("Psychic Powers", "Психические силы", "Psyker Powers", "Psychic Abilities"),
+                "Psychic Rating" to listOf("Psychic Rating", "Рейтинг псионика", "PR", "Psy Rating"),
+                "Sanctioning" to listOf("Sanctioning", "Санкционирование", "Sanctioned Psyker"),
+                "Forbidden Lore" to listOf("Forbidden Lore", "Запретное знание", "Forbidden Knowledge"),
+                "Scholastic Lore" to listOf("Scholastic Lore", "Ученое знание", "Scholastic Knowledge"),
+                "Common Lore" to listOf("Common Lore", "Общее знание", "Common Knowledge"),
+                "Malignancies" to listOf("Malignancies", "Злокачественности", "Malignancy"),
+                "Mutations" to listOf("Mutations", "Мутации", "Mutation"),
+                "Mental Disorders" to listOf("Mental Disorders", "Психические расстройства", "Disorder", "Psychology"),
+                "Age" to listOf("Age", "Возраст", "Character Age"),
+                "Build" to listOf("Build", "Телосложение", "Body Type"),
+                "Complexion" to listOf("Complexion", "Цвет лица", "Skin Color"),
+                "Hair" to listOf("Hair", "Волосы", "Hair Color"),
+                "Eyes" to listOf("Eyes", "Глаза", "Eye Color"),
+                "Quirk" to listOf("Quirk", "Причуда", "Character Quirk"),
+                "Superstition" to listOf("Superstition", "Суеверие", "Character Superstition")
+            )
+            
+            // Извлекаем статистики с улучшенными паттернами
+            extractStats(statPatterns, stats, lines, text)
+            
+            // 9. Дополнительный парсинг для VTM 5e - извлекаем все текстовые поля
+            if (parsedData["system"] == "vtm_5e") {
+                extractVtmSpecificFields(stats, lines, text)
             }
             
-            // 7. Извлекаем статистики (HP, AC, Humanity, Willpower и т.д.)
-            val statPatterns = mapOf(
-                "HP" to listOf("HP", "Hit Points", "Здоровье", "ХП", "Health"),
-                "AC" to listOf("AC", "Armor Class", "Класс защиты", "КЗ", "Armor"),
-                "Humanity" to listOf("Humanity", "Humanity Rating", "Человечность"),
-                "Willpower" to listOf("Willpower", "Willpower Rating", "Сила воли"),
-                "Speed" to listOf("Speed", "Скорость", "Movement"),
-                "Level" to listOf("Level", "Уровень", "Lvl"),
-                "Class" to listOf("Class", "Класс"),
-                "Race" to listOf("Race", "Раса"),
-                "Background" to listOf("Background", "Предыстория"),
-                "Clan" to listOf("Clan", "Клан"),
-                "Concept" to listOf("Concept", "Концепция"),
-                "Predator" to listOf("Predator", "Стиль охоты", "Predator Type")
-            )
+            // 10. Дополнительный парсинг для D&D 5e
+            if (parsedData["system"] == "dnd_5e") {
+                extractDndSpecificFields(stats, lines, text)
+            }
             
-            statPatterns.forEach { (statKey, patterns) ->
-                patterns.forEach { pattern ->
-                    val regex = Regex("$pattern\\s*[:=]?\\s*([^\\n]+)", RegexOption.IGNORE_CASE)
-                    lines.forEach { line ->
-                        regex.find(line)?.let { match ->
-                            val value = match.groupValues[1].trim()
-                            val numericValue = value.toIntOrNull()
-                            if (numericValue != null) {
-                                stats[statKey] = numericValue
-                            } else {
-                                stats[statKey] = value
-                            }
-                        }
-                    }
-                }
+            // 11. Дополнительный парсинг для WHRP
+            if (parsedData["system"] == "whrp") {
+                extractWhrpSpecificFields(stats, lines, text)
+            }
+            
+            // 12. Дополнительный парсинг для WH: Dark Heresy
+            if (parsedData["system"] == "wh_darkheresy") {
+                extractDarkHeresySpecificFields(stats, lines, text)
             }
             
             // 8. Извлекаем разделы (заголовки и их содержимое)
@@ -661,9 +1314,10 @@ class CharacterSheetsFragment : Fragment() {
                 }
             }
             
-            // 9. Сохраняем все извлеченные данные
+            // 11. Сохраняем все извлеченные данные
             parsedData["attributes"] = attributes
             parsedData["skills"] = skills
+            parsedData["disciplines"] = disciplines // VTM дисциплины
             parsedData["stats"] = stats
             parsedData["allKeyValuePairs"] = allKeyValuePairs
             parsedData["numericValues"] = numericValues
@@ -671,12 +1325,13 @@ class CharacterSheetsFragment : Fragment() {
             parsedData["rawText"] = text
             parsedData["lines"] = lines.toList() // Сохраняем все строки
             
-            // 10. Логирование для отладки
+            // 12. Логирование для отладки
             android.util.Log.d("CharacterSheetsFragment", "=== FULL PDF PARSING RESULTS ===")
             android.util.Log.d("CharacterSheetsFragment", "Name: ${parsedData["name"]}")
             android.util.Log.d("CharacterSheetsFragment", "System: ${parsedData["system"]}")
             android.util.Log.d("CharacterSheetsFragment", "Attributes count: ${attributes.size}")
             android.util.Log.d("CharacterSheetsFragment", "Skills count: ${skills.size}")
+            android.util.Log.d("CharacterSheetsFragment", "Disciplines count: ${disciplines.size}")
             android.util.Log.d("CharacterSheetsFragment", "Stats count: ${stats.size}")
             android.util.Log.d("CharacterSheetsFragment", "Key-Value pairs count: ${allKeyValuePairs.size}")
             android.util.Log.d("CharacterSheetsFragment", "Numeric values count: ${numericValues.size}")
@@ -684,6 +1339,7 @@ class CharacterSheetsFragment : Fragment() {
             android.util.Log.d("CharacterSheetsFragment", "Total parsed data keys: ${parsedData.keys}")
             android.util.Log.d("CharacterSheetsFragment", "All attributes: $attributes")
             android.util.Log.d("CharacterSheetsFragment", "All skills: $skills")
+            android.util.Log.d("CharacterSheetsFragment", "All disciplines: $disciplines")
             android.util.Log.d("CharacterSheetsFragment", "All stats: $stats")
             android.util.Log.d("CharacterSheetsFragment", "Sections: ${sections.keys}")
             

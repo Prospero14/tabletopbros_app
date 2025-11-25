@@ -91,6 +91,8 @@ class CharactersFragment : Fragment() {
                         "vtm_5e" -> "VTM"
                         "dnd_5e" -> "D&D"
                         "viedzmin_2e" -> "Viedzmin"
+                        "whrp" -> "WHRP"
+                        "wh_darkheresy" -> "Dark Heresy"
                         else -> teamSystem
                     }
                     binding.tabLayout.addTab(binding.tabLayout.newTab().setText(systemName))
@@ -322,10 +324,14 @@ class CharactersFragment : Fragment() {
                     "vtm_5e" -> arrayOf(getString(R.string.vampire_masquerade))
                     "dnd_5e" -> arrayOf(getString(R.string.dungeons_dragons))
                     "viedzmin_2e" -> arrayOf(getString(R.string.viedzmin_2e))
+                    "whrp" -> arrayOf("Warhammer Fantasy Roleplay")
+                    "wh_darkheresy" -> arrayOf("Warhammer 40k: Dark Heresy")
                     else -> arrayOf(
                         getString(R.string.vampire_masquerade),
                         getString(R.string.dungeons_dragons),
-                        getString(R.string.viedzmin_2e)
+                        getString(R.string.viedzmin_2e),
+                        "Warhammer Fantasy Roleplay",
+                        "Warhammer 40k: Dark Heresy"
                     )
                 }
             } else {
@@ -333,7 +339,9 @@ class CharactersFragment : Fragment() {
                 arrayOf(
                     getString(R.string.vampire_masquerade),
                     getString(R.string.dungeons_dragons),
-                    getString(R.string.viedzmin_2e)
+                    getString(R.string.viedzmin_2e),
+                    "Warhammer Fantasy Roleplay",
+                    "Warhammer 40k: Dark Heresy"
                 )
             }
             
@@ -344,10 +352,12 @@ class CharactersFragment : Fragment() {
                     "vtm_5e" -> arrayOf("vtm_5e")
                     "dnd_5e" -> arrayOf("dnd_5e")
                     "viedzmin_2e" -> arrayOf("viedzmin_2e")
-                    else -> arrayOf("vtm_5e", "dnd_5e", "viedzmin_2e")
+                    "whrp" -> arrayOf("whrp")
+                    "wh_darkheresy" -> arrayOf("wh_darkheresy")
+                    else -> arrayOf("vtm_5e", "dnd_5e", "viedzmin_2e", "whrp", "wh_darkheresy")
                 }
             } else {
-                arrayOf("vtm_5e", "dnd_5e", "viedzmin_2e")
+                arrayOf("vtm_5e", "dnd_5e", "viedzmin_2e", "whrp", "wh_darkheresy")
             }
 
             if (systems.isEmpty() || systemCodes.isEmpty() || systems.size != systemCodes.size) {

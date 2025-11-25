@@ -56,6 +56,8 @@ class CharactersAdapter(
                 "vtm_5e" -> context.getString(com.fts.ttbros.R.string.vampire_masquerade)
                 "dnd_5e" -> context.getString(com.fts.ttbros.R.string.dungeons_dragons)
                 "viedzmin_2e" -> context.getString(com.fts.ttbros.R.string.viedzmin_2e)
+                "whrp" -> "Warhammer Fantasy Roleplay"
+                "wh_darkheresy" -> "Warhammer 40k: Dark Heresy"
                 else -> character.system
             }
             binding.clanTextView.text = character.clan.ifBlank { "No Clan/Class" }

@@ -82,9 +82,11 @@ class GroupActivity : AppCompatActivity() {
         val options = arrayOf(
             getString(R.string.vampire_masquerade),
             getString(R.string.dungeons_dragons),
-            getString(R.string.viedzmin_2e)
+            getString(R.string.viedzmin_2e),
+            "Warhammer Fantasy Roleplay",
+            "Warhammer 40k: Dark Heresy"
         )
-        val values = arrayOf("vtm_5e", "dnd_5e", "viedzmin_2e")
+        val values = arrayOf("vtm_5e", "dnd_5e", "viedzmin_2e", "whrp", "wh_darkheresy")
         var selectedIndex = 0
         MaterialAlertDialogBuilder(this)
             .setTitle(R.string.select_game_system)
