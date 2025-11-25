@@ -14,7 +14,7 @@ class CharacterSheetRepository {
     private val yandexDisk = YandexDiskRepository()
 
     suspend fun saveSheet(sheet: CharacterSheet): String {
-        val sheetId = if (sheet.id.isBlank()) UUID.randomUUID().toString() else sheet.id
+        val sheetId = sheet.id.ifBlank { UUID.randomUUID().toString() }
         val now = Timestamp.now()
         val sheetWithId = if (sheet.id.isBlank()) {
             // New sheet
