@@ -185,7 +185,7 @@ class DocumentsFragment : Fragment() {
                     return@launch
                 }
                 
-                this.currentTeamId = teamIdValue
+                currentTeamId = teamIdValue
                 currentUserId = profile.uid
                 currentUserName = profile.displayName
                 
