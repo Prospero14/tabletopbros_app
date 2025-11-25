@@ -11,6 +11,7 @@ import java.util.UUID
 class CharacterSheetRepository {
     private val db: FirebaseFirestore = Firebase.firestore
     private val collection = "character_sheets"
+    private val yandexDisk = YandexDiskRepository()
 
     suspend fun saveSheet(sheet: CharacterSheet): String {
         val sheetId = if (sheet.id.isBlank()) UUID.randomUUID().toString() else sheet.id
@@ -70,8 +71,6 @@ class CharacterSheetRepository {
             .await()
     }
 
-    private val yandexDisk = YandexDiskRepository()
-
     suspend fun uploadSheet(
         userId: String,
         userName: String,
@@ -120,4 +119,3 @@ class CharacterSheetRepository {
             .await()
     }
 }
-
