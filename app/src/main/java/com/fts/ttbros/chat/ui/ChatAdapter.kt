@@ -61,131 +61,140 @@ class ChatAdapter(
         // BETTER: Use the messageTextView as the button text.
         
         fun bind(message: ChatMessage) {
-            val isMine = message.senderId == currentUserId
-            val context = itemView.context
-            
-            // Layout gravity
-            messageContainer.gravity = if (isMine) Gravity.END else Gravity.START
-            
-            // Sender Name Visibility
-            // User requested sender name before time.
-            senderNameTextView.isVisible = true // Always show name
-            senderNameTextView.text = if (isMine) "Me" else message.senderName.ifBlank { "Unknown" }
-            // Use a visible color
-            senderNameTextView.setTextColor(ContextCompat.getColor(context, R.color.gray_600))
-
-            // Timestamp
-            val formattedTime = message.timestamp?.toDate()?.let {
-                DateFormat.getTimeInstance(DateFormat.SHORT).format(it)
-            } ?: ""
-            timestampTextView.text = formattedTime
-            timestampTextView.isVisible = true
-            timestampTextView.setTextColor(ContextCompat.getColor(context, R.color.gray_600))
-
-            val bubbleColor = if (isMine) {
-                ContextCompat.getColor(context, R.color.chat_bubble_own)
-            } else {
-                ContextCompat.getColor(context, R.color.chat_bubble_other)
-            }
-            messageCard.setCardBackgroundColor(bubbleColor)
-            messageCard.radius = context.resources.getDimension(R.dimen.chat_bubble_radius)
-            
-            // Debug logging
-            if (message.type == "poll") {
-                android.util.Log.d("ChatAdapter", "Binding poll message: ${message.text}, id: ${message.id}")
-            }
-            
-            // Handle image
-            if (message.hasImage && !message.imageUrl.isNullOrBlank()) {
-                messageImageView.isVisible = true
-                Glide.with(context)
-                .load(message.imageUrl)
-                .into(messageImageView)
-            } else {
-                messageImageView.isVisible = false
-            }
-            
-            // Handle character share
-            if (message.type == "character" && !message.attachmentId.isNullOrBlank()) {
-                val isImported = message.importedBy.contains(currentUserId)
-                if (isImported) {
-                    messageTextView.text = "📄 ${message.text}\n(Imported)"
-                    messageTextView.setOnClickListener {
-                        android.widget.Toast.makeText(context, "You have already imported this character", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                    messageTextView.setTextColor(ContextCompat.getColor(context, R.color.gray_600))
-                    messageTextView.setTypeface(null, android.graphics.Typeface.NORMAL)
-                } else {
-                    messageTextView.text = "📄 ${message.text}\n(Tap to Import)"
-                    messageTextView.setOnClickListener {
-                        onImportCharacter(message.senderId, message.attachmentId, message.id)
-                    }
-                    messageTextView.setTextColor(ContextCompat.getColor(context, R.color.teal_700))
-                    messageTextView.setTypeface(null, android.graphics.Typeface.BOLD)
-                }
-            } else if (message.type == "poll") {
-                // Handle poll - visually distinguish from regular messages
-                val actionText = if (!message.attachmentId.isNullOrBlank()) "\n📊 Tap to Vote" else "\n(Error: No ID)"
-                messageTextView.text = "${message.text}$actionText"
-                messageTextView.setOnClickListener {
-                    if (!message.attachmentId.isNullOrBlank()) {
-                        onPollClick?.invoke(message.attachmentId)
-                    }
-                }
-                // Highlight poll messages with orange accent (like footer)
-                val pollTextColor = ContextCompat.getColor(context, R.color.secondary)
-                messageTextView.setTextColor(pollTextColor)
-                messageTextView.setTypeface(null, android.graphics.Typeface.BOLD)
-                // Add bright orange border and semi-transparent orange background for polls
-                messageCard.strokeWidth = 3
-                messageCard.strokeColor = ContextCompat.getColor(context, R.color.secondary)
-                // Semi-transparent orange background
-                messageCard.setCardBackgroundColor(ContextCompat.getColor(context, R.color.poll_background))
-            } else if (message.type == "material" && !message.attachmentId.isNullOrBlank()) {
-                // Handle material message - show as clickable
-                messageTextView.text = message.text
-                messageTextView.setOnClickListener {
-                    onMaterialClick?.invoke(message)
-                }
-                messageTextView.setTextColor(ContextCompat.getColor(context, R.color.secondary))
-                messageTextView.typeface = android.graphics.Typeface.DEFAULT_BOLD
+            try {
+                val isMine = message.senderId == currentUserId
+                val context = itemView.context
                 
-                // Highlight material messages
-                messageCard.strokeWidth = 2
-                messageCard.strokeColor = ContextCompat.getColor(context, R.color.secondary)
-            } else {
-                // Handle text
-                messageTextView.text = message.text
-                messageTextView.setOnClickListener(null) // Reset listener
-                val defaultTextColor = ContextCompat.getColor(context, if (isMine) R.color.white else R.color.black)
-                messageTextView.setTextColor(defaultTextColor)
-                messageTextView.typeface = android.graphics.Typeface.DEFAULT
-                // Reset card stroke for non-poll messages
-                messageCard.strokeWidth = 0
-            }
-            
-            messageTextView.isVisible = message.text.isNotBlank()
-            
-            // Show pinned indicator
-            pinnedIcon.isVisible = message.isPinned
+                // Layout gravity
+                messageContainer.gravity = if (isMine) Gravity.END else Gravity.START
+                
+                // Sender Name Visibility
+                senderNameTextView.isVisible = true // Always show name
+                senderNameTextView.text = if (isMine) "Me" else message.senderName.ifBlank { "Unknown" }
+                senderNameTextView.setTextColor(ContextCompat.getColor(context, R.color.gray_600))
 
-            // Add long click listener for pin/unpin and material addition
-            val longClickListener = View.OnLongClickListener { view ->
-                // Если сообщение содержит материал, показываем опцию добавления
-                if (message.type == "material" && message.attachmentId != null) {
-                    onAddMaterial?.invoke(message)
+                // Timestamp
+                val formattedTime = message.timestamp?.toDate()?.let {
+                    DateFormat.getTimeInstance(DateFormat.SHORT).format(it)
+                } ?: ""
+                timestampTextView.text = formattedTime
+                timestampTextView.isVisible = true
+                timestampTextView.setTextColor(ContextCompat.getColor(context, R.color.gray_600))
+
+                val bubbleColor = if (isMine) {
+                    ContextCompat.getColor(context, R.color.chat_bubble_own)
                 } else {
-                    // Иначе обрабатываем как обычно (pin/unpin)
-                    if (message.isPinned) {
-                        onUnpinMessage?.invoke(message.id)
-                    } else {
-                        onPinMessage?.invoke(message.id)
-                    }
+                    ContextCompat.getColor(context, R.color.chat_bubble_other)
                 }
-                true
+                messageCard.setCardBackgroundColor(bubbleColor)
+                messageCard.radius = context.resources.getDimension(R.dimen.chat_bubble_radius)
+                
+                // Debug logging
+                if (message.type == "poll") {
+                    android.util.Log.d("ChatAdapter", "Binding poll message: ${message.text}, id: ${message.id}")
+                }
+                
+                // Handle image
+                if (message.hasImage && !message.imageUrl.isNullOrBlank()) {
+                    messageImageView.isVisible = true
+                    Glide.with(context)
+                    .load(message.imageUrl)
+                    .into(messageImageView)
+                } else {
+                    messageImageView.isVisible = false
+                }
+                
+                // Handle character share
+                if (message.type == "character" && !message.attachmentId.isNullOrBlank()) {
+                    val isImported = message.importedBy.contains(currentUserId)
+                    if (isImported) {
+                        messageTextView.text = "📄 ${message.text}\n(Imported)"
+                        messageTextView.setOnClickListener {
+                            android.widget.Toast.makeText(context, "You have already imported this character", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                        messageTextView.setTextColor(ContextCompat.getColor(context, R.color.gray_600))
+                        messageTextView.setTypeface(null, android.graphics.Typeface.NORMAL)
+                    } else {
+                        messageTextView.text = "📄 ${message.text}\n(Tap to Import)"
+                        messageTextView.setOnClickListener {
+                            onImportCharacter(message.senderId, message.attachmentId, message.id)
+                        }
+                        messageTextView.setTextColor(ContextCompat.getColor(context, R.color.teal_700))
+                        messageTextView.setTypeface(null, android.graphics.Typeface.BOLD)
+                    }
+                } else if (message.type == "poll") {
+                    // Handle poll - visually distinguish from regular messages
+                    val actionText = if (!message.attachmentId.isNullOrBlank()) "\n📊 Tap to Vote" else "\n(Error: No ID)"
+                    messageTextView.text = "${message.text}$actionText"
+                    messageTextView.setOnClickListener {
+                        if (!message.attachmentId.isNullOrBlank()) {
+                            onPollClick?.invoke(message.attachmentId)
+                        }
+                    }
+                    // Highlight poll messages with orange accent (like footer)
+                    val pollTextColor = ContextCompat.getColor(context, R.color.secondary)
+                    messageTextView.setTextColor(pollTextColor)
+                    messageTextView.setTypeface(null, android.graphics.Typeface.BOLD)
+                    // Add bright orange border and semi-transparent orange background for polls
+                    messageCard.strokeWidth = 3
+                    messageCard.strokeColor = ContextCompat.getColor(context, R.color.secondary)
+                    // Semi-transparent orange background
+                    messageCard.setCardBackgroundColor(ContextCompat.getColor(context, R.color.poll_background))
+                } else if (message.type == "material" && !message.attachmentId.isNullOrBlank()) {
+                    // Handle material message - show as clickable
+                    messageTextView.text = message.text
+                    messageTextView.setOnClickListener {
+                        onMaterialClick?.invoke(message)
+                    }
+                    messageTextView.setTextColor(ContextCompat.getColor(context, R.color.secondary))
+                    messageTextView.typeface = android.graphics.Typeface.DEFAULT_BOLD
+                    
+                    // Highlight material messages
+                    messageCard.strokeWidth = 2
+                    messageCard.strokeColor = ContextCompat.getColor(context, R.color.secondary)
+                } else {
+                    // Handle text
+                    messageTextView.text = message.text
+                    messageTextView.setOnClickListener(null) // Reset listener
+                    val defaultTextColor = ContextCompat.getColor(context, if (isMine) R.color.white else R.color.black)
+                    messageTextView.setTextColor(defaultTextColor)
+                    messageTextView.typeface = android.graphics.Typeface.DEFAULT
+                    // Reset card stroke for non-poll messages
+                    messageCard.strokeWidth = 0
+                }
+                
+                messageTextView.isVisible = message.text.isNotBlank()
+                
+                // Show pinned indicator
+                pinnedIcon.isVisible = message.isPinned
+
+                // Add long click listener for pin/unpin and material addition
+                val longClickListener = View.OnLongClickListener { view ->
+                    try {
+                        // Если сообщение содержит материал, показываем опцию добавления
+                        if (message.type == "material" && message.attachmentId != null) {
+                            onAddMaterial?.invoke(message)
+                        } else {
+                            // Иначе обрабатываем как обычно (pin/unpin)
+                            if (message.isPinned) {
+                                onUnpinMessage?.invoke(message.id)
+                            } else {
+                                onPinMessage?.invoke(message.id)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("ChatAdapter", "Error in long click listener: ${e.message}", e)
+                    }
+                    true
+                }
+                messageCard.setOnLongClickListener(longClickListener)
+                messageContainer.setOnLongClickListener(longClickListener)
+            } catch (e: Exception) {
+                android.util.Log.e("ChatAdapter", "Error binding message: ${e.message}", e)
+                // Fallback: hide the item or show error state to prevent crash
+                messageTextView.text = "Error displaying message"
+                messageTextView.isVisible = true
             }
-            messageCard.setOnLongClickListener(longClickListener)
-            messageContainer.setOnLongClickListener(longClickListener)
         }
     }
 

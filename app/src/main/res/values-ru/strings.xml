@@ -232,6 +232,7 @@
     <string name="error_opening_material">Ошибка открытия материала: %s</string>
     <string name="file_unavailable">Файл недоступен</string>
     <string name="error_opening_file">Ошибка открытия файла: %s</string>
+    <string name="menu_open">Открыть меню</string>
 
     <string name="error_deleting_sheet">Ошибка удаления листа: %s</string>
     <string name="error_opening_menu">Ошибка открытия меню: %s</string>

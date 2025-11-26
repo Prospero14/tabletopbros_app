@@ -24,7 +24,7 @@
     <string name="dialog_team_code_message">Share code with members: %1$s</string>
     <string name="action_copy">Copy</string>
     <string name="code_copied">Code copied</string>
-    <string name="menu_open">Открыть меню</string>
+    <string name="menu_open">Open menu</string>
     <string name="menu_team_chat">Team Chat</string>
     <string name="menu_announcements">Announcements</string>
     <string name="menu_master_player">Player ↔ Master</string>

@@ -87,68 +87,72 @@ class ChatFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        
-        emptyView = view.findViewById(R.id.emptyView)
-        messagesRecyclerView = view.findViewById(R.id.messagesRecyclerView)
-        messageInputContainer = view.findViewById(R.id.messageInputContainer)
-        messageEditText = view.findViewById(R.id.messageEditText)
-        sendButton = view.findViewById(R.id.sendButton)
-        menuButton = view.findViewById(R.id.menuButton)
-        pinnedMessageContainer = view.findViewById(R.id.pinnedMessageContainer)
-        pinnedMessageText = view.findViewById(R.id.pinnedMessageText)
-        
-        adapter = ChatAdapter(
-            currentUserId = auth.currentUser?.uid.orEmpty(),
-            onImportCharacter = { senderId, characterId, messageId ->
-                importCharacter(senderId, characterId, messageId)
-            },
-            onPinMessage = { messageId ->
-                handlePinMessage(messageId)
-            },
-            onUnpinMessage = { messageId ->
-                handleUnpinMessage(messageId)
-            },
-            onPollClick = { pollId ->
-                showPollDetailsDialog(pollId)
-            },
-            onAddMaterial = { message ->
-                handleAddMaterial(message)
-            },
-            onMaterialClick = { message ->
-                handleMaterialClick(message)
+        try {
+            emptyView = view.findViewById(R.id.emptyView)
+            messagesRecyclerView = view.findViewById(R.id.messagesRecyclerView)
+            messageInputContainer = view.findViewById(R.id.messageInputContainer)
+            messageEditText = view.findViewById(R.id.messageEditText)
+            sendButton = view.findViewById(R.id.sendButton)
+            menuButton = view.findViewById(R.id.menuButton)
+            pinnedMessageContainer = view.findViewById(R.id.pinnedMessageContainer)
+            pinnedMessageText = view.findViewById(R.id.pinnedMessageText)
+            
+            adapter = ChatAdapter(
+                currentUserId = auth.currentUser?.uid.orEmpty(),
+                onImportCharacter = { senderId, characterId, messageId ->
+                    importCharacter(senderId, characterId, messageId)
+                },
+                onPinMessage = { messageId ->
+                    handlePinMessage(messageId)
+                },
+                onUnpinMessage = { messageId ->
+                    handleUnpinMessage(messageId)
+                },
+                onPollClick = { pollId ->
+                    showPollDetailsDialog(pollId)
+                },
+                onAddMaterial = { message ->
+                    handleAddMaterial(message)
+                },
+                onMaterialClick = { message ->
+                    handleMaterialClick(message)
+                }
+            )
+            val context = context ?: return
+            val layoutManager = LinearLayoutManager(context).apply {
+                stackFromEnd = true
             }
-        )
-        val context = context ?: return
-        val layoutManager = LinearLayoutManager(context).apply {
-            stackFromEnd = true
-        }
-        messagesRecyclerView.layoutManager = layoutManager
-        messagesRecyclerView.adapter = adapter
+            messagesRecyclerView.layoutManager = layoutManager
+            messagesRecyclerView.adapter = adapter
 
-        // Setup polls RecyclerView
-        pollsRecyclerView = view.findViewById(R.id.pollsRecyclerView)
-        pollsAdapter = com.fts.ttbros.chat.ui.PollAdapter(
-            currentUserId = auth.currentUser?.uid.orEmpty(),
-            currentUserName = auth.currentUser?.displayName ?: auth.currentUser?.email ?: "",
-            onVote = { pollId, optionId ->
-                handleVote(pollId, optionId)
-            },
-            onPinPoll = { pollId ->
-                handlePinPoll(pollId)
-            },
-            onUnpinPoll = { pollId ->
-                handleUnpinPoll(pollId)
+            // Setup polls RecyclerView
+            pollsRecyclerView = view.findViewById(R.id.pollsRecyclerView)
+            pollsAdapter = com.fts.ttbros.chat.ui.PollAdapter(
+                currentUserId = auth.currentUser?.uid.orEmpty(),
+                currentUserName = auth.currentUser?.displayName ?: auth.currentUser?.email ?: "",
+                onVote = { pollId, optionId ->
+                    handleVote(pollId, optionId)
+                },
+                onPinPoll = { pollId ->
+                    handlePinPoll(pollId)
+                },
+                onUnpinPoll = { pollId ->
+                    handleUnpinPoll(pollId)
+                }
+            )
+            val contextForPolls = context
+            if (contextForPolls != null) {
+                pollsRecyclerView?.layoutManager = LinearLayoutManager(contextForPolls)
             }
-        )
-        val contextForPolls = context
-        if (contextForPolls != null) {
-            pollsRecyclerView?.layoutManager = LinearLayoutManager(contextForPolls)
-        }
-        pollsRecyclerView?.adapter = pollsAdapter
+            pollsRecyclerView?.adapter = pollsAdapter
 
-        sendButton.setOnClickListener { sendMessage() }
-        setupMenuButton()
-        observeProfile()
+            sendButton.setOnClickListener { sendMessage() }
+            setupMenuButton()
+            observeProfile()
+        } catch (e: Exception) {
+            android.util.Log.e("ChatFragment", "Error in onViewCreated: ${e.message}", e)
+            SnackbarHelper.showErrorSnackbar(view, "Error initializing chat: ${e.message}")
+        }
     }
 
     private fun observeProfile() {
