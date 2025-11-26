@@ -22,7 +22,7 @@ import com.fts.ttbros.data.repository.DocumentRepository
 import com.fts.ttbros.data.repository.UserRepository
 import com.fts.ttbros.databinding.FragmentDocumentsBinding
 import com.fts.ttbros.databinding.ItemDocumentBinding
-import com.fts.ttbros.utils.NotificationHelper
+import com.fts.ttbros.utils.SnackbarHelper
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.Dispatchers
@@ -107,7 +107,7 @@ class DocumentsFragment : Fragment() {
                     } catch (e: Exception) {
                         android.util.Log.e("DocumentsFragment", "Navigation error: ${e.message}", e)
                         if (isAdded && view != null) {
-                            NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_opening_sheet_upload))
+                            SnackbarHelper.showErrorSnackbar(binding.root, getString(R.string.error_opening_sheet_upload))
                         }
                     }
                 }
@@ -260,20 +260,20 @@ class DocumentsFragment : Fragment() {
                         } catch (e: Exception) {
                             android.util.Log.e("DocumentsFragment", "Error processing documents: ${e.message}", e)
                             if (isAdded && view != null) {
-                                NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_processing_documents, e.message ?: ""))
+                                SnackbarHelper.showErrorSnackbar(binding.root, getString(R.string.error_processing_documents, e.message ?: ""))
                             }
                         }
                     }
                 } catch (e: Exception) {
                     android.util.Log.e("DocumentsFragment", "Error loading documents: ${e.message}", e)
                     if (isAdded && view != null) {
-                        NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_loading_documents, e.message ?: ""))
+                        SnackbarHelper.showErrorSnackbar(binding.root, getString(R.string.error_loading_documents, e.message ?: ""))
                     }
                 }
             } catch (e: Exception) {
                 android.util.Log.e("DocumentsFragment", "Error in loadData: ${e.message}", e)
                 if (isAdded && view != null) {
-                    NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_unknown))
+                    SnackbarHelper.showErrorSnackbar(binding.root, getString(R.string.error_unknown))
                 }
             }
         }
@@ -312,7 +312,7 @@ class DocumentsFragment : Fragment() {
             val teamId = currentTeamId
             if (teamId == null) {
                 if (isAdded && view != null) {
-                    NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_team_not_selected))
+                    SnackbarHelper.showErrorSnackbar(binding.root, getString(R.string.error_team_not_selected))
                 }
                 return
             }
@@ -333,7 +333,7 @@ class DocumentsFragment : Fragment() {
                 
                 if (isAdded && view != null) {
                     val message = if (isMaterial) getString(R.string.material_uploaded) else getString(R.string.document_uploaded)
-                    NotificationHelper.showSuccessSnackbar(binding.root, message)
+                    SnackbarHelper.showSuccessSnackbar(binding.root, message)
                 }
                 
                 // Если это материал, предлагаем отправить в чат и переключаемся на вкладку материалов
@@ -360,17 +360,18 @@ class DocumentsFragment : Fragment() {
             } catch (e: Exception) {
                 android.util.Log.e("DocumentsFragment", "Error uploading document: ${e.message}", e)
                 if (isAdded && view != null) {
-                    NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_uploading, e.message ?: ""))
+                    SnackbarHelper.showErrorSnackbar(binding.root, getString(R.string.error_uploading, e.message ?: ""))
                 }
             } finally {
                 if (isAdded && view != null) {
                     binding.progressBar.isVisible = false
                 }
             }
+        }
         } catch (e: Exception) {
             android.util.Log.e("DocumentsFragment", "Error in uploadDocument: ${e.message}", e)
             if (isAdded && view != null) {
-                NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_uploading, e.message ?: ""))
+                SnackbarHelper.showErrorSnackbar(binding.root, getString(R.string.error_uploading, e.message ?: ""))
             }
         }
     }
@@ -388,7 +389,7 @@ class DocumentsFragment : Fragment() {
             .setNegativeButton("Позже") { _, _ ->
                 // Материал уже сохранён в материалах для игроков, просто показываем сообщение
                 if (isAdded && view != null) {
-                    NotificationHelper.showWarningSnackbar(binding.root, getString(R.string.material_saved_info))
+                    SnackbarHelper.showWarningSnackbar(binding.root, getString(R.string.material_saved_info))
                 }
             }
             .show()
@@ -401,7 +402,7 @@ class DocumentsFragment : Fragment() {
                 val teamId = currentTeamId
                 if (teamId == null) {
                     if (isAdded && view != null) {
-                        NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_team_not_selected))
+                        SnackbarHelper.showErrorSnackbar(binding.root, getString(R.string.error_team_not_selected))
                     }
                     return@launch
                 }
@@ -416,12 +417,12 @@ class DocumentsFragment : Fragment() {
                 )
                 chatRepository.sendMessage(teamId, ChatType.TEAM, message)
                 if (isAdded && view != null) {
-                    NotificationHelper.showSuccessSnackbar(binding.root, getString(R.string.material_sent_to_chat))
+                    SnackbarHelper.showSuccessSnackbar(binding.root, getString(R.string.material_sent_to_chat))
                 }
             } catch (e: Exception) {
                 android.util.Log.e("DocumentsFragment", "Error sending material to chat: ${e.message}", e)
                 if (isAdded && view != null) {
-                    NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_sending_material_to_chat, e.message ?: ""))
+                    SnackbarHelper.showErrorSnackbar(binding.root, getString(R.string.error_sending_material_to_chat, e.message ?: ""))
                 }
             }
         }
@@ -461,12 +462,12 @@ class DocumentsFragment : Fragment() {
             try {
                 documentRepository.deleteDocument(teamId, doc.id, doc.downloadUrl)
                 if (isAdded && view != null) {
-                    NotificationHelper.showSuccessSnackbar(binding.root, getString(R.string.document_deleted))
+                    SnackbarHelper.showSuccessSnackbar(binding.root, getString(R.string.document_deleted))
                 }
             } catch (e: Exception) {
                 android.util.Log.e("DocumentsFragment", "Error deleting document: ${e.message}", e)
                 if (isAdded && view != null) {
-                    NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.delete_failed, e.message ?: ""))
+                    SnackbarHelper.showErrorSnackbar(binding.root, getString(R.string.delete_failed, e.message ?: ""))
                 }
             }
         }
@@ -611,7 +612,7 @@ class DocumentsFragment : Fragment() {
                     val pdfUrl = sheet.pdfUrl
                     if (pdfUrl.isBlank()) {
                         if (isAdded && view != null) {
-                            NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.pdf_not_found))
+                            SnackbarHelper.showErrorSnackbar(binding.root, getString(R.string.pdf_not_found))
                         }
                         binding.progressBar.isVisible = false
                         return@launch
@@ -646,14 +647,14 @@ class DocumentsFragment : Fragment() {
                     android.util.Log.e("DocumentsFragment", "Error downloading sheet PDF: ${e.message}", e)
                     if (isAdded && view != null) {
                         binding.progressBar.isVisible = false
-                        NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_loading_pdf, e.message ?: ""))
+                        SnackbarHelper.showErrorSnackbar(binding.root, getString(R.string.error_loading_pdf, e.message ?: ""))
                     }
                 }
             }
         } catch (e: Exception) {
             android.util.Log.e("DocumentsFragment", "Error opening sheet: ${e.message}", e)
             if (isAdded && view != null) {
-                NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_opening_sheet, e.message ?: ""))
+                SnackbarHelper.showErrorSnackbar(binding.root, getString(R.string.error_opening_sheet, e.message ?: ""))
             }
         }
     }
@@ -677,14 +678,14 @@ class DocumentsFragment : Fragment() {
             try {
                 sheetRepository.deleteSheet(sheet.id)
                 if (isAdded && view != null) {
-                    NotificationHelper.showSuccessSnackbar(binding.root, getString(R.string.sheet_deleted))
+                    SnackbarHelper.showSuccessSnackbar(binding.root, getString(R.string.sheet_deleted))
                     loadData() // Перезагружаем данные
                 }
             } catch (e: Exception) {
                 android.util.Log.e("DocumentsFragment", "Error deleting sheet: ${e.message}", e)
                 if (isAdded && view != null) {
-                    NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_deleting_sheet, e.message ?: ""))
-                    NotificationHelper.showErrorSnackbar(binding.root, getString(R.string.error_deleting_sheet, e.message ?: ""))
+                    SnackbarHelper.showErrorSnackbar(binding.root, getString(R.string.error_deleting_sheet, e.message ?: ""))
+                    SnackbarHelper.showErrorSnackbar(binding.root, getString(R.string.error_deleting_sheet, e.message ?: ""))
                 }
             }
         }

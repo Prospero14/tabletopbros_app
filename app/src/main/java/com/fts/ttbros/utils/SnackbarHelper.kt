@@ -7,7 +7,7 @@ import com.google.android.material.snackbar.Snackbar
 import android.widget.Toast
 import android.content.Context
 
-object NotificationHelper {
+object SnackbarHelper {
     
     // Короткая длительность для информационных сообщений (1.5 секунды)
     private const val SHORT_DURATION = 1500
@@ -44,7 +44,7 @@ object NotificationHelper {
                 snackbarView.startAnimation(fadeOut)
             }, (SHORT_DURATION - 300).toLong())
         } catch (e: Exception) {
-            android.util.Log.e("NotificationHelper", "Error showing snackbar: ${e.message}", e)
+            android.util.Log.e("SnackbarHelper", "Error showing snackbar: ${e.message}", e)
         }
     }
     
@@ -74,16 +74,16 @@ object NotificationHelper {
                 snackbarView.startAnimation(fadeOut)
             }, (MEDIUM_DURATION - 300).toLong())
         } catch (e: Exception) {
-            android.util.Log.e("NotificationHelper", "Error showing snackbar: ${e.message}", e)
+            android.util.Log.e("SnackbarHelper", "Error showing snackbar: ${e.message}", e)
         }
     }
     
     /**
-     * Показывает Snackbar с ошибкой
+     * Показывает Snackbar с ошибкой и возвращает объект Snackbar для настройки действий
      */
-    fun showErrorSnackbar(view: View, message: String) {
+    fun showErrorSnackbar(view: View, message: String): Snackbar? {
         try {
-            if (view.parent == null) return
+            if (view.parent == null) return null
             
             val snackbar = Snackbar.make(view, message, Snackbar.LENGTH_LONG)
             snackbar.duration = LONG_DURATION
@@ -103,8 +103,11 @@ object NotificationHelper {
                 })
                 snackbarView.startAnimation(fadeOut)
             }, (LONG_DURATION - 300).toLong())
+            
+            return snackbar
         } catch (e: Exception) {
-            android.util.Log.e("NotificationHelper", "Error showing snackbar: ${e.message}", e)
+            android.util.Log.e("SnackbarHelper", "Error showing snackbar: ${e.message}", e)
+            return null
         }
     }
     
@@ -116,8 +119,7 @@ object NotificationHelper {
             if (context == null) return
             Toast.makeText(context, message, duration).show()
         } catch (e: Exception) {
-            android.util.Log.e("NotificationHelper", "Error showing toast: ${e.message}", e)
+            android.util.Log.e("SnackbarHelper", "Error showing toast: ${e.message}", e)
         }
     }
 }
-

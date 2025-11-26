@@ -222,17 +222,6 @@
     <string name="pdf_not_found">PDF не найден</string>
     <string name="error_loading_pdf">Ошибка загрузки PDF: %s</string>
     <string name="error_opening_sheet">Ошибка открытия листа: %s</string>
-    <string name="sheet_deleted">Лист удалён</string>
-    <string name="error_deleting_sheet">Ошибка удаления листа: %s</string>
-    <string name="error_opening_menu">Ошибка открытия меню: %s</string>
-    <string name="error_creating_poll">Ошибка создания опроса: %s</string>
-    <string name="error_loading_poll">Ошибка загрузки опроса: %s</string>
-    <string name="poll_not_found">Опрос не найден</string>
-    <string name="error_voting">Ошибка голосования: %s</string>
-    <string name="error_pinning_message">Ошибка закрепления сообщения: %s</string>
-    <string name="error_unpinning_message">Ошибка открепления сообщения: %s</string>
-    <string name="material_added_to_master">Материал добавлен в \'Материалы от мастера\'</string>
-    <string name="document_not_found">Документ не найден</string>
     <string name="error_pinning_poll">Ошибка закрепления опроса: %s</string>
     <string name="error_unpinning_poll">Ошибка открепления опроса: %s</string>
     <string name="profile_not_loaded">Профиль пользователя не загружен</string>
@@ -244,4 +233,16 @@
     <string name="file_unavailable">Файл недоступен</string>
     <string name="error_opening_file">Ошибка открытия файла: %s</string>
 
+    <string name="error_deleting_sheet">Ошибка удаления листа: %s</string>
+    <string name="error_opening_menu">Ошибка открытия меню: %s</string>
+    <string name="error_creating_poll">Ошибка создания опроса: %s</string>
+    <string name="error_loading_poll">Ошибка загрузки опроса: %s</string>
+    <string name="poll_not_found">Опрос не найден</string>
+    <string name="error_voting">Ошибка голосования: %s</string>
+    <string name="error_pinning_message">Ошибка закрепления сообщения: %s</string>
+    <string name="error_unpinning_message">Ошибка открепления сообщения: %s</string>
+    <string name="material_added_to_master">Материал добавлен в \'Материалы от мастера\'</string>
+    <string name="document_not_found">Документ не найден</string>
+    <string name="error_team_not_selected">Команда не выбрана</string>
+    <string name="material_saved_info">Материал сохранен в Материалы для игроков</string>
 </resources>

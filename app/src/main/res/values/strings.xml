@@ -424,17 +424,6 @@
     <string name="pdf_not_found">PDF not found</string>
     <string name="error_loading_pdf">Error loading PDF: %s</string>
     <string name="error_opening_sheet">Error opening sheet: %s</string>
-    <string name="sheet_deleted">Sheet deleted</string>
-    <string name="error_deleting_sheet">Error deleting sheet: %s</string>
-    <string name="error_opening_menu">Error opening menu: %s</string>
-    <string name="error_creating_poll">Error creating poll: %s</string>
-    <string name="error_loading_poll">Error loading poll: %s</string>
-    <string name="poll_not_found">Poll not found</string>
-    <string name="error_voting">Error voting: %s</string>
-    <string name="error_pinning_message">Error pinning message: %s</string>
-    <string name="error_unpinning_message">Error unpinning message: %s</string>
-    <string name="material_added_to_master">Material added to \'Materials from Master\'</string>
-    <string name="document_not_found">Document not found</string>
     <string name="error_pinning_poll">Error pinning poll: %s</string>
     <string name="error_unpinning_poll">Error unpinning poll: %s</string>
     <string name="profile_not_loaded">User profile not loaded</string>
@@ -446,4 +435,16 @@
     <string name="file_unavailable">File unavailable</string>
     <string name="error_opening_file">Error opening file: %s</string>
 
+    <string name="error_deleting_sheet">Error deleting sheet: %s</string>
+    <string name="error_opening_menu">Error opening menu: %s</string>
+    <string name="error_creating_poll">Error creating poll: %s</string>
+    <string name="error_loading_poll">Error loading poll: %s</string>
+    <string name="poll_not_found">Poll not found</string>
+    <string name="error_voting">Error voting: %s</string>
+    <string name="error_pinning_message">Error pinning message: %s</string>
+    <string name="error_unpinning_message">Error unpinning message: %s</string>
+    <string name="material_added_to_master">Material added to \'Materials from Master\'</string>
+    <string name="document_not_found">Document not found</string>
+    <string name="error_team_not_selected">Team not selected</string>
+    <string name="material_saved_info">Material saved to Player Materials</string>
 </resources>
