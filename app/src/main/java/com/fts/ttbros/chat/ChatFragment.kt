@@ -317,7 +317,7 @@ class ChatFragment : Fragment() {
             try {
                 val context = context ?: return@setOnClickListener
                 if (!isAdded) return@setOnClickListener
-                val popupMenu = android.widget.PopupMenu(context, anchorView, android.view.Gravity.TOP)
+                val popupMenu = androidx.appcompat.widget.PopupMenu(context, anchorView, android.view.Gravity.TOP)
                 popupMenu.menuInflater.inflate(com.fts.ttbros.R.menu.chat_actions_menu, popupMenu.menu)
                 
                 popupMenu.setOnMenuItemClickListener { item ->
