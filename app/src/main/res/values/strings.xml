@@ -411,7 +411,6 @@
     <string name="file_uploaded">File uploaded</string>
     <string name="material_uploaded">Material uploaded</string>
     <string name="document_uploaded">Document uploaded</string>
-    <string name="error_uploading">Error uploading: %s</string>
     <string name="error_uploading_to_yandex">Error uploading to Yandex.Disk: %s</string>
     <string name="team_switched">Team switched</string>
     <string name="error_switching_team">Error switching team: %s</string>

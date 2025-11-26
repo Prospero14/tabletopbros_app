@@ -209,7 +209,6 @@
     <string name="file_uploaded">Файл загружен</string>
     <string name="material_uploaded">Материал загружен</string>
     <string name="document_uploaded">Документ загружен</string>
-    <string name="error_uploading">Ошибка загрузки: %s</string>
     <string name="error_uploading_to_yandex">Ошибка загрузки на Яндекс.Диск: %s</string>
     <string name="team_switched">Команда переключена</string>
     <string name="error_switching_team">Ошибка переключения команды: %s</string>
