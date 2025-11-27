@@ -88,14 +88,44 @@ class ChatFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         try {
-            emptyView = view.findViewById(R.id.emptyView)
-            messagesRecyclerView = view.findViewById(R.id.messagesRecyclerView)
-            messageInputContainer = view.findViewById(R.id.messageInputContainer)
-            messageEditText = view.findViewById(R.id.messageEditText)
-            sendButton = view.findViewById(R.id.sendButton)
-            menuButton = view.findViewById(R.id.menuButton)
-            pinnedMessageContainer = view.findViewById(R.id.pinnedMessageContainer)
-            pinnedMessageText = view.findViewById(R.id.pinnedMessageText)
+            val context = context
+            if (context == null) {
+                android.util.Log.e("ChatFragment", "Context is null in onViewCreated")
+                return
+            }
+            
+            emptyView = view.findViewById(R.id.emptyView) ?: run {
+                android.util.Log.e("ChatFragment", "emptyView not found")
+                return
+            }
+            messagesRecyclerView = view.findViewById(R.id.messagesRecyclerView) ?: run {
+                android.util.Log.e("ChatFragment", "messagesRecyclerView not found")
+                return
+            }
+            messageInputContainer = view.findViewById(R.id.messageInputContainer) ?: run {
+                android.util.Log.e("ChatFragment", "messageInputContainer not found")
+                return
+            }
+            messageEditText = view.findViewById(R.id.messageEditText) ?: run {
+                android.util.Log.e("ChatFragment", "messageEditText not found")
+                return
+            }
+            sendButton = view.findViewById(R.id.sendButton) ?: run {
+                android.util.Log.e("ChatFragment", "sendButton not found")
+                return
+            }
+            menuButton = view.findViewById(R.id.menuButton) ?: run {
+                android.util.Log.e("ChatFragment", "menuButton not found")
+                return
+            }
+            pinnedMessageContainer = view.findViewById(R.id.pinnedMessageContainer) ?: run {
+                android.util.Log.e("ChatFragment", "pinnedMessageContainer not found")
+                return
+            }
+            pinnedMessageText = view.findViewById(R.id.pinnedMessageText) ?: run {
+                android.util.Log.e("ChatFragment", "pinnedMessageText not found")
+                return
+            }
             
             adapter = ChatAdapter(
                 currentUserId = auth.currentUser?.uid.orEmpty(),
@@ -118,7 +148,7 @@ class ChatFragment : Fragment() {
                     handleMaterialClick(message)
                 }
             )
-            val context = context ?: return
+            
             val layoutManager = LinearLayoutManager(context).apply {
                 stackFromEnd = true
             }
@@ -140,55 +170,82 @@ class ChatFragment : Fragment() {
                     handleUnpinPoll(pollId)
                 }
             )
-            val contextForPolls = context
-            if (contextForPolls != null) {
-                pollsRecyclerView?.layoutManager = LinearLayoutManager(contextForPolls)
-            }
+            pollsRecyclerView?.layoutManager = LinearLayoutManager(context)
             pollsRecyclerView?.adapter = pollsAdapter
 
             sendButton.setOnClickListener { sendMessage() }
             setupMenuButton()
+            
+            // Запускаем observeProfile только после полной инициализации
             observeProfile()
         } catch (e: Exception) {
             android.util.Log.e("ChatFragment", "Error in onViewCreated: ${e.message}", e)
-            SnackbarHelper.showErrorSnackbar(view, "Error initializing chat: ${e.message}")
+            try {
+                SnackbarHelper.showErrorSnackbar(view, "Error initializing chat: ${e.message}")
+            } catch (e2: Exception) {
+                android.util.Log.e("ChatFragment", "Error showing error snackbar: ${e2.message}", e2)
+            }
         }
     }
 
     private fun observeProfile() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                val profile = userRepository.currentProfile()
-                val currentTeamId = profile?.currentTeamId
-                if (profile == null || currentTeamId.isNullOrBlank()) {
+        if (!isAdded || view == null) {
+            android.util.Log.w("ChatFragment", "Fragment not added, cannot observe profile")
+            return
+        }
+        
+        try {
+            viewLifecycleOwner.lifecycleScope.launch {
+                try {
+                    if (!isAdded || view == null) return@launch
+                    
+                    val profile = userRepository.currentProfile()
+                    val currentTeamId = profile?.currentTeamId
+                    if (profile == null || currentTeamId.isNullOrBlank()) {
+                        if (isAdded && view != null) {
+                            view?.let {
+                                SnackbarHelper.showErrorSnackbar(it, getString(R.string.error_group_not_found))
+                                    ?.setAction(getString(R.string.join_group)) {
+                                        try {
+                                            val contextForIntent = context
+                                            if (contextForIntent != null && isAdded) {
+                                                startActivity(Intent(contextForIntent, GroupActivity::class.java))
+                                            }
+                                        } catch (e: Exception) {
+                                            android.util.Log.e("ChatFragment", "Error starting GroupActivity: ${e.message}", e)
+                                        }
+                                    }
+                            }
+                        }
+                        disableInput()
+                        return@launch
+                    }
+                    userProfile = profile
+                    if (isAdded && view != null) {
+                        updateInputAvailability(profile)
+                        subscribeToMessages(profile)
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("ChatFragment", "Error observing profile: ${e.message}", e)
                     if (isAdded && view != null) {
                         view?.let {
-                            SnackbarHelper.showErrorSnackbar(it, getString(R.string.error_group_not_found))
-                                ?.setAction(getString(R.string.join_group)) {
-                                    try {
-                                        val contextForIntent = context
-                                        if (contextForIntent != null && isAdded) {
-                                            startActivity(Intent(contextForIntent, GroupActivity::class.java))
-                                        }
-                                    } catch (e: Exception) {
-                                        android.util.Log.e("ChatFragment", "Error starting GroupActivity: ${e.message}", e)
-                                    }
-                                }
+                            try {
+                                SnackbarHelper.showErrorSnackbar(it, getString(R.string.error_loading_profile, e.message ?: ""))
+                            } catch (e2: Exception) {
+                                android.util.Log.e("ChatFragment", "Error showing error snackbar: ${e2.message}", e2)
+                            }
                         }
                     }
-                    disableInput()
-                    return@launch
                 }
-                userProfile = profile
-                if (isAdded) {
-                    updateInputAvailability(profile)
-                    subscribeToMessages(profile)
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("ChatFragment", "Error observing profile: ${e.message}", e)
-                if (isAdded && view != null) {
-                    view?.let {
-                        SnackbarHelper.showErrorSnackbar(it, getString(R.string.error_loading_profile, e.message ?: ""))
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ChatFragment", "Error starting observeProfile coroutine: ${e.message}", e)
+            if (isAdded && view != null) {
+                view?.let {
+                    try {
+                        SnackbarHelper.showErrorSnackbar(it, "Error initializing chat: ${e.message}")
+                    } catch (e2: Exception) {
+                        android.util.Log.e("ChatFragment", "Error showing error snackbar: ${e2.message}", e2)
                     }
                 }
             }
@@ -223,17 +280,31 @@ class ChatFragment : Fragment() {
 
 
     private fun subscribeToMessages(profile: UserProfile) {
-        val teamId = profile.currentTeamId ?: return
-        listenerRegistration?.remove()
-        listenerRegistration = chatRepository.observeMessages(
-            teamId,
-            chatType,
-            onEvent = { messages ->
-                // Firestore listener вызывается на фоновом потоке, переключаемся на главный
-                viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+        try {
+            val teamId = profile.currentTeamId
+            if (teamId.isNullOrBlank()) {
+                android.util.Log.w("ChatFragment", "Team ID is null or blank, cannot subscribe to messages")
+                return
+            }
+            
+            if (!isAdded || view == null) {
+                android.util.Log.w("ChatFragment", "Fragment not added, cannot subscribe to messages")
+                return
+            }
+            
+            listenerRegistration?.remove()
+            listenerRegistration = chatRepository.observeMessages(
+                teamId,
+                chatType,
+                onEvent = { messages ->
                     try {
-                        // Проверяем, что фрагмент еще прикреплен и view существует
-                        if (!isAdded || view == null) return@launch
+                        // Firestore listener вызывается на фоновом потоке, переключаемся на главный
+                        if (!isAdded || view == null) return@observeMessages
+                        
+                        viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                            try {
+                                // Проверяем, что фрагмент еще прикреплен и view существует
+                                if (!isAdded || view == null) return@launch
                         
                         // Handle pinned messages
                         val pinnedMessages = messages.filter { it.isPinned }
@@ -312,18 +383,40 @@ class ChatFragment : Fragment() {
                 }
             },
             onError = { error ->
-                viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Main) {
-                    if (isAdded && view != null) {
-                        view?.let { v ->
-                            SnackbarHelper.showErrorSnackbar(v, error.localizedMessage ?: getString(R.string.error_unknown))
+                try {
+                    if (!isAdded || view == null) return@observeMessages
+                    
+                    viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                        try {
+                            if (isAdded && view != null) {
+                                view?.let {
+                                    SnackbarHelper.showErrorSnackbar(it, error.localizedMessage ?: getString(R.string.error_unknown))
+                                }
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("ChatFragment", "Error showing error snackbar: ${e.message}", e)
                         }
                     }
+                } catch (e: Exception) {
+                    android.util.Log.e("ChatFragment", "Error in onError callback: ${e.message}", e)
                 }
             }
         )
         
         // Subscribe to polls
         subscribeToPolls(teamId)
+        } catch (e: Exception) {
+            android.util.Log.e("ChatFragment", "Error subscribing to messages: ${e.message}", e)
+            if (isAdded && view != null) {
+                view?.let {
+                    try {
+                        SnackbarHelper.showErrorSnackbar(it, "Error connecting to chat: ${e.message}")
+                    } catch (e2: Exception) {
+                        android.util.Log.e("ChatFragment", "Error showing error snackbar: ${e2.message}", e2)
+                    }
+                }
+            }
+        }
     }
     
     private fun subscribeToPolls(teamId: String) {
