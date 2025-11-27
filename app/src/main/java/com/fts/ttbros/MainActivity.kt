@@ -248,42 +248,51 @@ class MainActivity : AppCompatActivity() {
     
     private fun setupSwipeGesture() {
         gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
-        private val SWIPE_THRESHOLD = 100
-        private val SWIPE_VELOCITY_THRESHOLD = 100
+            private val SWIPE_THRESHOLD = 100
+            private val SWIPE_VELOCITY_THRESHOLD = 100
 
-        override fun onFling(
-            e1: MotionEvent?,
-            e2: MotionEvent,
-            velocityX: Float,
-            velocityY: Float
-        ): Boolean {
-            if (e1 == null) return false
+            override fun onFling(
+                e1: MotionEvent?,
+                e2: MotionEvent,
+                velocityX: Float,
+                velocityY: Float
+            ): Boolean {
+                if (e1 == null) return false
 
-            // Игнорировать свайп если уже идёт навигация
-            if (isNavigating) return false
+                // Игнорировать свайп если уже идёт навигация
+                if (isNavigating) return false
 
-            val diffX = e2.x - e1.x
-            val diffY = e2.y - e1.y
+                val diffX = e2.x - e1.x
+                val diffY = e2.y - e1.y
 
-            if (Math.abs(diffX) > Math.abs(diffY)) {
-                if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
-                    if (diffX > 0) {
-                        // Свайп вправо - предыдущий пункт меню (листаем назад)
-                        navigateToPreviousMenuItem()
-                    } else {
-                        // Свайп влево - следующий пункт меню (листаем вперед)
-                        navigateToNextMenuItem()
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
+                        if (diffX > 0) {
+                            // Свайп вправо - предыдущий пункт меню (листаем назад)
+                            navigateToPreviousMenuItem()
+                        } else {
+                            // Свайп влево - следующий пункт меню (листаем вперед)
+                            navigateToNextMenuItem()
+                        }
+                        return true
                     }
-                    return true
                 }
+                return false
             }
-            return false
+        })
+        
+        // Применяем жесты к FragmentContainerView
+        val fragmentContainer = binding.root.findViewById<View>(R.id.fragmentContainer)
+        fragmentContainer?.setOnTouchListener { view, event ->
+            if (::gestureDetector.isInitialized) {
+                gestureDetector.onTouchEvent(event)
+            }
+            false // Позволяем событию продолжить обработку
         }
-    })
     }
     
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        // Жесты отключены из-за крашей
+        // Также обрабатываем жесты на уровне активности для надежности
         if (::gestureDetector.isInitialized) {
             gestureDetector.onTouchEvent(ev)
         }

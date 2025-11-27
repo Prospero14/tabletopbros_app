@@ -75,9 +75,14 @@ class ChatAdapter(
                 senderNameTextView.setTextColor(ContextCompat.getColor(context, R.color.gray_600))
 
                 // Timestamp
-                val formattedTime = message.timestamp?.toDate()?.let {
-                    DateFormat.getTimeInstance(DateFormat.SHORT).format(it)
-                } ?: ""
+                val formattedTime = try {
+                    message.timestamp?.toDate()?.let {
+                        DateFormat.getTimeInstance(DateFormat.SHORT).format(it)
+                    } ?: ""
+                } catch (e: Exception) {
+                    android.util.Log.e("ChatAdapter", "Error formatting timestamp: ${e.message}", e)
+                    ""
+                }
                 timestampTextView.text = formattedTime
                 timestampTextView.isVisible = true
                 timestampTextView.setTextColor(ContextCompat.getColor(context, R.color.gray_600))
