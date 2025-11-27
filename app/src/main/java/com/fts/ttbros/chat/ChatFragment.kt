@@ -658,19 +658,27 @@ class ChatFragment : Fragment() {
         
         com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
             .setTitle("Добавить материал?")
-                                tempFile.delete()
-                                
-                                view?.let {
-                                    SnackbarHelper.showSuccessSnackbar(it, getString(R.string.material_added_to_master))
-                                }
-                            } else {
-                                view?.let {
-                                    SnackbarHelper.showErrorSnackbar(it, getString(R.string.document_not_found))
-                                }
+            .setMessage("Добавить этот документ в материалы мастера?")
+            .setPositiveButton("Добавить") { _, _ ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        val documentRepository = com.fts.ttbros.data.repository.DocumentRepository()
+                        val document = documentRepository.getDocument(attachmentId)
+                        
+                        if (document != null) {
+                            documentRepository.copyDocumentToMaterials(
+                                document = document,
+                                userId = profile.uid,
+                                userName = profile.displayName.ifBlank { profile.email },
+                                context = context
+                            )
+                            
+                            view?.let {
+                                SnackbarHelper.showSuccessSnackbar(it, getString(R.string.material_added_to_master))
                             }
                         } else {
                             view?.let {
-                                Snackbar.make(it, "Документ не найден", Snackbar.LENGTH_SHORT).show()
+                                SnackbarHelper.showErrorSnackbar(it, getString(R.string.document_not_found))
                             }
                         }
                     } catch (e: Exception) {
@@ -682,201 +690,6 @@ class ChatFragment : Fragment() {
                 }
             }
             .setNegativeButton("Отмена", null)
-            .show()
-    }
-    
-    private fun handlePinPoll(pollId: String) {
-        val profile = userProfile ?: return
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                pollRepository.pinPoll(pollId, profile.uid)
-                view?.let {
-                    SnackbarHelper.showSuccessSnackbar(it, getString(R.string.poll_pinned))
-                }
-            } catch (e: Exception) {
-                view?.let {
-                    SnackbarHelper.showErrorSnackbar(it, getString(R.string.error_pinning_poll, e.message ?: ""))
-                }
-            }
-        }
-    }
-    
-    private fun handleUnpinPoll(pollId: String) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                pollRepository.unpinPoll(pollId)
-                view?.let {
-                    SnackbarHelper.showSuccessSnackbar(it, getString(R.string.poll_unpinned))
-                }
-            } catch (e: Exception) {
-                view?.let {
-                    SnackbarHelper.showErrorSnackbar(it, getString(R.string.error_unpinning_poll, e.message ?: ""))
-                }
-            }
-        }
-    }
-    
-    private fun sendMessage() {
-        val profile = userProfile ?: return
-        val text = messageEditText.text?.toString()?.trim().orEmpty()
-        if (text.isBlank()) return
-        messageEditText.text?.clear()
-        val teamId = profile.currentTeamId ?: return
-        
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                chatRepository.sendMessage(
-                    teamId,
-                    chatType,
-                    ChatMessage(
-                        senderId = profile.uid,
-                        senderName = profile.displayName.ifBlank { profile.email },
-                        text = text
-                    )
-                )
-            } catch (error: Exception) {
-                view?.let {
-                    SnackbarHelper.showErrorSnackbar(it, error.localizedMessage ?: getString(R.string.error_unknown))
-                }
-            }
-        }
-    }
-
-    private fun showDiceRollDialog() {
-        if (!isAdded || view == null) {
-            android.util.Log.w("ChatFragment", "Fragment not added or view is null, cannot show dice roll dialog")
-            return
-        }
-        val profile = userProfile ?: run {
-            android.util.Log.w("ChatFragment", "User profile is null, cannot show dice roll dialog")
-            view?.let {
-                SnackbarHelper.showErrorSnackbar(it, getString(R.string.profile_not_loaded))
-            }
-            return
-        }
-        val teamId = profile.currentTeamId ?: run {
-            android.util.Log.w("ChatFragment", "Team ID is null, cannot show dice roll dialog")
-            view?.let {
-                SnackbarHelper.showErrorSnackbar(it, getString(R.string.error_team_not_selected))
-            }
-            return
-        }
-
-        try {
-            // Получаем роль из текущей команды
-            val currentTeam = profile.teams.find { it.teamId == profile.currentTeamId }
-            val userRole = currentTeam?.role ?: profile.role
-            val isMaster = userRole == UserRole.MASTER
-            val dialog = DiceRollDialog(isMaster) { rollResult, sendOptions ->
-                if (isAdded && view != null) {
-                    sendDiceRollResult(rollResult, sendOptions, teamId, profile)
-                }
-            }
-            // Проверяем что fragmentManager доступен
-            val fragmentManager = parentFragmentManager
-            if (fragmentManager.isStateSaved) {
-                android.util.Log.w("ChatFragment", "FragmentManager state is saved, cannot show dialog")
-                view?.let {
-                    SnackbarHelper.showErrorSnackbar(it, getString(R.string.error_cannot_open_dialog))
-                }
-                return
-            }
-            dialog.show(fragmentManager, "DiceRollDialog")
-        } catch (e: IllegalStateException) {
-            android.util.Log.e("ChatFragment", "IllegalStateException showing dice roll dialog: ${e.message}", e)
-            view?.let {
-                SnackbarHelper.showErrorSnackbar(it, getString(R.string.error_cannot_open_dialog_retry))
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("ChatFragment", "Error showing dice roll dialog: ${e.message}", e)
-            view?.let {
-                SnackbarHelper.showErrorSnackbar(it, getString(R.string.error_opening_dialog, e.message ?: ""))
-            }
-        }
-    }
-
-    private fun sendDiceRollResult(
-        rollResult: String,
-        sendOptions: DiceRollSendOptions,
-        teamId: String,
-        profile: UserProfile
-    ) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                var sentCount = 0
-                
-                // Отправляем в общий чат (TEAM), если выбрано
-                if (sendOptions.sendToTeam) {
-                    chatRepository.sendMessage(
-                        teamId,
-                        ChatType.TEAM,
-                        ChatMessage(
-                            senderId = profile.uid,
-                            senderName = profile.displayName.ifBlank { profile.email },
-                            text = rollResult
-                        )
-                    )
-                    sentCount++
-                }
-
-                // Отправляем мастеру (MASTER_PLAYER), если выбрано
-                val currentTeam = profile.teams.find { it.teamId == profile.currentTeamId }
-                val userRole = currentTeam?.role ?: profile.role
-                if (sendOptions.sendToMaster && userRole != UserRole.MASTER) {
-                    chatRepository.sendMessage(
-                        teamId,
-                        ChatType.MASTER_PLAYER,
-                        ChatMessage(
-                            senderId = profile.uid,
-                            senderName = profile.displayName.ifBlank { profile.email },
-                            text = rollResult
-                        )
-                    )
-                    sentCount++
-                }
-
-                if (sentCount > 0) {
-                    view?.let {
-                        SnackbarHelper.showSuccessSnackbar(it, getString(R.string.dice_roll_sent))
-                    }
-                }
-            } catch (error: Exception) {
-                android.util.Log.e("ChatFragment", "Error sending dice roll result: ${error.message}", error)
-                view?.let {
-                    SnackbarHelper.showErrorSnackbar(it, error.localizedMessage ?: getString(R.string.error_unknown))
-                }
-            }
-        }
-    }
-
-    private fun importCharacter(senderId: String, characterId: String, messageId: String) {
-        val profile = userProfile ?: return
-        val teamId = profile.currentTeamId ?: return
-        
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                val characterRepo = com.fts.ttbros.data.repository.CharacterRepository()
-                characterRepo.copyCharacter(senderId, characterId)
-                
-                // Mark as imported
-                chatRepository.markAsImported(teamId, chatType, messageId, profile.uid)
-                
-                view?.let {
-                    SnackbarHelper.showSuccessSnackbar(it, getString(R.string.character_imported_success))
-                }
-            } catch (e: Exception) {
-                view?.let {
-                    SnackbarHelper.showErrorSnackbar(it, getString(R.string.error_importing_character, e.message ?: ""))
-                }
-            }
-        }
-    }
-
-    private fun disableInput() {
-        messageInputContainer.isVisible = false
-    }
-
-    override fun onDestroyView() {
             .show()
     }
     
@@ -1077,57 +890,13 @@ class ChatFragment : Fragment() {
         pollsRecyclerView = null
     }
     
-    private fun handleAddMaterial(message: ChatMessage) {
-        val profile = userProfile ?: return
-        val teamId = profile.currentTeamId ?: return
+    private fun handleMaterialClick(message: ChatMessage) {
         val attachmentId = message.attachmentId ?: return
         
-        // Показываем диалог подтверждения
-        val context = context ?: return
-        if (!isAdded || view == null) return
-        
-        com.google.android.material.dialog.MaterialAlertDialogBuilder(context)
-            .setTitle("Добавить материал?")
-            .setMessage("Хотите добавить этот материал в раздел 'Материалы от мастера'?")
-            .setPositiveButton("Добавить") { _, _ ->
-                viewLifecycleOwner.lifecycleScope.launch {
-                    try {
-                        val documentRepository = com.fts.ttbros.data.repository.DocumentRepository()
-                        val document = documentRepository.getDocument(attachmentId)
-                        
-                        if (document != null) {
-                            documentRepository.copyDocumentToMaterials(
-                                document = document,
-                                userId = profile.uid,
-                                userName = profile.displayName.ifBlank { profile.email },
-                                context = context
-                            )
-                            
-                            view?.let {
-                                SnackbarHelper.showSuccessSnackbar(it, getString(R.string.material_added_to_master))
-                            }
-                        } else {
-                            view?.let {
-                                SnackbarHelper.showErrorSnackbar(it, getString(R.string.document_not_found))
-                            }
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e("ChatFragment", "Error adding material: ${e.message}", e)
-                        view?.let {
-                            SnackbarHelper.showErrorSnackbar(it, getString(R.string.error_adding_material, e.message ?: ""))
-                        }
-                    }
-                }
-            }
-            .setNegativeButton("Отмена", null)
-            .show()
-    }
-    
-    private fun openMaterial(teamId: String, documentId: String) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val documentRepository = com.fts.ttbros.data.repository.DocumentRepository()
-                val document = documentRepository.getDocument(documentId)
+                val document = documentRepository.getDocument(attachmentId)
                 
                 if (document != null) {
                     // Скачиваем и открываем файл
@@ -1141,12 +910,6 @@ class ChatFragment : Fragment() {
                         openDocument(file)
                     } else {
                         // Скачиваем файл
-                        // Use YandexDiskRepository via DocumentRepository helper or directly?
-                        // DocumentRepository doesn't have downloadToFile.
-                        // But we have downloadUrl.
-                        // We can use simple URL download here or add downloadToFile to DocumentRepository.
-                        // Let's use simple URL download since we have the URL.
-                        
                         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                             java.net.URL(document.downloadUrl).openStream().use { input ->
                                 java.io.FileOutputStream(file).use { output ->
@@ -1175,17 +938,7 @@ class ChatFragment : Fragment() {
     }
     
     private fun openDocument(file: java.io.File) {
-        val context = context ?: return
-        if (!isAdded || view == null) return
-        
         try {
-            if (!file.exists() || !file.canRead() || file.length() == 0L) {
-                view?.let {
-                    SnackbarHelper.showErrorSnackbar(it, getString(R.string.file_unavailable))
-                }
-                return
-            }
-            
             val bundle = Bundle().apply {
                 putString("filePath", file.absolutePath)
             }

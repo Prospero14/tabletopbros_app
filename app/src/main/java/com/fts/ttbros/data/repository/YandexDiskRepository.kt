@@ -419,7 +419,7 @@ class YandexDiskRepository {
             val request = Request.Builder()
                 .url("$baseUrl/resources?path=${Uri.encode(path)}")
                 .header("Authorization", "OAuth $oauthToken")
-                .patch(jsonBody.asRequestBody("application/json".toMediaType()))
+                .method("PATCH", jsonBody.toRequestBody("application/json".toMediaType()))
                 .build()
 
             val response = client.newCall(request).execute()
@@ -432,6 +432,35 @@ class YandexDiskRepository {
             Log.e("YandexDisk", "Patch resource error: ${e.message}", e)
             throw e
         }
+    }
+
+    /**
+     * Определить MIME тип по URI файла
+     */
+    private fun detectMimeType(fileUri: Uri, context: Context): String {
+        // Сначала пытаемся получить MIME тип из ContentResolver
+        val mimeType = context.contentResolver.getType(fileUri)
+        if (mimeType != null) {
+            return mimeType
+        }
+        
+        // Если не получилось, пытаемся определить по имени файла
+        val fileName = getFileNameFromUri(fileUri, context)
+        return detectMimeTypeFromFileName(fileName)
+    }
+    
+    /**
+     * Получить имя файла из URI
+     */
+    private fun getFileNameFromUri(uri: Uri, context: Context): String {
+        var fileName = "file"
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (cursor.moveToFirst() && nameIndex != -1) {
+                fileName = cursor.getString(nameIndex)
+            }
+        }
+        return fileName
     }
 
     /**
