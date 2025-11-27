@@ -200,6 +200,8 @@
     <string name="pinned_poll">Pinned poll</string>
     <string name="message_pinned">Message pinned</string>
     <string name="message_unpinned">Message unpinned</string>
+    <string name="pin_message">Pin message</string>
+    <string name="unpin_message">Unpin message</string>
     <string name="poll_pinned">Poll pinned</string>
     <string name="poll_unpinned">Poll unpinned</string>
     <string name="vote_recorded">Vote recorded</string>
@@ -447,4 +449,6 @@
     <string name="document_not_found">Document not found</string>
     <string name="error_team_not_selected">Team not selected</string>
     <string name="material_saved_info">Material saved to Player Materials</string>
+    <string name="save">Save</string>
+    <string name="saving">Saving…</string>
 </resources>

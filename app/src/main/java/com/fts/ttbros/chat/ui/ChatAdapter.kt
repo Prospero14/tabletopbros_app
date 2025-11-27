@@ -16,6 +16,7 @@ import com.bumptech.glide.Glide
 import com.fts.ttbros.R
 import com.fts.ttbros.chat.model.ChatMessage
 import com.google.android.material.card.MaterialCardView
+import android.widget.PopupMenu
 import java.text.DateFormat
 
 class ChatAdapter(
@@ -168,19 +169,15 @@ class ChatAdapter(
                 // Show pinned indicator
                 pinnedIcon.isVisible = message.isPinned
 
-                // Add long click listener for pin/unpin and material addition
+                // Add long click listener to show menu with pin/unpin options
                 val longClickListener = View.OnLongClickListener { view ->
                     try {
                         // Если сообщение содержит материал, показываем опцию добавления
                         if (message.type == "material" && message.attachmentId != null) {
                             onAddMaterial?.invoke(message)
                         } else {
-                            // Иначе обрабатываем как обычно (pin/unpin)
-                            if (message.isPinned) {
-                                onUnpinMessage?.invoke(message.id)
-                            } else {
-                                onPinMessage?.invoke(message.id)
-                            }
+                            // Показываем меню с опциями закрепить/открепить
+                            showMessageMenu(view, message)
                         }
                     } catch (e: Exception) {
                         android.util.Log.e("ChatAdapter", "Error in long click listener: ${e.message}", e)
@@ -195,6 +192,40 @@ class ChatAdapter(
                 messageTextView.text = "Error displaying message"
                 messageTextView.isVisible = true
             }
+        }
+    }
+
+    private fun showMessageMenu(view: View, message: ChatMessage) {
+        try {
+            val popupMenu = PopupMenu(view.context, view)
+            popupMenu.menuInflater.inflate(R.menu.message_long_press_menu, popupMenu.menu)
+            
+            // Устанавливаем текст пунктов меню в зависимости от состояния закрепления
+            if (message.isPinned) {
+                popupMenu.menu.findItem(R.id.action_pin_message)?.isVisible = false
+                popupMenu.menu.findItem(R.id.action_unpin_message)?.isVisible = true
+            } else {
+                popupMenu.menu.findItem(R.id.action_pin_message)?.isVisible = true
+                popupMenu.menu.findItem(R.id.action_unpin_message)?.isVisible = false
+            }
+            
+            popupMenu.setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    R.id.action_pin_message -> {
+                        onPinMessage?.invoke(message.id)
+                        true
+                    }
+                    R.id.action_unpin_message -> {
+                        onUnpinMessage?.invoke(message.id)
+                        true
+                    }
+                    else -> false
+                }
+            }
+            
+            popupMenu.show()
+        } catch (e: Exception) {
+            android.util.Log.e("ChatAdapter", "Error showing message menu: ${e.message}", e)
         }
     }
 

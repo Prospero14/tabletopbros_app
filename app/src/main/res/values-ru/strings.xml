@@ -138,6 +138,8 @@
     <string name="pinned_poll">Закрепленный опрос</string>
     <string name="message_pinned">Сообщение закреплено</string>
     <string name="message_unpinned">Сообщение откреплено</string>
+    <string name="pin_message">Закрепить сообщение</string>
+    <string name="unpin_message">Открепить сообщение</string>
     <string name="poll_pinned">Опрос закреплен</string>
     <string name="poll_unpinned">Опрос откреплен</string>
 
@@ -246,4 +248,6 @@
     <string name="document_not_found">Документ не найден</string>
     <string name="error_team_not_selected">Команда не выбрана</string>
     <string name="material_saved_info">Материал сохранен в Материалы для игроков</string>
+    <string name="save">Сохранить</string>
+    <string name="saving">Сохранение…</string>
 </resources>

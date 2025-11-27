@@ -140,6 +140,8 @@
             android:layout_weight="1"
             android:background="@drawable/bg_chat_input"
             android:hint="@string/chat_hint"
+            android:textColor="?attr/colorOnSurface"
+            android:hintTextColor="?attr/colorOnSurfaceVariant"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
             android:paddingTop="10dp"

@@ -141,12 +141,19 @@ class CharacterRepository {
         // I will do that in a separate step or assume it exists and fix it.
         // I'll assume it exists and add it to YandexDiskRepository next.
         
-        yandexDisk.uploadContent(
-            path = "/TTBros/users/$userId/characters/$fileName",
-            content = json.toByteArray(Charsets.UTF_8)
-        )
-        
-        return characterId
+        try {
+            // Для JSON файлов персонажей не нужна публикация - это ускоряет загрузку
+            val result = yandexDisk.uploadContent(
+                path = "/TTBros/users/$userId/characters/$fileName",
+                content = json.toByteArray(Charsets.UTF_8),
+                skipPublish = true // Пропускаем публикацию для ускорения
+            )
+            android.util.Log.d("CharacterRepository", "Character uploaded successfully to: $result")
+            return characterId
+        } catch (e: Exception) {
+            android.util.Log.e("CharacterRepository", "Error uploading character: ${e.message}", e)
+            throw Exception("Failed to create character: ${e.message}", e)
+        }
     }
 
     suspend fun updateCharacter(characterId: String, data: Map<String, Any>) {

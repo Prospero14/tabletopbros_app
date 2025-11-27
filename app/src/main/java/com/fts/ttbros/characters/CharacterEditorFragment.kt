@@ -390,6 +390,10 @@ class CharacterEditorFragment : Fragment() {
     }
 
     private fun saveCharacter() {
+        // Блокируем кнопку сразу для лучшего UX
+        binding.saveButton.isEnabled = false
+        binding.saveButton.text = getString(R.string.saving)
+        
         val name = formData["name"] as? String ?: "Unnamed"
         // Map class/profession to clan for display in list
         val clan = when {
@@ -444,7 +448,14 @@ class CharacterEditorFragment : Fragment() {
                 }
                 // Don't navigate away - let user stay on editor
             } catch (e: Exception) {
+                android.util.Log.e("CharEditor", "Error saving character: ${e.message}", e)
                 showError("Error saving: ${e.message}")
+            } finally {
+                // Разблокируем кнопку
+                if (isAdded && view != null) {
+                    binding.saveButton.isEnabled = true
+                    binding.saveButton.text = getString(R.string.save)
+                }
             }
         }
     }

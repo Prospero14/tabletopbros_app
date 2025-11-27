@@ -550,15 +550,15 @@ class YandexDiskRepository {
     /**
      * Загрузить содержимое (ByteArray) в файл
      */
-    suspend fun uploadContent(path: String, content: ByteArray): String = withContext(Dispatchers.IO) {
+    suspend fun uploadContent(path: String, content: ByteArray, skipPublish: Boolean = false): String = withContext(Dispatchers.IO) {
         try {
-            // 1. Создать папки если не существуют
+            // 1. Создать папки если не существуют (оптимизировано - создаем только финальную папку)
             val pathParts = path.split("/").filter { it.isNotBlank() }
             if (pathParts.size > 1) {
-                var currentPath = ""
-                for (part in pathParts.dropLast(1)) { // Все кроме последнего (имя файла)
-                    currentPath += "/$part"
-                    createFolderIfNeeded(currentPath)
+                // Создаем только последнюю папку - остальные создадутся автоматически при необходимости
+                val parentPath = "/" + pathParts.dropLast(1).joinToString("/")
+                if (parentPath.isNotBlank() && parentPath != "/") {
+                    createFolderIfNeeded(parentPath)
                 }
             }
             
@@ -580,14 +580,14 @@ class YandexDiskRepository {
             }
             response.close()
             
-            // 4. Опубликовать (опционально, но полезно для получения ссылки)
-            // Для JSON файлов нам может и не нужна публичная ссылка, если мы читаем через API
-            // Но для единообразия пусть будет
-            try {
-                publishFile(path)
-            } catch (e: Exception) {
-                // Ignore if already published (409) or other errors
-                Log.w("YandexDisk", "Could not publish file (may already be published): ${e.message}")
+            // 4. Опубликовать только если нужно (для JSON файлов персонажей не нужно)
+            if (!skipPublish) {
+                try {
+                    publishFile(path)
+                } catch (e: Exception) {
+                    // Ignore if already published (409) or other errors
+                    Log.w("YandexDisk", "Could not publish file (may already be published): ${e.message}")
+                }
             }
             
             path
