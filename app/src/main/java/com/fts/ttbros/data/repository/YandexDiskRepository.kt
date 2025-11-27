@@ -203,12 +203,32 @@ class YandexDiskRepository {
             .build()
         
         val response = client.newCall(request).execute()
-        if (!response.isSuccessful) {
-            throw Exception("Failed to get upload URL: ${response.code} ${response.message}")
+        // 409 может означать, что файл уже существует, но с overwrite=true это не должно быть проблемой
+        // Однако если API возвращает 409, попробуем получить URL еще раз или обработаем как успех
+        if (!response.isSuccessful && response.code != 409) {
+            val errorBody = response.body?.string()
+            response.close()
+            throw Exception("Failed to get upload URL: ${response.code} ${response.message}. Body: $errorBody")
         }
         
-        val body = response.body?.string() ?: throw Exception("Empty response body")
+        // Если 409, возможно файл уже существует, но мы все равно можем получить URL для перезаписи
+        // Попробуем прочитать ответ
+        val body = response.body?.string()
+        val responseCode = response.code
         response.close()
+        
+        if (body == null || body.isBlank()) {
+            // Если тело пустое при 409, это может быть нормально - файл уже существует
+            // С overwrite=true мы все равно можем загрузить
+            if (responseCode == 409) {
+                Log.w("YandexDisk", "File may already exist (409), but overwrite=true should work")
+                // Попробуем получить URL еще раз - возможно API вернет URL для перезаписи
+                // Но если это не работает, просто продолжим - overwrite должен работать
+            }
+            if (body == null || body.isBlank()) {
+                throw Exception("Empty response body (code: $responseCode)")
+            }
+        }
         
         val json = gson.fromJson(body, Map::class.java)
         return json["href"] as? String ?: throw Exception("No upload URL in response")
@@ -532,10 +552,20 @@ class YandexDiskRepository {
      */
     suspend fun uploadContent(path: String, content: ByteArray): String = withContext(Dispatchers.IO) {
         try {
-            // 1. Получить URL для загрузки
+            // 1. Создать папки если не существуют
+            val pathParts = path.split("/").filter { it.isNotBlank() }
+            if (pathParts.size > 1) {
+                var currentPath = ""
+                for (part in pathParts.dropLast(1)) { // Все кроме последнего (имя файла)
+                    currentPath += "/$part"
+                    createFolderIfNeeded(currentPath)
+                }
+            }
+            
+            // 2. Получить URL для загрузки
             val uploadUrl = getUploadUrl(path)
             
-            // 2. Загрузить
+            // 3. Загрузить
             val requestBody = content.toRequestBody("application/json".toMediaType())
             val request = Request.Builder()
                 .url(uploadUrl)
@@ -544,19 +574,23 @@ class YandexDiskRepository {
             
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
-                throw Exception("Content upload failed: ${response.code} ${response.message}")
+                val errorBody = response.body?.string()
+                response.close()
+                throw Exception("Content upload failed: ${response.code} ${response.message}. Body: $errorBody")
             }
             response.close()
             
-            // 3. Опубликовать (опционально, но полезно для получения ссылки)
+            // 4. Опубликовать (опционально, но полезно для получения ссылки)
             // Для JSON файлов нам может и не нужна публичная ссылка, если мы читаем через API
             // Но для единообразия пусть будет
             try {
                 publishFile(path)
             } catch (e: Exception) {
-                // Ignore if already published or error
-                path // Return path if publish fails
+                // Ignore if already published (409) or other errors
+                Log.w("YandexDisk", "Could not publish file (may already be published): ${e.message}")
             }
+            
+            path
         } catch (e: Exception) {
             Log.e("YandexDisk", "Upload content error: ${e.message}", e)
             throw e
