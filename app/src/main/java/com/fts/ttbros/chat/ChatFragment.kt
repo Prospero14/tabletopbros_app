@@ -305,78 +305,78 @@ class ChatFragment : Fragment() {
                             try {
                                 // Проверяем, что фрагмент еще прикреплен и view существует
                                 if (!isAdded || view == null) return@launch
-                        
-                        // Handle pinned messages
-                        val pinnedMessages = messages.filter { it.isPinned }
-                        val latestPinned = pinnedMessages.maxByOrNull { it.pinnedAt ?: 0L }
-                        
-                        if (latestPinned != null) {
-                            try {
+                                
+                                // Handle pinned messages
+                                val pinnedMessages = messages.filter { it.isPinned }
+                                val latestPinned = pinnedMessages.maxByOrNull { it.pinnedAt ?: 0L }
+                                
+                                if (latestPinned != null) {
+                                    try {
+                                        if (!isAdded || view == null) return@launch
+                                        
+                                        pinnedMessageContainer.isVisible = true
+                                        pinnedMessageText.text = latestPinned.text
+                                        pinnedMessageContainer.setOnClickListener {
+                                            try {
+                                                if (!isAdded || view == null) return@setOnClickListener
+                                                
+                                                val position = messages.indexOfFirst { it.id == latestPinned.id }
+                                                if (position != -1 && position < messages.size) {
+                                                    messagesRecyclerView.post {
+                                                        try {
+                                                            if (isAdded && view != null && position < adapter.itemCount) {
+                                                                messagesRecyclerView.scrollToPosition(position)
+                                                            }
+                                                        } catch (e: Exception) {
+                                                            android.util.Log.e("ChatFragment", "Error in post scroll to pinned: ${e.message}", e)
+                                                        }
+                                                    }
+                                                }
+                                            } catch (e: Exception) {
+                                                android.util.Log.e("ChatFragment", "Error scrolling to pinned message: ${e.message}", e)
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("ChatFragment", "Error setting up pinned message: ${e.message}", e)
+                                        if (isAdded && view != null) {
+                                            pinnedMessageContainer.isVisible = false
+                                        }
+                                    }
+                                } else {
+                                    if (isAdded && view != null) {
+                                        pinnedMessageContainer.isVisible = false
+                                    }
+                                }
+
                                 if (!isAdded || view == null) return@launch
                                 
-                                pinnedMessageContainer.isVisible = true
-                                pinnedMessageText.text = latestPinned.text
-                                pinnedMessageContainer.setOnClickListener {
+                                adapter.submitList(messages) {
                                     try {
-                                        if (!isAdded || view == null) return@setOnClickListener
+                                        if (!isAdded || view == null) return@submitList
                                         
-                                        val position = messages.indexOfFirst { it.id == latestPinned.id }
-                                        if (position != -1 && position < messages.size) {
-                                            messagesRecyclerView.post {
-                                                try {
-                                                    if (isAdded && view != null && position < adapter.itemCount) {
-                                                        messagesRecyclerView.scrollToPosition(position)
+                                        if (messages.isNotEmpty()) {
+                                            val lastIndex = messages.lastIndex
+                                            if (lastIndex >= 0 && lastIndex < messages.size) {
+                                                // Используем post для безопасного скроллинга
+                                                messagesRecyclerView.post {
+                                                    try {
+                                                        if (isAdded && view != null && lastIndex < adapter.itemCount) {
+                                                            messagesRecyclerView.scrollToPosition(lastIndex)
+                                                        }
+                                                    } catch (e: Exception) {
+                                                        android.util.Log.e("ChatFragment", "Error in post scroll: ${e.message}", e)
                                                     }
-                                                } catch (e: Exception) {
-                                                    android.util.Log.e("ChatFragment", "Error in post scroll to pinned: ${e.message}", e)
                                                 }
                                             }
                                         }
                                     } catch (e: Exception) {
-                                        android.util.Log.e("ChatFragment", "Error scrolling to pinned message: ${e.message}", e)
+                                        android.util.Log.e("ChatFragment", "Error in submitList callback: ${e.message}", e)
                                     }
                                 }
-                            } catch (e: Exception) {
-                                android.util.Log.e("ChatFragment", "Error setting up pinned message: ${e.message}", e)
-                                if (isAdded && view != null) {
-                                    pinnedMessageContainer.isVisible = false
-                                }
-                            }
-                        } else {
-                            if (isAdded && view != null) {
-                                pinnedMessageContainer.isVisible = false
-                            }
-                        }
-
-                        if (!isAdded || view == null) return@launch
-                        
-                        adapter.submitList(messages) {
-                            try {
-                                if (!isAdded || view == null) return@submitList
                                 
-                                if (messages.isNotEmpty()) {
-                                    val lastIndex = messages.lastIndex
-                                    if (lastIndex >= 0 && lastIndex < messages.size) {
-                                        // Используем post для безопасного скроллинга
-                                        messagesRecyclerView.post {
-                                            try {
-                                                if (isAdded && view != null && lastIndex < adapter.itemCount) {
-                                                    messagesRecyclerView.scrollToPosition(lastIndex)
-                                                }
-                                            } catch (e: Exception) {
-                                                android.util.Log.e("ChatFragment", "Error in post scroll: ${e.message}", e)
-                                            }
-                                        }
-                                    }
+                                if (isAdded && view != null) {
+                                    emptyView.isVisible = messages.isEmpty()
                                 }
-                            } catch (e: Exception) {
-                                android.util.Log.e("ChatFragment", "Error in submitList callback: ${e.message}", e)
-                            }
-                        }
-                        
-                        if (isAdded && view != null) {
-                            emptyView.isVisible = messages.isEmpty()
-                        }
                             } catch (e: Exception) {
                                 android.util.Log.e("ChatFragment", "Error in launch block: ${e.message}", e)
                             }
@@ -1133,6 +1133,6 @@ class ChatFragment : Fragment() {
     }
 
     companion object {
-        private const val ARG_CHAT_TYPE = "chatType"
+        const val ARG_CHAT_TYPE = "chatType"
     }
 }
