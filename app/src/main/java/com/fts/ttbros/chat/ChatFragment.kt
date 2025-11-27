@@ -196,6 +196,11 @@ class ChatFragment : Fragment() {
     }
 
     private fun updateInputAvailability(profile: UserProfile) {
+        if (!isAdded || view == null) {
+            android.util.Log.w("ChatFragment", "Fragment not added or view is null, cannot update input availability")
+            return
+        }
+        
         // Получаем роль из текущей команды
         val currentTeam = profile.teams.find { it.teamId == profile.currentTeamId }
         val userRole = currentTeam?.role ?: profile.role
@@ -725,14 +730,37 @@ class ChatFragment : Fragment() {
     }
     
     private fun sendMessage() {
-        val profile = userProfile ?: return
+        if (!isAdded || view == null) {
+            android.util.Log.w("ChatFragment", "Fragment not added or view is null, cannot send message")
+            return
+        }
+        
+        val profile = userProfile ?: run {
+            android.util.Log.w("ChatFragment", "User profile is null, cannot send message")
+            view?.let {
+                SnackbarHelper.showErrorSnackbar(it, getString(R.string.profile_not_loaded))
+            }
+            return
+        }
+        
         val text = messageEditText.text?.toString()?.trim().orEmpty()
         if (text.isBlank()) return
+        
+        val teamId = profile.currentTeamId ?: run {
+            android.util.Log.w("ChatFragment", "Team ID is null, cannot send message")
+            view?.let {
+                SnackbarHelper.showErrorSnackbar(it, getString(R.string.error_team_not_selected))
+            }
+            return
+        }
+        
+        // Clear input immediately for better UX
         messageEditText.text?.clear()
-        val teamId = profile.currentTeamId ?: return
         
         viewLifecycleOwner.lifecycleScope.launch {
             try {
+                if (!isAdded || view == null) return@launch
+                
                 chatRepository.sendMessage(
                     teamId,
                     chatType,
@@ -743,8 +771,11 @@ class ChatFragment : Fragment() {
                     )
                 )
             } catch (error: Exception) {
-                view?.let {
-                    SnackbarHelper.showErrorSnackbar(it, error.localizedMessage ?: getString(R.string.error_unknown))
+                android.util.Log.e("ChatFragment", "Error sending message: ${error.message}", error)
+                if (isAdded && view != null) {
+                    view?.let {
+                        SnackbarHelper.showErrorSnackbar(it, error.localizedMessage ?: getString(R.string.error_unknown))
+                    }
                 }
             }
         }
@@ -881,6 +912,7 @@ class ChatFragment : Fragment() {
     }
 
     private fun disableInput() {
+        if (!isAdded || view == null) return
         messageInputContainer.isVisible = false
     }
 

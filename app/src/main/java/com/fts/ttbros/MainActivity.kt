@@ -268,11 +268,11 @@ class MainActivity : AppCompatActivity() {
             if (Math.abs(diffX) > Math.abs(diffY)) {
                 if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
                     if (diffX > 0) {
-                        // Свайп вправо - следующий пункт меню
-                        navigateToNextMenuItem()
-                    } else {
-                        // Свайп влево - предыдущий пункт меню
+                        // Свайп вправо - предыдущий пункт меню (листаем назад)
                         navigateToPreviousMenuItem()
+                    } else {
+                        // Свайп влево - следующий пункт меню (листаем вперед)
+                        navigateToNextMenuItem()
                     }
                     return true
                 }
