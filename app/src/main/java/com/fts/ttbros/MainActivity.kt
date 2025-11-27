@@ -1,6 +1,5 @@
 package com.fts.ttbros
 
-
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.content.ClipData
@@ -88,6 +87,11 @@ class MainActivity : AppCompatActivity() {
             ?: throw IllegalStateException("NavHostFragment not found")
         navController = navHostFragment.navController
 
+        // Reset navigation flag when destination changes
+        navController.addOnDestinationChangedListener { _, _, _ ->
+            isNavigating = false
+        }
+
         appBarConfiguration = AppBarConfiguration(
             setOf(
                 R.id.teamsFragment,
@@ -146,6 +150,8 @@ class MainActivity : AppCompatActivity() {
                                 .setPopUpTo(R.id.charactersFragment, false)
                                 .build()
                             navController.navigate(R.id.charactersFragment, null, navOptions)
+                        } else {
+                             isNavigating = false
                         }
                     } catch (e: Exception) {
                         // If navigation fails, try simple navigate with animations
@@ -159,11 +165,8 @@ class MainActivity : AppCompatActivity() {
                             navController.navigate(R.id.charactersFragment, null, navOptions)
                         } catch (e2: Exception) {
                             android.util.Log.e("MainActivity", "Navigation error: ${e2.message}", e2)
-                        }
-                    } finally {
-                        binding.root.postDelayed({
                             isNavigating = false
-                        }, 500)
+                        }
                     }
                     binding.drawerLayout.closeDrawer(GravityCompat.END)
                     true
@@ -181,10 +184,6 @@ class MainActivity : AppCompatActivity() {
                     try {
                         navController.navigate(item.itemId, null, navOptions)
                         binding.drawerLayout.closeDrawer(GravityCompat.END)
-                        // Reset flag after delay
-                        binding.root.postDelayed({
-                            isNavigating = false
-                        }, 500)
                         true
                     } catch (e: Exception) {
                         android.util.Log.e("MainActivity", "Navigation error: ${e.message}", e)
@@ -209,6 +208,7 @@ class MainActivity : AppCompatActivity() {
         
         setupHeader()
         setupFooter()
+        setupSwipeGesture() // Ensure this is called!
     }
 
     private fun setupFooter() {
@@ -224,7 +224,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupHeader() {
         val headerView = binding.navigationView.getHeaderView(0)
-        // Removed teamContainer setup as requested
         
         val avatarView = headerView.findViewById<ImageView>(R.id.navHeaderAvatar)
         avatarView.setOnClickListener {
@@ -313,11 +312,6 @@ class MainActivity : AppCompatActivity() {
                     .build()
                 navController.navigate(nextDestination, null, navOptions)
                 
-                // Сбросить флаг через небольшую задержку
-                binding.root.postDelayed({
-                    isNavigating = false
-                }, 500) // 500ms задержка перед следующим свайпом
-                
             } catch (e: Exception) {
                 android.util.Log.e("MainActivity", "Swipe navigation error: ${e.message}", e)
                 isNavigating = false // Сбросить флаг при ошибке
@@ -347,11 +341,6 @@ class MainActivity : AppCompatActivity() {
                     .build()
                 navController.navigate(previousDestination, null, navOptions)
                 
-                // Сбросить флаг через небольшую задержку
-                binding.root.postDelayed({
-                    isNavigating = false
-                }, 500)
-                
             } catch (e: Exception) {
                 android.util.Log.e("MainActivity", "Swipe navigation error: ${e.message}", e)
                 isNavigating = false
@@ -359,7 +348,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-private fun pickImageFromGallery() {
+    private fun pickImageFromGallery() {
         val intent = Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI)
         startActivityForResult(intent, REQUEST_CODE_PICK_IMAGE)
     }

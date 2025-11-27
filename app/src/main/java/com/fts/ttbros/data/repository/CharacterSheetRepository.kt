@@ -2,16 +2,48 @@ package com.fts.ttbros.data.repository
 
 import com.fts.ttbros.data.model.CharacterSheet
 import com.google.firebase.Timestamp
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
-import kotlinx.coroutines.tasks.await
+import com.google.gson.Gson
+import com.google.gson.GsonBuilder
+import com.google.gson.TypeAdapter
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonWriter
 import java.util.UUID
 
 class CharacterSheetRepository {
-    private val db: FirebaseFirestore = Firebase.firestore
-    private val collection = "character_sheets"
+    private val auth = Firebase.auth
     private val yandexDisk = YandexDiskRepository()
+    
+    private val gson: Gson = GsonBuilder()
+        .registerTypeAdapter(Timestamp::class.java, object : TypeAdapter<Timestamp>() {
+            override fun write(out: JsonWriter, value: Timestamp?) {
+                if (value == null) {
+                    out.nullValue()
+                } else {
+                    out.beginObject()
+                    out.name("seconds").value(value.seconds)
+                    out.name("nanoseconds").value(value.nanoseconds.toLong())
+                    out.endObject()
+                }
+            }
+
+            override fun read(input: JsonReader): Timestamp? {
+                var seconds = 0L
+                var nanoseconds = 0
+                input.beginObject()
+                while (input.hasNext()) {
+                    when (input.nextName()) {
+                        "seconds" -> seconds = input.nextLong()
+                        "nanoseconds" -> nanoseconds = input.nextInt()
+                        else -> input.skipValue()
+                    }
+                }
+                input.endObject()
+                return Timestamp(seconds, nanoseconds)
+            }
+        })
+        .create()
 
     suspend fun saveSheet(sheet: CharacterSheet): String {
         val sheetId = sheet.id.ifBlank { UUID.randomUUID().toString() }
@@ -28,47 +60,97 @@ class CharacterSheetRepository {
             sheet.copy(updatedAt = now)
         }
         
-        db.collection(collection)
-            .document(sheetId)
-            .set(sheetWithId)
-            .await()
+        val json = gson.toJson(sheetWithId)
+        val fileName = "$sheetId.json"
+        
+        // Determine path based on whether it's a template or user sheet
+        val path = if (sheetWithId.isTemplate) {
+            "/TTBros/builders/$fileName"
+        } else {
+            val userId = sheetWithId.userId.ifBlank { auth.currentUser?.uid ?: "unknown" }
+            "/TTBros/character_sheets_data/$userId/$fileName"
+        }
+        
+        yandexDisk.uploadContent(path, json.toByteArray(Charsets.UTF_8))
         
         return sheetId
     }
 
     suspend fun getUserSheets(userId: String): List<CharacterSheet> {
-        return db.collection(collection)
-            .whereEqualTo("userId", userId)
-            .get()
-            .await()
-            .documents
-            .mapNotNull { doc ->
-                try {
-                    doc.toObject(CharacterSheet::class.java)?.copy(id = doc.id)
-                } catch (e: Exception) {
-                    null
-                }
+        val path = "/TTBros/character_sheets_data/$userId"
+        val files = yandexDisk.listFiles(path)
+        
+        return files.mapNotNull { resource ->
+            try {
+                val url = resource.file ?: resource.public_url
+                if (url != null) {
+                    val json = yandexDisk.downloadContent(url)
+                    gson.fromJson(json, CharacterSheet::class.java)
+                } else null
+            } catch (e: Exception) {
+                android.util.Log.e("CharacterSheetRepo", "Error loading sheet ${resource.name}: ${e.message}")
+                null
             }
+        }
     }
 
     suspend fun getSheet(sheetId: String): CharacterSheet? {
-        return try {
-            val doc = db.collection(collection)
-                .document(sheetId)
-                .get()
-                .await()
+        // Try builders first
+        try {
+            val builderPath = "/TTBros/builders/$sheetId.json"
+            // We can't check existence easily without listing or trying to download.
+            // Try to download directly? If it fails, try user folder.
+            // But downloadContent takes URL, not path.
+            // We need to get the file info first.
             
-            doc.toObject(CharacterSheet::class.java)?.copy(id = doc.id)
+            // Hack: List builders folder and find it.
+            val builders = yandexDisk.listFiles("/TTBros/builders")
+            val builderFile = builders.find { it.name == "$sheetId.json" }
+            
+            if (builderFile != null) {
+                val url = builderFile.file ?: builderFile.public_url
+                if (url != null) {
+                    val json = yandexDisk.downloadContent(url)
+                    return gson.fromJson(json, CharacterSheet::class.java)
+                }
+            }
+            
+            // Try current user folder
+            val userId = auth.currentUser?.uid
+            if (userId != null) {
+                val userPath = "/TTBros/character_sheets_data/$userId"
+                val userFiles = yandexDisk.listFiles(userPath)
+                val userFile = userFiles.find { it.name == "$sheetId.json" }
+                
+                if (userFile != null) {
+                    val url = userFile.file ?: userFile.public_url
+                    if (url != null) {
+                        val json = yandexDisk.downloadContent(url)
+                        return gson.fromJson(json, CharacterSheet::class.java)
+                    }
+                }
+            }
+            
+            return null
         } catch (e: Exception) {
-            null
+            android.util.Log.e("CharacterSheetRepo", "Error getting sheet $sheetId: ${e.message}")
+            return null
         }
     }
 
     suspend fun deleteSheet(sheetId: String) {
-        db.collection(collection)
-            .document(sheetId)
-            .delete()
-            .await()
+        // We don't know if it's a builder or user sheet easily without checking.
+        // Assume user sheet first.
+        val userId = auth.currentUser?.uid ?: return
+        val userPath = "/TTBros/character_sheets_data/$userId/$sheetId.json"
+        
+        try {
+            yandexDisk.deleteFile(userPath)
+        } catch (e: Exception) {
+            // Try builder path if user is admin? Or just ignore.
+            // For now, only delete user sheets.
+            android.util.Log.e("CharacterSheetRepo", "Error deleting sheet: ${e.message}")
+        }
     }
 
     suspend fun uploadSheet(
@@ -83,7 +165,7 @@ class CharacterSheetRepository {
         skills: Map<String, Int> = emptyMap(),
         stats: Map<String, Any> = emptyMap()
     ): CharacterSheet {
-        // 1. Upload to Yandex.Disk
+        // 1. Upload PDF to Yandex.Disk
         val downloadUrl = yandexDisk.uploadCharacterSheet(userId, pdfUri, context)
         
         // 2. Create Sheet object
@@ -102,20 +184,13 @@ class CharacterSheetRepository {
             updatedAt = Timestamp.now()
         )
         
-        // 3. Save to Firestore
-        db.collection(collection)
-            .document(sheet.id)
-            .set(sheet)
-            .await()
+        // 3. Save to Yandex.Disk (JSON)
+        saveSheet(sheet)
             
         return sheet
     }
 
     suspend fun updateSheet(sheet: CharacterSheet) {
-        val updatedSheet = sheet.copy(updatedAt = Timestamp.now())
-        db.collection(collection)
-            .document(sheet.id)
-            .set(updatedSheet)
-            .await()
+        saveSheet(sheet)
     }
 }

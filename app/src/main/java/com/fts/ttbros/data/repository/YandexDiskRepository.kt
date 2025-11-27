@@ -11,6 +11,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.logging.HttpLoggingInterceptor
 import java.io.File
 import java.io.FileOutputStream
@@ -380,6 +381,60 @@ class YandexDiskRepository {
     }
     
     /**
+     * Получить список файлов в папке
+     */
+    suspend fun listFiles(path: String, limit: Int = 100): List<YandexResource> = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("$baseUrl/resources?path=${Uri.encode(path)}&limit=$limit&sort=-created")
+                .header("Authorization", "OAuth $oauthToken")
+                .get()
+                .build()
+
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                if (response.code == 404) return@withContext emptyList()
+                throw Exception("Failed to list files: ${response.code} ${response.message}")
+            }
+
+            val body = response.body?.string() ?: throw Exception("Empty response")
+            response.close()
+
+            val resourceResponse = gson.fromJson(body, ResourceResponse::class.java)
+            resourceResponse._embedded?.items ?: emptyList()
+        } catch (e: Exception) {
+            Log.e("YandexDisk", "List files error: ${e.message}", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * Обновить пользовательские свойства (метаданные) ресурса
+     */
+    suspend fun patchResource(path: String, properties: Map<String, Any>) = withContext(Dispatchers.IO) {
+        try {
+            val bodyMap = mapOf("custom_properties" to properties)
+            val jsonBody = gson.toJson(bodyMap)
+            
+            val request = Request.Builder()
+                .url("$baseUrl/resources?path=${Uri.encode(path)}")
+                .header("Authorization", "OAuth $oauthToken")
+                .patch(jsonBody.asRequestBody("application/json".toMediaType()))
+                .build()
+
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                throw Exception("Failed to patch resource: ${response.code} ${response.message}")
+            }
+            response.close()
+            Log.d("YandexDisk", "Resource patched successfully: $path")
+        } catch (e: Exception) {
+            Log.e("YandexDisk", "Patch resource error: ${e.message}", e)
+            throw e
+        }
+    }
+
+    /**
      * Определить MIME тип по имени файла
      */
     private fun detectMimeTypeFromFileName(fileName: String): String {
@@ -390,6 +445,7 @@ class YandexDiskRepository {
             "png" -> "image/png"
             "gif" -> "image/gif"
             "webp" -> "image/webp"
+            "json" -> "application/json"
             else -> {
                 // Пытаемся определить через MimeTypeMap
                 val mimeType = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
@@ -399,17 +455,107 @@ class YandexDiskRepository {
     }
     
     /**
-     * Определить MIME тип по URI
+     * Скачать содержимое файла по URL как байты
      */
-    private fun detectMimeType(fileUri: Uri, context: Context): String {
-        // Сначала пытаемся получить из ContentResolver
-        val mimeType = context.contentResolver.getType(fileUri)
-        if (!mimeType.isNullOrBlank()) {
-            return mimeType
+    suspend fun downloadBytes(url: String): ByteArray = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url(url)
+                .get()
+                .build()
+
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                throw Exception("Failed to download content: ${response.code} ${response.message}")
+            }
+            
+            response.body?.bytes() ?: ByteArray(0)
+        } catch (e: Exception) {
+            Log.e("YandexDisk", "Download bytes error: ${e.message}", e)
+            throw e
         }
-        
-        // Если не получилось, определяем по имени файла
-        val fileName = fileUri.lastPathSegment ?: ""
-        return detectMimeTypeFromFileName(fileName)
+    }
+
+    /**
+     * Скачать содержимое файла по URL
+     */
+    suspend fun downloadContent(url: String): String = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url(url)
+                .get()
+                .build()
+
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                throw Exception("Failed to download content: ${response.code} ${response.message}")
+            }
+            
+            response.body?.string() ?: ""
+        } catch (e: Exception) {
+            Log.e("YandexDisk", "Download content error: ${e.message}", e)
+            throw e
+        }
+    }
+
+    /**
+     * Загрузить содержимое (ByteArray) в файл
+     */
+    suspend fun uploadContent(path: String, content: ByteArray): String = withContext(Dispatchers.IO) {
+        try {
+            // 1. Получить URL для загрузки
+            val uploadUrl = getUploadUrl(path)
+            
+            // 2. Загрузить
+            val requestBody = content.toRequestBody("application/json".toMediaType())
+            val request = Request.Builder()
+                .url(uploadUrl)
+                .put(requestBody)
+                .build()
+            
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                throw Exception("Content upload failed: ${response.code} ${response.message}")
+            }
+            response.close()
+            
+            // 3. Опубликовать (опционально, но полезно для получения ссылки)
+            // Для JSON файлов нам может и не нужна публичная ссылка, если мы читаем через API
+            // Но для единообразия пусть будет
+            try {
+                publishFile(path)
+            } catch (e: Exception) {
+                // Ignore if already published or error
+                path // Return path if publish fails
+            }
+        } catch (e: Exception) {
+            Log.e("YandexDisk", "Upload content error: ${e.message}", e)
+            throw e
+        }
     }
 }
+
+// Data classes for Yandex Disk API
+data class ResourceResponse(
+    val _embedded: ResourceList? = null
+)
+
+data class ResourceList(
+    val items: List<YandexResource> = emptyList(),
+    val limit: Int = 0,
+    val offset: Int = 0,
+    val total: Int = 0
+)
+
+data class YandexResource(
+    val name: String,
+    val path: String,
+    val created: String,
+    val modified: String,
+    val type: String, // "file" or "dir"
+    val mime_type: String? = null,
+    val size: Long = 0,
+    val public_url: String? = null,
+    val file: String? = null, // Direct download link
+    val custom_properties: Map<String, Any>? = null
+)

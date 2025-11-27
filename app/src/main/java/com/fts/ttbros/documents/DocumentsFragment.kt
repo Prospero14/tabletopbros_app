@@ -176,6 +176,7 @@ class DocumentsFragment : Fragment() {
     }
     
     private fun loadData() {
+        binding.progressBar.isVisible = true
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val profile = userRepository.currentProfile()
@@ -184,6 +185,7 @@ class DocumentsFragment : Fragment() {
                     binding.emptyView.text = "Join a team to view documents"
                     binding.emptyView.isVisible = true
                     binding.addDocumentFab.isVisible = false
+                    binding.progressBar.isVisible = false
                     return@launch
                 }
                 
@@ -275,6 +277,8 @@ class DocumentsFragment : Fragment() {
                 if (isAdded && view != null) {
                     SnackbarHelper.showErrorSnackbar(binding.root, getString(R.string.error_unknown))
                 }
+            } finally {
+                binding.progressBar.isVisible = false
             }
         }
     }
