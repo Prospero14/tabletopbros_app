@@ -828,17 +828,44 @@ class CharacterSheetsFragment : Fragment() {
                 var i = subsectionStart + 1
                 val stopLabels = listOf("Advantages", "Достоинства", "Flaws", "Недостатки", "Merits", "Notes", "Заметки")
                 
-                while (i < lines.size && i < subsectionStart + 20) {
+                var emptyLinesCount = 0
+                while (i < lines.size && i < subsectionStart + 10) { // Максимум 10 строк
                     val nextLine = lines[i].trim()
                     
-                    // Останавливаемся на следующей подсекции
-                    if (stopLabels.any { nextLine.contains(it, ignoreCase = true) && 
-                        (nextLine.contains(":") || nextLine.contains("=")) }) {
+                    // Если пустая строка
+                    if (nextLine.isBlank()) {
+                        emptyLinesCount++
+                        // Если две пустые строки подряд, останавливаемся
+                        if (emptyLinesCount >= 2 && sectionText.isNotEmpty()) {
+                            break
+                        }
+                        i++
+                        continue
+                    } else {
+                        emptyLinesCount = 0
+                    }
+                    
+                    // Останавливаемся на следующей подсекции (более строгая проверка)
+                    val isNextSection = stopLabels.any { sectionLabel ->
+                        val pattern = Regex("^\\s*$sectionLabel\\s*[:=]", RegexOption.IGNORE_CASE)
+                        pattern.matches(nextLine) || 
+                        (nextLine.contains(sectionLabel, ignoreCase = true) && 
+                         (nextLine.contains(":") || nextLine.contains("=")) &&
+                         nextLine.length < 50)
+                    }
+                    
+                    if (isNextSection) {
                         break
                     }
                     
-                    // Добавляем непустые строки
-                    if (nextLine.isNotBlank() && nextLine.length > 2) {
+                    // Проверяем, не является ли строка заголовком другого поля
+                    val isFieldLabel = nextLine.matches(Regex("^[А-ЯA-Z][^:]*[:=]\\s*(?:\\d+|$)"))
+                    if (isFieldLabel && nextLine.length < 50) {
+                        break
+                    }
+                    
+                    // Добавляем непустые строки (не слишком длинные)
+                    if (nextLine.isNotBlank() && nextLine.length > 2 && nextLine.length < 200) {
                         if (sectionText.isNotEmpty()) {
                             sectionText.append("\n")
                         }
@@ -899,25 +926,47 @@ class CharacterSheetsFragment : Fragment() {
                         "Desire", "Желание"
                     )
                     
-                    while (i < lines.size && i < sectionStart + 15) { // Увеличиваем до 15 строк
+                    // Улучшенная логика остановки - останавливаемся на следующей секции или после нескольких пустых строк
+                    var emptyLinesCount = 0
+                    while (i < lines.size && i < sectionStart + 10) { // Максимум 10 строк
                         val nextLine = lines[i].trim()
+                        
+                        // Если пустая строка
                         if (nextLine.isBlank()) {
-                            // Если пустая строка после начала секции, продолжаем
-                            if (sectionText.isNotEmpty()) {
-                                i++
-                                continue
-                            } else {
+                            emptyLinesCount++
+                            // Если две пустые строки подряд после начала секции, останавливаемся
+                            if (emptyLinesCount >= 2 && sectionText.isNotEmpty()) {
                                 break
                             }
+                            i++
+                            continue
+                        } else {
+                            emptyLinesCount = 0
                         }
-                        // Проверяем, не началась ли следующая секция
-                        if (nextSections.any { nextLine.contains(it, ignoreCase = true) && 
-                            (nextLine.contains(":") || nextLine.contains("=")) &&
-                            !nextLine.matches(Regex(".*\\d+\\s*[:=].*")) }) {
+                        
+                        // Проверяем, не началась ли следующая секция (более строгая проверка)
+                        val isNextSection = nextSections.any { sectionLabel ->
+                            val pattern = Regex("^\\s*$sectionLabel\\s*[:=]", RegexOption.IGNORE_CASE)
+                            pattern.matches(nextLine) || 
+                            (nextLine.contains(sectionLabel, ignoreCase = true) && 
+                             (nextLine.contains(":") || nextLine.contains("=")) &&
+                             !nextLine.matches(Regex(".*\\d+\\s*[:=].*")) &&
+                             nextLine.length < 50) // Короткие строки с метками - это заголовки
+                        }
+                        
+                        if (isNextSection) {
                             break
                         }
-                        // Добавляем строку, если она не пустая и не является меткой другого поля
-                        if (nextLine.length > 2 && !nextLine.matches(Regex("^[А-Яа-яA-Z][^:]*[:=]\\s*\\d+$"))) {
+                        
+                        // Проверяем, не является ли строка заголовком другого поля (начинается с заглавной буквы и содержит двоеточие)
+                        val isFieldLabel = nextLine.matches(Regex("^[А-ЯA-Z][^:]*[:=]\\s*(?:\\d+|$)"))
+                        if (isFieldLabel && nextLine.length < 50) {
+                            break
+                        }
+                        
+                        // Добавляем строку только если она не слишком длинная (не весь документ)
+                        if (nextLine.length > 2 && nextLine.length < 200 && 
+                            !nextLine.matches(Regex("^[А-Яа-яA-Z][^:]*[:=]\\s*\\d+$"))) {
                             sectionText.append("\n").append(nextLine)
                         }
                         i++
