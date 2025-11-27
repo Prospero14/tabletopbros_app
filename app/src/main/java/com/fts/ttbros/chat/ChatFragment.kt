@@ -296,10 +296,10 @@ class ChatFragment : Fragment() {
             listenerRegistration = chatRepository.observeMessages(
                 teamId,
                 chatType,
-                onEvent = { messages ->
+                onEvent = { messages: List<ChatMessage> ->
                     try {
                         // Firestore listener вызывается на фоновом потоке, переключаемся на главный
-                        if (!isAdded || view == null) return@observeMessages
+                        if (!isAdded || view == null) return@onEvent
                         
                         viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Main) {
                             try {
@@ -382,9 +382,9 @@ class ChatFragment : Fragment() {
                     }
                 }
             },
-            onError = { error ->
+            onError = { error: Exception ->
                 try {
-                    if (!isAdded || view == null) return@observeMessages
+                    if (!isAdded || view == null) return@onError
                     
                     viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Main) {
                         try {
