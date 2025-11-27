@@ -247,56 +247,77 @@ class MainActivity : AppCompatActivity() {
     }
     
     private fun setupSwipeGesture() {
-        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
-            private val SWIPE_THRESHOLD = 100
-            private val SWIPE_VELOCITY_THRESHOLD = 100
-
-            override fun onFling(
-                e1: MotionEvent?,
-                e2: MotionEvent,
-                velocityX: Float,
-                velocityY: Float
-            ): Boolean {
-                try {
-                    if (e1 == null) return false
-
-                    // Игнорировать свайп если уже идёт навигация
-                    if (isNavigating) return false
-
-                    val diffX = e2.x - e1.x
-                    val diffY = e2.y - e1.y
-
-                    if (Math.abs(diffX) > Math.abs(diffY)) {
-                        if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
-                            if (diffX > 0) {
-                                // Свайп вправо - предыдущий пункт меню (листаем назад)
-                                navigateToPreviousMenuItem()
-                            } else {
-                                // Свайп влево - следующий пункт меню (листаем вперед)
-                                navigateToNextMenuItem()
-                            }
-                            return true
-                        }
-                    }
-                } catch (e: Exception) {
-                    android.util.Log.e("MainActivity", "Error in gesture handler: ${e.message}", e)
-                }
-                return false
-            }
-        })
-        
-        // Применяем жесты только к FragmentContainerView (не дублируем в dispatchTouchEvent)
         try {
-            val fragmentContainer = binding.root.findViewById<View>(R.id.fragmentContainer)
-            fragmentContainer?.setOnTouchListener { view, event ->
+            gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+                private val SWIPE_THRESHOLD = 100
+                private val SWIPE_VELOCITY_THRESHOLD = 100
+
+                override fun onFling(
+                    e1: MotionEvent?,
+                    e2: MotionEvent,
+                    velocityX: Float,
+                    velocityY: Float
+                ): Boolean {
+                    try {
+                        if (e1 == null || e2 == null) return false
+
+                        // Игнорировать свайп если уже идёт навигация
+                        if (isNavigating) return false
+
+                        // Проверяем что navController готов
+                        if (!::navController.isInitialized) return false
+                        if (navController.currentDestination == null) return false
+
+                        val diffX = e2.x - e1.x
+                        val diffY = e2.y - e1.y
+
+                        if (Math.abs(diffX) > Math.abs(diffY)) {
+                            if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
+                                // Выполняем навигацию на главном потоке
+                                runOnUiThread {
+                                    try {
+                                        if (diffX > 0) {
+                                            // Свайп вправо - предыдущий пункт меню (листаем назад)
+                                            navigateToPreviousMenuItem()
+                                        } else {
+                                            // Свайп влево - следующий пункт меню (листаем вперед)
+                                            navigateToNextMenuItem()
+                                        }
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("MainActivity", "Error in navigation: ${e.message}", e)
+                                        isNavigating = false
+                                    }
+                                }
+                                return true
+                            }
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("MainActivity", "Error in gesture handler: ${e.message}", e)
+                    }
+                    return false
+                }
+            })
+            
+            // Используем обработку на уровне корневого view с проверкой типа события
+            // Обрабатываем только ACTION_DOWN и ACTION_UP, чтобы не конфликтовать с дочерними view
+            binding.root.setOnTouchListener { view, event ->
                 try {
-                    if (::gestureDetector.isInitialized) {
+                    // Обрабатываем только горизонтальные свайпы в центральной части экрана
+                    // чтобы не мешать работе RecyclerView и других scrollable view
+                    if (::gestureDetector.isInitialized && event.action == MotionEvent.ACTION_DOWN) {
+                        val y = event.y
+                        val viewHeight = view.height
+                        // Обрабатываем только свайпы в центральной трети экрана (избегаем конфликтов с верхней и нижней панелями)
+                        if (y > viewHeight * 0.2f && y < viewHeight * 0.8f) {
+                            gestureDetector.onTouchEvent(event)
+                        }
+                    } else if (::gestureDetector.isInitialized) {
                         gestureDetector.onTouchEvent(event)
                     }
                 } catch (e: Exception) {
                     android.util.Log.e("MainActivity", "Error in touch listener: ${e.message}", e)
                 }
-                false // Позволяем событию продолжить обработку
+                false // Всегда возвращаем false, чтобы дочерние view могли обработать событие
             }
         } catch (e: Exception) {
             android.util.Log.e("MainActivity", "Error setting up swipe gesture: ${e.message}", e)
@@ -304,7 +325,7 @@ class MainActivity : AppCompatActivity() {
     }
     
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        // Убрали обработку жестов отсюда, чтобы избежать двойной обработки
+        // Не обрабатываем жесты здесь, чтобы избежать конфликтов
         return super.dispatchTouchEvent(ev)
     }
 
