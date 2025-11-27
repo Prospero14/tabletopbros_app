@@ -55,6 +55,10 @@ class ChatFragment : Fragment() {
     private lateinit var pollsAdapter: com.fts.ttbros.chat.ui.PollAdapter
     private var pollsRecyclerView: RecyclerView? = null
 
+    companion object {
+        const val ARG_CHAT_TYPE = "chatType"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         try {
@@ -381,8 +385,7 @@ class ChatFragment : Fragment() {
                     } catch (e: Exception) {
                         android.util.Log.e("ChatFragment", "Error processing messages: ${e.message}", e)
                     }
-                }
-            },
+                },
             onError = { error: Exception ->
                 try {
                     if (!isAdded || view == null) return@onError
@@ -1127,9 +1130,5 @@ class ChatFragment : Fragment() {
                 SnackbarHelper.showErrorSnackbar(it, getString(R.string.error_opening_file, e.message ?: ""))
             }
         }
-    }
-
-    companion object {
-        const val ARG_CHAT_TYPE = "chatType"
     }
 }
