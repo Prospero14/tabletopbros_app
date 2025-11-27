@@ -377,6 +377,10 @@ class ChatFragment : Fragment() {
                         if (isAdded && view != null) {
                             emptyView.isVisible = messages.isEmpty()
                         }
+                            } catch (e: Exception) {
+                                android.util.Log.e("ChatFragment", "Error in launch block: ${e.message}", e)
+                            }
+                        }
                     } catch (e: Exception) {
                         android.util.Log.e("ChatFragment", "Error processing messages: ${e.message}", e)
                     }
