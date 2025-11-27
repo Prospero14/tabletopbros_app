@@ -298,10 +298,10 @@ class ChatFragment : Fragment() {
                 teamId,
                 chatType,
                 onEvent = { messages: List<ChatMessage> ->
+                    // Firestore listener вызывается на фоновом потоке, переключаемся на главный
+                    if (!isAdded || view == null) return@onEvent
+                    
                     try {
-                        // Firestore listener вызывается на фоновом потоке, переключаемся на главный
-                        if (!isAdded || view == null) return@onEvent
-                        
                         viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Main) {
                             try {
                                 // Проверяем, что фрагмент еще прикреплен и view существует
@@ -387,9 +387,9 @@ class ChatFragment : Fragment() {
                     }
                 },
             onError = { error: Exception ->
+                if (!isAdded || view == null) return@onError
+                
                 try {
-                    if (!isAdded || view == null) return@onError
-                    
                     viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Main) {
                         try {
                             if (isAdded && view != null) {
