@@ -105,11 +105,34 @@ class YandexDiskRepository {
             
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
-                // Если 409, возможно файл уже существует. Но мы передали overwrite=true.
-                // 404 - файл не найден.
-                throw Exception("Move failed: ${response.code} ${response.message}")
+                if (response.code == 409) {
+                    // Conflict despite overwrite=true. Try to delete target and retry.
+                    Log.w("YandexDisk", "Move failed with 409. Deleting target and retrying: $to")
+                    response.close()
+                    
+                    try {
+                        deleteFile(to)
+                        // Retry move
+                        val retryRequest = Request.Builder()
+                            .url("$baseUrl/resources/move?from=${Uri.encode(from)}&path=${Uri.encode(to)}&overwrite=true")
+                            .header("Authorization", "OAuth $oauthToken")
+                            .post(ByteArray(0).toRequestBody(null))
+                            .build()
+                        val retryResponse = client.newCall(retryRequest).execute()
+                        if (!retryResponse.isSuccessful) {
+                            throw Exception("Move retry failed: ${retryResponse.code} ${retryResponse.message}")
+                        }
+                        retryResponse.close()
+                    } catch (e: Exception) {
+                        throw Exception("Move failed with 409 and retry failed: ${e.message}")
+                    }
+                } else {
+                    // 404 - файл не найден.
+                    throw Exception("Move failed: ${response.code} ${response.message}")
+                }
+            } else {
+                response.close()
             }
-            response.close()
             Log.d("YandexDisk", "File moved from $from to $to")
         } catch (e: Exception) {
             Log.e("YandexDisk", "Move error: ${e.message}", e)

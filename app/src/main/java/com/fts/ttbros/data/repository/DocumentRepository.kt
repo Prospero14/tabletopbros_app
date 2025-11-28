@@ -20,7 +20,7 @@ class DocumentRepository {
         val playerMaterialsPath = "/TTBros/teams/$teamId/player_materials"
         val masterMaterialsPath = "/TTBros/teams/$teamId/master_materials"
         
-        val allFiles = mutableListOf<com.fts.ttbros.data.repository.YandexDiskRepository.DiskResource>()
+        val allFiles = mutableListOf<YandexResource>()
         
         try {
             allFiles.addAll(yandexDisk.listFiles(documentsPath))

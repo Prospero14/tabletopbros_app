@@ -144,52 +144,50 @@ class CharactersFragment : Fragment() {
                 return
             }
             
-            val profile = userRepository.currentProfile()
-            val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
-            val teamSystem = currentTeam?.teamSystem
-            
-            // Показываем меню сразу с обоими пунктами
-            val popup = android.widget.PopupMenu(context, binding.addCharacterFab)
-            popup.menu.add(0, 1, 0, "Классический лист персонажа")
-            popup.menu.add(0, 2, 1, "Загруженный лист персонажа") // Всегда показываем этот пункт
-            
-            popup.setOnMenuItemClickListener { item ->
-                try {
-                    when (item.itemId) {
-                        1 -> {
-                            if (isAdded && view != null) {
-                                showSystemSelectionDialog(teamSystem)
+            viewLifecycleOwner.lifecycleScope.launch {
+                val profile = userRepository.currentProfile()
+                val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
+                val teamSystem = currentTeam?.teamSystem
+                
+                // Показываем меню сразу с обоими пунктами
+                val popup = android.widget.PopupMenu(context, binding.addCharacterFab)
+                popup.menu.add(0, 1, 0, "Классический лист персонажа")
+                popup.menu.add(0, 2, 1, "Загруженный лист персонажа") // Всегда показываем этот пункт
+                
+                popup.setOnMenuItemClickListener { item ->
+                    try {
+                        when (item.itemId) {
+                            1 -> {
+                                if (isAdded && view != null) {
+                                    checkSystemAndAddCharacterClassic(teamSystem)
+                                }
+                            }
+                            2 -> {
+                                if (isAdded && view != null) {
+                                    showBuilderSelectionDialog()
+                                }
                             }
                         }
-                        2 -> {
-                            // Показываем диалог выбора билдера с загрузкой
-                            if (isAdded && view != null) {
-                                showBuilderSelectionDialog()
-                            }
-                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("CharactersFragment", "Error handling menu item click: ${e.message}", e)
                     }
-                } catch (e: Exception) {
-                    android.util.Log.e("CharactersFragment", "Error in menu item click: ${e.message}", e)
-                    if (isAdded && view != null) {
-                        Snackbar.make(binding.root, "Ошибка: ${e.message}", Snackbar.LENGTH_SHORT).show()
-                    }
+                    true
                 }
-                true
+                
+                popup.setOnDismissListener {
+                    binding.addCharacterFab.isEnabled = true
+                }
+                
+                popup.show()
             }
-            
-            popup.setOnDismissListener {
-                // Включаем кнопку обратно после закрытия меню
-                binding.addCharacterFab.isEnabled = true
-            }
-            
-            popup.show()
         } catch (e: Exception) {
-            android.util.Log.e("CharactersFragment", "Error showing popup: ${e.message}", e)
             binding.addCharacterFab.isEnabled = true
-            if (isAdded && view != null) {
-                Snackbar.make(binding.root, "Ошибка открытия меню: ${e.message}", Snackbar.LENGTH_SHORT).show()
-            }
+            android.util.Log.e("CharactersFragment", "Error showing popup menu: ${e.message}", e)
         }
+    }
+
+    private fun checkSystemAndAddCharacterClassic(teamSystem: String?) {
+        showSystemSelectionDialog(teamSystem)
     }
     
     private fun openCharacterEditor(system: String) {
