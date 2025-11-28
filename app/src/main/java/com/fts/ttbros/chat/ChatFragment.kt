@@ -38,7 +38,7 @@ class ChatFragment : Fragment() {
     private lateinit var emptyView: TextView
     private lateinit var messagesRecyclerView: RecyclerView
     private lateinit var messageInputContainer: LinearLayout
-    private lateinit var messageEditText: TextInputEditText
+    private lateinit var messageEditText: android.widget.EditText
     private lateinit var sendButton: MaterialButton
     private lateinit var menuButton: MaterialButton
     private lateinit var pinnedMessageContainer: androidx.cardview.widget.CardView
