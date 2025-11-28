@@ -2,7 +2,6 @@
 <resources>
     <!-- Tabletop Bros Brand Colors - Soft Purple and Orange -->
     
-    <!-- Primary Colors (Soft Purple) -->
     <!-- Primary Colors (Deep Purple) -->
     <color name="primary">#673AB7</color>
     <color name="primary_dark">#512DA8</color>

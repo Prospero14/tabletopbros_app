@@ -11,7 +11,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"
         android:visibility="gone"
-        app:cardBackgroundColor="?attr/colorSurface"
+        app:cardBackgroundColor="@color/white"
         app:cardCornerRadius="8dp"
         app:cardElevation="4dp"
         app:layout_constraintTop_toTopOf="parent"
@@ -53,7 +53,7 @@
                 android:layout_marginTop="4dp"
                 android:maxLines="2"
                 android:ellipsize="end"
-                android:textColor="?attr/colorOnSurface"
+                android:textColor="@color/text_primary"
                 android:textSize="14sp" />
 
         </LinearLayout>
@@ -65,7 +65,7 @@
         android:layout_height="wrap_content"
         android:gravity="center"
         android:text="@string/chat_placeholder"
-        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textSize="16sp"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@+id/messageInputContainer"
         app:layout_constraintTop_toBottomOf="@+id/pinnedMessageContainer" />
@@ -106,7 +106,7 @@
         android:paddingEnd="8dp"
         android:paddingTop="8dp"
         android:paddingBottom="8dp"
-        android:background="?attr/colorSurface"
+        android:background="@color/white"
         android:elevation="8dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -138,10 +138,9 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="@drawable/bg_chat_input"
             android:hint="@string/chat_hint"
-            android:textColor="?attr/colorOnSurface"
-            android:textColorHint="?attr/colorOnSurfaceVariant"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
             android:paddingTop="10dp"
