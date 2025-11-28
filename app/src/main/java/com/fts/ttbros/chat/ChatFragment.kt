@@ -64,7 +64,12 @@ class ChatFragment : Fragment() {
         try {
             val typeArg = arguments?.getString(ARG_CHAT_TYPE)
             android.util.Log.d("ChatFragment", "onCreate: typeArg=$typeArg")
-            chatType = ChatType.from(typeArg)
+            chatType = try {
+                ChatType.from(typeArg)
+            } catch (e: Exception) {
+                android.util.Log.e("ChatFragment", "Error parsing chat type: ${e.message}", e)
+                ChatType.TEAM
+            }
             android.util.Log.d("ChatFragment", "onCreate: chatType=$chatType")
         } catch (e: Exception) {
             android.util.Log.e("ChatFragment", "Error in onCreate: ${e.message}", e)
@@ -299,10 +304,9 @@ class ChatFragment : Fragment() {
                 chatType,
                 onEvent = { messages: List<ChatMessage> ->
                     // Firestore listener вызывается на фоновом потоке, переключаемся на главный
-                    if (!isAdded || view == null) return@onEvent
-                    
-                    try {
-                        viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                    if (isAdded && view != null) {
+                        try {
+                            viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Main) {
                             try {
                                 // Проверяем, что фрагмент еще прикреплен и view существует
                                 if (!isAdded || view == null) return@launch
@@ -351,28 +355,32 @@ class ChatFragment : Fragment() {
 
                                 if (!isAdded || view == null) return@launch
                                 
-                                adapter.submitList(messages) {
-                                    try {
-                                        if (!isAdded || view == null) return@submitList
-                                        
-                                        if (messages.isNotEmpty()) {
-                                            val lastIndex = messages.lastIndex
-                                            if (lastIndex >= 0 && lastIndex < messages.size) {
-                                                // Используем post для безопасного скроллинга
-                                                messagesRecyclerView.post {
-                                                    try {
-                                                        if (isAdded && view != null && lastIndex < adapter.itemCount) {
-                                                            messagesRecyclerView.scrollToPosition(lastIndex)
+                                try {
+                                    adapter.submitList(messages) {
+                                        try {
+                                            if (!isAdded || view == null) return@submitList
+                                            
+                                            if (messages.isNotEmpty()) {
+                                                val lastIndex = messages.lastIndex
+                                                if (lastIndex >= 0 && lastIndex < messages.size) {
+                                                    // Используем post для безопасного скроллинга
+                                                    messagesRecyclerView.post {
+                                                        try {
+                                                            if (isAdded && view != null && lastIndex < adapter.itemCount) {
+                                                                messagesRecyclerView.scrollToPosition(lastIndex)
+                                                            }
+                                                        } catch (e: Exception) {
+                                                            android.util.Log.e("ChatFragment", "Error in post scroll: ${e.message}", e)
                                                         }
-                                                    } catch (e: Exception) {
-                                                        android.util.Log.e("ChatFragment", "Error in post scroll: ${e.message}", e)
                                                     }
                                                 }
                                             }
+                                        } catch (e: Exception) {
+                                            android.util.Log.e("ChatFragment", "Error in submitList callback: ${e.message}", e)
                                         }
-                                    } catch (e: Exception) {
-                                        android.util.Log.e("ChatFragment", "Error in submitList callback: ${e.message}", e)
                                     }
+                                } catch (e: Exception) {
+                                    android.util.Log.e("ChatFragment", "Error submitting list to adapter: ${e.message}", e)
                                 }
                                 
                                 if (isAdded && view != null) {
@@ -382,27 +390,28 @@ class ChatFragment : Fragment() {
                                 android.util.Log.e("ChatFragment", "Error in launch block: ${e.message}", e)
                             }
                         }
-                    } catch (e: Exception) {
-                        android.util.Log.e("ChatFragment", "Error processing messages: ${e.message}", e)
+                        } catch (e: Exception) {
+                            android.util.Log.e("ChatFragment", "Error processing messages: ${e.message}", e)
+                        }
                     }
                 },
             onError = { error: Exception ->
-                if (!isAdded || view == null) return@onError
-                
-                try {
-                    viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Main) {
-                        try {
-                            if (isAdded && view != null) {
-                                view?.let {
-                                    SnackbarHelper.showErrorSnackbar(it, error.localizedMessage ?: getString(R.string.error_unknown))
+                if (isAdded && view != null) {
+                    try {
+                        viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                            try {
+                                if (isAdded && view != null) {
+                                    view?.let {
+                                        SnackbarHelper.showErrorSnackbar(it, error.localizedMessage ?: getString(R.string.error_unknown))
+                                    }
                                 }
+                            } catch (e: Exception) {
+                                android.util.Log.e("ChatFragment", "Error showing error snackbar: ${e.message}", e)
                             }
-                        } catch (e: Exception) {
-                            android.util.Log.e("ChatFragment", "Error showing error snackbar: ${e.message}", e)
                         }
+                    } catch (e: Exception) {
+                        android.util.Log.e("ChatFragment", "Error in onError callback: ${e.message}", e)
                     }
-                } catch (e: Exception) {
-                    android.util.Log.e("ChatFragment", "Error in onError callback: ${e.message}", e)
                 }
             }
         )

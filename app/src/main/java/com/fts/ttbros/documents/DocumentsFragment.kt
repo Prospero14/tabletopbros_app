@@ -48,9 +48,10 @@ class DocumentsFragment : Fragment() {
     private var currentUserName: String = ""
     private var allDocuments: List<Document> = emptyList()
     private var allSheets: List<com.fts.ttbros.data.model.CharacterSheet> = emptyList()
-    private var playerMaterials: List<Document> = emptyList() // Материалы для игроков (мастер)
-    private var masterMaterials: List<Document> = emptyList() // Материалы от мастера (игрок)
-    private var isUploadingMaterial: Boolean = false
+    private var masterMaterialsPrivate: List<Document> = emptyList() // Tab 3a (Master only)
+    private var gameMaterialsPublic: List<Document> = emptyList() // Tab 4a (All)
+    private var isUploadingMasterMaterial: Boolean = false // Flag for Tab 3a upload
+    private var isUploadingGameMaterial: Boolean = false // Flag for Tab 4a upload
 
     private val filePickerLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         uri?.let { showUploadDialog(it) }
@@ -70,12 +71,22 @@ class DocumentsFragment : Fragment() {
         adapter = DocumentsAdapter(
             onClick = { doc -> onDocumentClicked(doc) },
             onLongClick = { doc -> 
-                // Для материалов в третьей вкладке показываем меню с удалением и отправкой
+                // Handle long click based on tab and role
                 val selectedTab = binding.tabLayout.selectedTabPosition
-                if (selectedTab == 2 && isMaster && doc.downloadUrl.contains("/player_materials/")) {
-                    showMaterialMenu(doc)
-                } else if (isMaster) {
-                    showDeleteDialog(doc)
+                
+                // Tab 3a (Master Materials Private) - Index depends on role
+                // If Master: 0=Docs, 1=Sheets, 2=Master(Private), 3=Game(Public)
+                // If Player: 0=Docs, 1=Sheets, 2=Game(Public)
+                
+                if (isMaster) {
+                    when (selectedTab) {
+                        2 -> showMasterMaterialMenu(doc) // Tab 3a
+                        3 -> showDeleteDialog(doc) // Tab 4a
+                        0 -> showDeleteDialog(doc) // Tab 1a
+                        else -> {}
+                    }
+                } else {
+                    // Players can't delete or manage materials usually, but let's keep existing logic if any
                 }
             }
         )
@@ -94,30 +105,29 @@ class DocumentsFragment : Fragment() {
         
         binding.addDocumentFab.setOnClickListener {
             val selectedTab = binding.tabLayout.selectedTabPosition
-            when (selectedTab) {
-                0 -> {
-                    // Загрузка документа
-                    isUploadingMaterial = false
-                    filePickerLauncher.launch("application/pdf")
-                }
-                1 -> {
-                    // Загрузка листа персонажа - навигация в CharacterSheetsFragment
-                    try {
-                        findNavController().navigate(R.id.action_documentsFragment_to_characterSheetsFragment)
-                    } catch (e: Exception) {
-                        android.util.Log.e("DocumentsFragment", "Navigation error: ${e.message}", e)
-                        if (isAdded && view != null) {
-                            SnackbarHelper.showErrorSnackbar(binding.root, getString(R.string.error_opening_sheet_upload))
-                        }
+            
+            // Reset flags
+            isUploadingMasterMaterial = false
+            isUploadingGameMaterial = false
+            
+            if (isMaster) {
+                when (selectedTab) {
+                    0 -> filePickerLauncher.launch("application/pdf") // Tab 1a: Docs
+                    1 -> findNavController().navigate(R.id.action_documentsFragment_to_characterSheetsFragment) // Tab 2a: Sheets
+                    2 -> {
+                        isUploadingMasterMaterial = true
+                        filePickerLauncher.launch("*/*") // Tab 3a: Master Materials (Private)
+                    }
+                    3 -> {
+                        isUploadingGameMaterial = true
+                        filePickerLauncher.launch("*/*") // Tab 4a: Game Materials (Public)
                     }
                 }
-                2 -> {
-                    // Добавление материала для игроков (только для мастера)
-                    if (isMaster) {
-                        isUploadingMaterial = true
-                        // Support both PDF and JPG for materials
-                        filePickerLauncher.launch("*/*")
-                    }
+            } else {
+                // Player
+                when (selectedTab) {
+                    1 -> findNavController().navigate(R.id.action_documentsFragment_to_characterSheetsFragment) // Tab 2a: Sheets
+                    // Players can't upload to other tabs
                 }
             }
         }
@@ -127,52 +137,83 @@ class DocumentsFragment : Fragment() {
     }
     
     private fun setupTabs() {
-        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Документы\n(Рулбуки и дополнения)"))
-        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Загруженные листы персонажей"))
+        binding.tabLayout.removeAllTabs()
         
-        // Добавляем вкладки для материалов в зависимости от роли пользователя
+        // Tab 1a
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Документы"))
+        
+        // Tab 2a
+        binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Листы персонажей"))
+        
         if (isMaster) {
-            binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Материалы для игроков"))
+            // Tab 3a (Master only)
+            binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Материалы мастера (Личные)"))
+            // Tab 4a
+            binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Материалы игры (Общие)"))
         } else {
-            binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Материалы от мастера"))
+            // Tab 4a (becomes 3rd tab for player)
+            binding.tabLayout.addTab(binding.tabLayout.newTab().setText("Материалы игры"))
         }
         
         binding.tabLayout.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
-                val tabPosition = tab?.position ?: 0
-                when (tabPosition) {
-                    0 -> {
-                        // Документы
-                        binding.documentsRecyclerView.adapter = adapter
-                        adapter.submitList(allDocuments)
-                        binding.emptyView.isVisible = allDocuments.isEmpty()
-                        binding.addDocumentFab.isVisible = isMaster
-                    }
-                    1 -> {
-                        // Загруженные листы персонажей
-                        binding.documentsRecyclerView.adapter = sheetsAdapter
-                        sheetsAdapter.submitList(allSheets)
-                        binding.emptyView.isVisible = allSheets.isEmpty()
-                        binding.addDocumentFab.isVisible = true // Показываем FAB для загрузки листов
-                    }
-                    2 -> {
-                        // Материалы для игроков (мастер) или Материалы от мастера (игрок)
-                        binding.documentsRecyclerView.adapter = adapter
-                        if (isMaster) {
-                            adapter.submitList(playerMaterials)
-                            binding.emptyView.isVisible = playerMaterials.isEmpty()
-                            binding.addDocumentFab.isVisible = true // Показываем FAB для добавления материалов
-                        } else {
-                            adapter.submitList(masterMaterials)
-                            binding.emptyView.isVisible = masterMaterials.isEmpty()
-                            binding.addDocumentFab.isVisible = false // Игроки не могут добавлять материалы
-                        }
-                    }
-                }
+                updateListForTab(tab?.position ?: 0)
             }
             override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
             override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
         })
+    }
+    
+    private fun updateListForTab(position: Int) {
+        if (isMaster) {
+            when (position) {
+                0 -> { // Documents
+                    binding.documentsRecyclerView.adapter = adapter
+                    adapter.submitList(allDocuments)
+                    binding.emptyView.isVisible = allDocuments.isEmpty()
+                    binding.addDocumentFab.isVisible = true
+                }
+                1 -> { // Sheets
+                    binding.documentsRecyclerView.adapter = sheetsAdapter
+                    sheetsAdapter.submitList(allSheets)
+                    binding.emptyView.isVisible = allSheets.isEmpty()
+                    binding.addDocumentFab.isVisible = true
+                }
+                2 -> { // Master Materials (Private)
+                    binding.documentsRecyclerView.adapter = adapter
+                    adapter.submitList(masterMaterialsPrivate)
+                    binding.emptyView.isVisible = masterMaterialsPrivate.isEmpty()
+                    binding.addDocumentFab.isVisible = true
+                }
+                3 -> { // Game Materials (Public)
+                    binding.documentsRecyclerView.adapter = adapter
+                    adapter.submitList(gameMaterialsPublic)
+                    binding.emptyView.isVisible = gameMaterialsPublic.isEmpty()
+                    binding.addDocumentFab.isVisible = true
+                }
+            }
+        } else {
+            when (position) {
+                0 -> { // Documents
+                    binding.documentsRecyclerView.adapter = adapter
+                    adapter.submitList(allDocuments)
+                    binding.emptyView.isVisible = allDocuments.isEmpty()
+                    binding.addDocumentFab.isVisible = false // Players can't upload docs
+                }
+                1 -> { // Sheets
+                    binding.documentsRecyclerView.adapter = sheetsAdapter
+                    sheetsAdapter.submitList(allSheets)
+                    binding.emptyView.isVisible = allSheets.isEmpty()
+                    binding.addDocumentFab.isVisible = true
+                }
+                2 -> { // Game Materials (Public)
+                    binding.documentsRecyclerView.adapter = adapter
+                    adapter.submitList(gameMaterialsPublic)
+                    binding.emptyView.isVisible = gameMaterialsPublic.isEmpty()
+                    binding.addDocumentFab.isVisible = false // Players can't upload materials
+                }
+            }
+        }
     }
     
     private fun loadData() {
@@ -193,47 +234,41 @@ class DocumentsFragment : Fragment() {
                 currentUserId = profile.uid
                 currentUserName = profile.displayName
                 
-                // Определяем роль из текущей команды
+                // Determine role
                 val currentTeam = profile.teams.find { it.teamId == teamIdValue }
                 isMaster = currentTeam?.role == UserRole.MASTER
                 
-                // Setup tabs now that we know the user's role
+                // Setup tabs
                 if (binding.tabLayout.tabCount == 0) {
                     setupTabs()
                 }
                 
-                binding.addDocumentFab.isVisible = isMaster
+                // Update FAB visibility based on initial tab (0)
+                binding.addDocumentFab.isVisible = isMaster // Only master can upload to tab 0
                 
                 val teamId = teamIdValue
                 
                 try {
                     documentRepository.getDocuments(teamId).collect { docs ->
                         try {
-                            // Фильтруем документы по категориям:
-                            // 1. Общие документы - только те, что НЕ в специальных папках
+                            // Filter documents based on their path (id)
+                            
+                            // 1. Documents (Tab 1a) - everything in /documents/
                             allDocuments = docs.filter { doc ->
-                                !doc.downloadUrl.contains("/character_sheets/") && 
-                                !doc.downloadUrl.contains("/player_materials/")
+                                doc.id.contains("/documents/")
                             }
                             
-                            // 2. Материалы для игроков - только те, что загрузил текущий мастер
-                            playerMaterials = docs.filter { doc ->
-                                val isMaterial = doc.downloadUrl.contains("/player_materials/") && doc.uploadedBy == currentUserId
-                                if (isMaterial) {
-                                    android.util.Log.d("DocumentsFragment", "Found player material: ${doc.title}, URL: ${doc.downloadUrl}, uploadedBy: ${doc.uploadedBy}")
-                                }
-                                isMaterial
-                            }
-                            android.util.Log.d("DocumentsFragment", "Total player materials: ${playerMaterials.size}")
-                            
-                            // 3. Материалы от мастера - для игроков (загруженные мастером, но не текущим пользователем)
-                            masterMaterials = docs.filter { doc ->
-                                doc.downloadUrl.contains("/player_materials/") && doc.uploadedBy != currentUserId
+                            // 2. Master Materials Private (Tab 3a) - everything in /master_materials/
+                            masterMaterialsPrivate = docs.filter { doc ->
+                                doc.id.contains("/master_materials/")
                             }
                             
-                            // Загружаем листы персонажей и фильтруем по системе команды
-                            val profile = userRepository.currentProfile()
-                            val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
+                            // 3. Game Materials Public (Tab 4a) - everything in /player_materials/
+                            gameMaterialsPublic = docs.filter { doc ->
+                                doc.id.contains("/player_materials/")
+                            }
+                            
+                            // 4. Sheets (Tab 2a)
                             val teamSystem = currentTeam?.teamSystem
                             val allUserSheets = sheetRepository.getUserSheets(currentUserId)
                             allSheets = if (!teamSystem.isNullOrBlank()) {
@@ -242,23 +277,9 @@ class DocumentsFragment : Fragment() {
                                 allUserSheets
                             }
                             
-                            // Обновляем отображаемый список в зависимости от выбранной вкладки
-                            val selectedTab = binding.tabLayout.selectedTabPosition
-                            when (selectedTab) {
-                                0 -> {
-                                    adapter.submitList(allDocuments)
-                                    binding.emptyView.isVisible = allDocuments.isEmpty()
-                                    checkDownloads(allDocuments)
-                                }
-                                1 -> {
-                                    sheetsAdapter.submitList(allSheets)
-                                    binding.emptyView.isVisible = allSheets.isEmpty()
-                                }
-                                2 -> {
-                                    adapter.submitList(if (isMaster) playerMaterials else masterMaterials)
-                                    binding.emptyView.isVisible = if (isMaster) playerMaterials.isEmpty() else masterMaterials.isEmpty()
-                                }
-                            }
+                            // Update UI
+                            updateListForTab(binding.tabLayout.selectedTabPosition)
+                            
                         } catch (e: Exception) {
                             android.util.Log.e("DocumentsFragment", "Error processing documents: ${e.message}", e)
                             if (isAdded && view != null) {
@@ -285,12 +306,10 @@ class DocumentsFragment : Fragment() {
     
     private fun showUploadDialog(uri: Uri) {
         val context = context ?: return
-        val view = LayoutInflater.from(context).inflate(R.layout.dialog_add_note, null) // Reusing layout or create new
-        // Ideally create a new layout for document upload, but for now let's use a simple input
+        val view = LayoutInflater.from(context).inflate(R.layout.dialog_add_note, null)
         val input = TextInputEditText(context)
         input.hint = "Document Title"
         
-        // Try to get filename from URI
         var fileName = "document.pdf"
         context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
             val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
@@ -321,46 +340,36 @@ class DocumentsFragment : Fragment() {
                 return
             }
         
-        // Use the tracked flag instead of current tab position
-        val isMaterial = isUploadingMaterial
-        // Reset the flag
-        isUploadingMaterial = false
+        val isMasterMat = isUploadingMasterMaterial
+        val isGameMat = isUploadingGameMaterial
+        
+        // Reset flags
+        isUploadingMasterMaterial = false
+        isUploadingGameMaterial = false
         
         binding.progressBar.isVisible = true
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 val context = context ?: return@launch
                 if (!isAdded) return@launch
+                
+                // Pass flags to repository
                 val document = documentRepository.uploadDocument(
-                    teamId, uri, title, fileName, currentUserId, currentUserName, context, isMaterial
+                    teamId = teamId, 
+                    uri = uri, 
+                    title = title, 
+                    fileName = fileName, 
+                    userId = currentUserId, 
+                    userName = currentUserName, 
+                    context = context, 
+                    isMaterial = isGameMat, // /player_materials/
+                    isMasterMaterial = isMasterMat // /master_materials/
                 )
                 
                 if (isAdded && view != null) {
-                    val message = if (isMaterial) getString(R.string.material_uploaded) else getString(R.string.document_uploaded)
-                    SnackbarHelper.showSuccessSnackbar(binding.root, message)
+                    SnackbarHelper.showSuccessSnackbar(binding.root, getString(R.string.document_uploaded))
                 }
                 
-                // Если это материал, предлагаем отправить в чат и переключаемся на вкладку материалов
-                if (isMaterial && document != null) {
-                    android.util.Log.d("DocumentsFragment", "Material uploaded: ${document.title}, URL: ${document.downloadUrl}")
-                    android.util.Log.d("DocumentsFragment", "Material contains /player_materials/: ${document.downloadUrl.contains("/player_materials/")}")
-                    android.util.Log.d("DocumentsFragment", "Material uploadedBy: ${document.uploadedBy}, currentUserId: $currentUserId")
-                    
-                    // Переключаемся на вкладку "Материалы для игроков" (таб 2 для мастера)
-                    if (isMaster && binding.tabLayout.tabCount > 2) {
-                        binding.tabLayout.getTabAt(2)?.select()
-                        // Принудительно обновляем список после переключения вкладки
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                            // Небольшая задержка для обновления Flow
-                            kotlinx.coroutines.delay(500)
-                            // Список обновится автоматически через Flow, но можно принудительно обновить
-                        }
-                    }
-                    showSendToChatDialog(document)
-                } else {
-                    // Для обычных документов обновляем список
-                    android.util.Log.d("DocumentsFragment", "Document uploaded: ${document?.title}, URL: ${document?.downloadUrl}")
-                }
             } catch (e: Exception) {
                 android.util.Log.e("DocumentsFragment", "Error uploading document: ${e.message}", e)
                 if (isAdded && view != null) {
@@ -376,6 +385,63 @@ class DocumentsFragment : Fragment() {
             android.util.Log.e("DocumentsFragment", "Error in uploadDocument: ${e.message}", e)
             if (isAdded && view != null) {
                 SnackbarHelper.showErrorSnackbar(binding.root, getString(R.string.error_uploading, e.message ?: ""))
+            }
+        }
+    }
+    
+    private fun showMasterMaterialMenu(doc: Document) {
+        val context = context ?: return
+        if (!isAdded) return
+        MaterialAlertDialogBuilder(context)
+            .setTitle(doc.title)
+            .setItems(arrayOf("Опубликовать в материалы игры", "Удалить")) { _, which ->
+                when (which) {
+                    0 -> publishMaterial(doc)
+                    1 -> showDeleteDialog(doc)
+                }
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
+    }
+    
+    private fun publishMaterial(doc: Document) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                binding.progressBar.isVisible = true
+                
+                // 1. Move file
+                val newDoc = documentRepository.publishMaterial(doc)
+                
+                // 2. Send chat message
+                if (newDoc != null) {
+                     val chatRepository = com.fts.ttbros.chat.data.ChatRepository()
+                     val teamId = currentTeamId ?: return@launch
+                     
+                     val message = com.fts.ttbros.chat.model.ChatMessage(
+                        senderId = currentUserId,
+                        senderName = currentUserName,
+                        text = "Опубликован новый материал: ${newDoc.title}",
+                        type = "material",
+                        attachmentId = newDoc.id,
+                        timestamp = com.google.firebase.Timestamp.now()
+                    )
+                    chatRepository.sendMessage(teamId, ChatType.TEAM, message)
+                    
+                    if (isAdded && view != null) {
+                        SnackbarHelper.showSuccessSnackbar(binding.root, "Материал опубликован")
+                    }
+                    
+                    // Switch to Game Materials tab (Tab 4a, index 3)
+                    binding.tabLayout.getTabAt(3)?.select()
+                }
+                
+            } catch (e: Exception) {
+                android.util.Log.e("DocumentsFragment", "Error publishing material: ${e.message}", e)
+                if (isAdded && view != null) {
+                    SnackbarHelper.showErrorSnackbar(binding.root, "Ошибка публикации: ${e.message}")
+                }
+            } finally {
+                binding.progressBar.isVisible = false
             }
         }
     }

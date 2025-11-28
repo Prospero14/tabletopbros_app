@@ -72,18 +72,10 @@ class DiceRollDialog(
             sendToLabelTextView = view.findViewById(com.fts.ttbros.R.id.sendToLabelTextView)
             
             // Проверяем что все view найдены
-            if (diceTypeSpinner == null || tvQuantity == null || 
-                btnIncrease == null || btnDecrease == null ||
-                resultTextView == null || rollButton == null || 
-                sendButton == null || sendToTeamCheckbox == null || 
-                sendToMasterCheckbox == null || sendToLabelTextView == null) {
-                android.util.Log.e("DiceRollDialog", "Failed to find all views")
-                return MaterialAlertDialogBuilder(context)
-                    .setTitle("Ошибка")
-                    .setMessage("Не удалось инициализировать диалог")
-                    .setPositiveButton("OK", null)
-                    .create()
-            }
+            // Проверяем что все view найдены (хотя findViewById вернет null если не найдет, но lateinit упадет при присвоении null, так что здесь проверки излишни если мы уверены в layout)
+            // Оставляем только базовую проверку если нужно, или убираем совсем.
+            // В данном случае, если findViewById вернет null, приложение упадет раньше.
+            // Поэтому просто удаляем этот блок проверок, который вызывает предупреждения.
             
             // Скрываем чекбокс "Мастеру" если пользователь сам мастер
             if (isMaster) {

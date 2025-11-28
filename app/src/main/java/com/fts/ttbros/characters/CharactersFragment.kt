@@ -137,87 +137,57 @@ class CharactersFragment : Fragment() {
         // Отключаем кнопку сразу для предотвращения множественных нажатий
         binding.addCharacterFab.isEnabled = false
         
-        viewLifecycleOwner.lifecycleScope.launch {
-            try {
-                if (!isAdded || view == null) {
-                    binding.addCharacterFab.isEnabled = true
-                    return@launch
-                }
-                
-                val profile = userRepository.currentProfile()
-                val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
-                val teamSystem = currentTeam?.teamSystem
-                
-                val context = context ?: run {
-                    binding.addCharacterFab.isEnabled = true
-                    return@launch
-                }
-                
-                // Показываем меню сразу с первым пунктом
-                val popup = android.widget.PopupMenu(context, binding.addCharacterFab)
-                popup.menu.add(0, 1, 0, "Классический лист персонажа")
-                
-                // Загружаем доступные билдеры асинхронно в фоне
-                val userId = Firebase.auth.currentUser?.uid
-                if (userId != null) {
-                    try {
-                        // Используем withContext для неблокирующей загрузки
-                        val sheets = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                            sheetRepository.getUserSheets(userId)
-                        }
-                        if (sheets.isNotEmpty()) {
-                            popup.menu.add(0, 2, 1, "Загруженный лист персонажа")
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e("CharactersFragment", "Error loading sheets: ${e.message}", e)
-                        // Не показываем ошибку пользователю, просто не добавляем пункт меню
-                    }
-                }
-                
-                popup.setOnMenuItemClickListener { item ->
-                    try {
-                        when (item.itemId) {
-                            1 -> {
-                                if (isAdded && view != null) {
-                                    showSystemSelectionDialog(teamSystem)
-                                }
-                            }
-                            2 -> {
-                                // Показываем диалог выбора билдера
-                                if (isAdded && view != null) {
-                                    showBuilderSelectionDialog()
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e("CharactersFragment", "Error in menu item click: ${e.message}", e)
-                        if (isAdded && view != null) {
-                            Snackbar.make(binding.root, "Ошибка: ${e.message}", Snackbar.LENGTH_SHORT).show()
-                        }
-                    }
-                    true
-                }
-                
-                popup.setOnDismissListener {
-                    // Включаем кнопку обратно после закрытия меню
-                    binding.addCharacterFab.isEnabled = true
-                }
-                
-                try {
-                    popup.show()
-                } catch (e: Exception) {
-                    android.util.Log.e("CharactersFragment", "Error showing popup: ${e.message}", e)
-                    binding.addCharacterFab.isEnabled = true
-                    if (isAdded && view != null) {
-                        Snackbar.make(binding.root, "Ошибка открытия меню: ${e.message}", Snackbar.LENGTH_SHORT).show()
-                    }
-                }
-            } catch (e: Exception) {
-                android.util.Log.e("CharactersFragment", "Error in checkSystemAndAddCharacter: ${e.message}", e)
+        // Показываем меню сразу, без сетевых запросов
+        try {
+            val context = context ?: run {
                 binding.addCharacterFab.isEnabled = true
-                if (isAdded && view != null) {
-                    Snackbar.make(binding.root, "Ошибка: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                return
+            }
+            
+            val profile = userRepository.currentProfile()
+            val currentTeam = profile?.teams?.find { it.teamId == profile.currentTeamId }
+            val teamSystem = currentTeam?.teamSystem
+            
+            // Показываем меню сразу с обоими пунктами
+            val popup = android.widget.PopupMenu(context, binding.addCharacterFab)
+            popup.menu.add(0, 1, 0, "Классический лист персонажа")
+            popup.menu.add(0, 2, 1, "Загруженный лист персонажа") // Всегда показываем этот пункт
+            
+            popup.setOnMenuItemClickListener { item ->
+                try {
+                    when (item.itemId) {
+                        1 -> {
+                            if (isAdded && view != null) {
+                                showSystemSelectionDialog(teamSystem)
+                            }
+                        }
+                        2 -> {
+                            // Показываем диалог выбора билдера с загрузкой
+                            if (isAdded && view != null) {
+                                showBuilderSelectionDialog()
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("CharactersFragment", "Error in menu item click: ${e.message}", e)
+                    if (isAdded && view != null) {
+                        Snackbar.make(binding.root, "Ошибка: ${e.message}", Snackbar.LENGTH_SHORT).show()
+                    }
                 }
+                true
+            }
+            
+            popup.setOnDismissListener {
+                // Включаем кнопку обратно после закрытия меню
+                binding.addCharacterFab.isEnabled = true
+            }
+            
+            popup.show()
+        } catch (e: Exception) {
+            android.util.Log.e("CharactersFragment", "Error showing popup: ${e.message}", e)
+            binding.addCharacterFab.isEnabled = true
+            if (isAdded && view != null) {
+                Snackbar.make(binding.root, "Ошибка открытия меню: ${e.message}", Snackbar.LENGTH_SHORT).show()
             }
         }
     }
@@ -236,19 +206,34 @@ class CharactersFragment : Fragment() {
     }
     
     private fun showBuilderSelectionDialog() {
+        // Show loading indicator
+        val loadingSnackbar = Snackbar.make(binding.root, "Загрузка листов...", Snackbar.LENGTH_INDEFINITE)
+        loadingSnackbar.show()
+        
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                if (!isAdded || view == null) return@launch
+                if (!isAdded || view == null) {
+                    loadingSnackbar.dismiss()
+                    return@launch
+                }
                 
                 val userId = Firebase.auth.currentUser?.uid
                 if (userId == null) {
+                    loadingSnackbar.dismiss()
                     Snackbar.make(binding.root, "Пользователь не авторизован", Snackbar.LENGTH_SHORT).show()
                     return@launch
                 }
                 
-                val sheets = sheetRepository.getUserSheets(userId)
+                val sheets = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    sheetRepository.getUserSheets(userId)
+                }
+                
+                loadingSnackbar.dismiss()
+                
                 if (sheets.isEmpty()) {
-                    Snackbar.make(binding.root, "Нет загруженных листов персонажей", Snackbar.LENGTH_SHORT).show()
+                    if (isAdded && view != null) {
+                        Snackbar.make(binding.root, "Нет загруженных листов персонажей", Snackbar.LENGTH_SHORT).show()
+                    }
                     return@launch
                 }
                 
@@ -284,6 +269,7 @@ class CharactersFragment : Fragment() {
                     .setNegativeButton("Отмена", null)
                     .show()
             } catch (e: Exception) {
+                loadingSnackbar.dismiss()
                 android.util.Log.e("CharactersFragment", "Error showing builder selection: ${e.message}", e)
                 if (isAdded && view != null) {
                     Snackbar.make(binding.root, "Ошибка загрузки билдеров: ${e.message}", Snackbar.LENGTH_SHORT).show()

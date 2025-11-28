@@ -90,9 +90,10 @@ class NotesFragment : Fragment() {
 
         if (existingNote != null) {
             noteEditText.setText(existingNote.text)
-            currentPhotoPath = existingNote.photoPath
-            if (currentPhotoPath != null && File(currentPhotoPath).exists()) {
-                val bitmap = BitmapFactory.decodeFile(currentPhotoPath)
+            val photoPath = existingNote.photoPath
+            currentPhotoPath = photoPath
+            if (photoPath != null && File(photoPath).exists()) {
+                val bitmap = BitmapFactory.decodeFile(photoPath)
                 photoPreview.setImageBitmap(bitmap)
                 photoPreview.isVisible = true
             }

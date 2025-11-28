@@ -36,31 +36,37 @@ class YandexDiskRepository {
     /**
      * Загрузить файл на Яндекс.Диск и получить публичную ссылку
      */
+    /**
+     * Загрузить файл на Яндекс.Диск и получить публичную ссылку
+     */
     suspend fun uploadFile(
         teamId: String,
         fileName: String,
         fileUri: Uri,
         context: Context,
         isMaterial: Boolean = false
+    ): String {
+        val folderName = if (isMaterial) "player_materials" else "documents"
+        return uploadFileToFolder(teamId, folderName, fileName, fileUri, context)
+    }
+
+    suspend fun uploadFileToFolder(
+        teamId: String,
+        folderName: String,
+        fileName: String,
+        fileUri: Uri,
+        context: Context
     ): String = withContext(Dispatchers.IO) {
         try {
             // 1. Создать путь на Яндекс.Диске
-            val remotePath = if (isMaterial) {
-                "/TTBros/teams/$teamId/player_materials/$fileName"
-            } else {
-                "/TTBros/teams/$teamId/documents/$fileName"
-            }
+            val remotePath = "/TTBros/teams/$teamId/$folderName/$fileName"
             Log.d("YandexDisk", "Uploading to: $remotePath")
             
             // 2. Создать папки если не существуют
             createFolderIfNeeded("/TTBros")
             createFolderIfNeeded("/TTBros/teams")
             createFolderIfNeeded("/TTBros/teams/$teamId")
-            if (isMaterial) {
-                createFolderIfNeeded("/TTBros/teams/$teamId/player_materials")
-            } else {
-                createFolderIfNeeded("/TTBros/teams/$teamId/documents")
-            }
+            createFolderIfNeeded("/TTBros/teams/$teamId/$folderName")
             
             // 3. Получить URL для загрузки
             val uploadUrl = getUploadUrl(remotePath)
@@ -78,6 +84,35 @@ class YandexDiskRepository {
             publicUrl
         } catch (e: Exception) {
             Log.e("YandexDisk", "Upload error: ${e.message}", e)
+            throw e
+        }
+    }
+
+    /**
+     * Переместить файл
+     */
+    suspend fun moveFile(from: String, to: String) = withContext(Dispatchers.IO) {
+        try {
+            // Создаем целевую папку если нужно
+            val parentPath = to.substringBeforeLast('/')
+            createFolderIfNeeded(parentPath)
+            
+            val request = Request.Builder()
+                .url("$baseUrl/resources/move?from=${Uri.encode(from)}&path=${Uri.encode(to)}&overwrite=true")
+                .header("Authorization", "OAuth $oauthToken")
+                .post(ByteArray(0).toRequestBody(null))
+                .build()
+            
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                // Если 409, возможно файл уже существует. Но мы передали overwrite=true.
+                // 404 - файл не найден.
+                throw Exception("Move failed: ${response.code} ${response.message}")
+            }
+            response.close()
+            Log.d("YandexDisk", "File moved from $from to $to")
+        } catch (e: Exception) {
+            Log.e("YandexDisk", "Move error: ${e.message}", e)
             throw e
         }
     }
@@ -176,7 +211,7 @@ class YandexDiskRepository {
             val request = Request.Builder()
                 .url("$baseUrl/resources?path=${Uri.encode(path)}")
                 .header("Authorization", "OAuth $oauthToken")
-                .put(okhttp3.RequestBody.create(null, ByteArray(0)))
+                .put(ByteArray(0).toRequestBody(null))
                 .build()
             
             val response = client.newCall(request).execute()
@@ -302,7 +337,7 @@ class YandexDiskRepository {
         val publishRequest = Request.Builder()
             .url("$baseUrl/resources/publish?path=${Uri.encode(remotePath)}")
             .header("Authorization", "OAuth $oauthToken")
-            .put(okhttp3.RequestBody.create(null, ByteArray(0)))
+            .put(ByteArray(0).toRequestBody(null))
             .build()
         
         val publishResponse = client.newCall(publishRequest).execute()
