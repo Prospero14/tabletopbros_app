@@ -3,6 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/bg_chat"
     android:padding="16dp">
 
     <androidx.cardview.widget.CardView
@@ -12,8 +13,8 @@
         android:layout_marginBottom="8dp"
         android:visibility="gone"
         app:cardBackgroundColor="@color/white"
-        app:cardCornerRadius="8dp"
-        app:cardElevation="4dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="3dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -22,7 +23,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="12dp">
+            android:padding="14dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -31,8 +32,8 @@
                 android:gravity="center_vertical">
 
                 <ImageView
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
                     android:src="@drawable/ic_dot_filled"
                     app:tint="@color/primary"
                     android:layout_marginEnd="8dp" />
@@ -43,18 +44,19 @@
                     android:text="@string/pinned_message"
                     android:textStyle="bold"
                     android:textColor="@color/primary"
-                    android:textSize="12sp" />
+                    android:textSize="13sp" />
             </LinearLayout>
 
             <TextView
                 android:id="@+id/pinnedMessageText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_marginTop="6dp"
                 android:maxLines="2"
                 android:ellipsize="end"
                 android:textColor="@color/text_primary"
-                android:textSize="14sp" />
+                android:textSize="14sp"
+                android:lineSpacingExtra="2dp" />
 
         </LinearLayout>
     </androidx.cardview.widget.CardView>
@@ -66,6 +68,7 @@
         android:gravity="center"
         android:text="@string/chat_placeholder"
         android:textSize="16sp"
+        android:textColor="@color/text_secondary"
         android:visibility="gone"
         app:layout_constraintBottom_toTopOf="@+id/messageInputContainer"
         app:layout_constraintTop_toBottomOf="@+id/pinnedMessageContainer" />
@@ -101,13 +104,12 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="bottom"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
-        android:background="@color/white"
-        android:elevation="8dp"
+        android:gravity="center_vertical"
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp"
+        android:background="@android:color/transparent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
@@ -115,23 +117,22 @@
         <com.google.android.material.button.MaterialButton
             android:id="@+id/menuButton"
             style="@style/Widget.MaterialComponents.Button.Icon"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:insetTop="0dp"
             android:insetBottom="0dp"
             android:insetLeft="0dp"
             android:insetRight="0dp"
-            android:padding="8dp"
+            android:padding="10dp"
             app:icon="@drawable/ic_more_vert"
             app:iconTint="@color/primary"
             app:iconGravity="textStart"
             app:iconSize="24dp"
-            app:cornerRadius="20dp"
+            app:cornerRadius="22dp"
             android:backgroundTint="@android:color/transparent"
             app:rippleColor="@color/primary_light"
             android:contentDescription="Меню"
-            android:layout_marginEnd="4dp"
-            android:layout_marginBottom="4dp" />
+            android:layout_marginEnd="6dp" />
 
         <EditText
             android:id="@+id/messageEditText"
@@ -142,36 +143,34 @@
             android:hint="@string/chat_hint"
             android:textColor="@color/text_primary"
             android:textColorHint="@color/text_secondary"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="10dp"
-            android:textSize="16sp"
-            android:maxLines="4"
+            android:paddingStart="18dp"
+            android:paddingEnd="18dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
+            android:textSize="15sp"
+            android:maxLines="5"
             android:inputType="textCapSentences|textMultiLine"
-            android:layout_marginBottom="4dp"
-            android:minHeight="40dp" />
+            android:minHeight="44dp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/sendButton"
             style="@style/Widget.MaterialComponents.Button.Icon"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
             android:insetTop="0dp"
             android:insetBottom="0dp"
             android:insetLeft="0dp"
             android:insetRight="0dp"
-            android:padding="8dp"
+            android:padding="10dp"
             app:icon="@drawable/ic_send_custom"
-            app:iconTint="@color/primary"
+            app:iconTint="@color/white"
             app:iconGravity="textStart"
-            app:iconSize="20dp"
-            app:cornerRadius="20dp"
-            android:backgroundTint="@android:color/transparent"
+            app:iconSize="22dp"
+            app:cornerRadius="22dp"
+            android:backgroundTint="@color/primary"
             app:rippleColor="@color/primary_light"
             android:contentDescription="@string/chat_send"
-            android:layout_marginStart="4dp"
-            android:layout_marginBottom="4dp" />
+            android:layout_marginStart="6dp" />
 
     </LinearLayout>
 
